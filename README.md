@@ -1,4 +1,4 @@
-# ForenXAI: Explainable Network Intrusion Detection
+# ForenXAI: Explainable PCAP Network Intrusion Detection Forensic Tool
 
 ForenXAI is an advanced network forensic tool featuring an intrusion detection pipeline that combines high-performance ensemble machine learning with post-hoc Explainable AI (XAI) to analyze UWF-ZeekData24 telemetry logs against the MITRE ATT&CK framework, augmented with a human-in-the-loop mechanism.
 
