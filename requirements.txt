@@ -1,0 +1,12 @@
+# Data Processing & Machine Learning
+pandas
+numpy
+scikit-learn
+joblib
+
+# Visualization & Evaluation Metrics
+matplotlib
+seaborn
+
+# GUI Drag-and-Drop functionality
+tkinterdnd2
