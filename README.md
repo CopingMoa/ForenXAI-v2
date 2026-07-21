@@ -5,7 +5,7 @@ ForenXAI is an advanced network forensic tool featuring an intrusion detection p
 
 ## Pipeline Architecture
 
-* **Core Modeling:** High-throughput ensemble classification (XGBoost & Random Forest) optimized for imbalanced enterprise network traffic.
+* **Core Modeling:** High-throughput ensemble classification (decision tree, random forest, lightgbm xgboost , extra tree, regression for meta learning) optimized for imbalanced enterprise network traffic.
 * **Explainability Engine:** SHAP (SHapley Additive exPlanations) integration to provide transparent, instance-level attribution for zero-day anomalies and malicious tactics.
 * **Data Foundation:** Processes structured flow metrics from enterprise Zeek logs mapped directly to MITRE ATT&CK tactics (e.g., Credential Access, Reconnaissance).
 
