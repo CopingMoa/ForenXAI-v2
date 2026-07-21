@@ -1,12 +1,28 @@
-# Data Processing & Machine Learning
+# Data Processing
 pandas
 numpy
+
+# Machine Learning
 scikit-learn
+
+# Explainable Boosting Machine (EBM)
+interpret
+
+# Hyperparameter Optimization
+optuna
+
+# Class Imbalance (optional experiments)
+imbalanced-learn
+
+# Google Drive Dataset Acquisition
+gdown
+
+# Model Serialization
 joblib
 
-# Visualization & Evaluation Metrics
+# Visualization
 matplotlib
 seaborn
 
-# GUI Drag-and-Drop functionality
-tkinterdnd2
+# Jupyter / Google Colab
+ipykernel
