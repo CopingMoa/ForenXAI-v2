@@ -95,10 +95,11 @@ PCAP files are converted using a version-locked CICFlowMeter pipeline to maintai
 ## Model Pipeline
 
 ### Candidate Models
-- Logistic Regression
-- CART
-- Extra Trees
-- LightGBM
+- Logistic Regression (Glass-box model)
+- CART Decision Tree (Glass-box model)
+- Extra Trees (Black-box model)
+- LightGBM (Black-box model)
+- CatBoost (Black-box model)
 
 ### Optional Future Model
 - EBM (Explainable Boosting Machines)
@@ -175,16 +176,6 @@ The tool generates:
 - retraining from user evidence
 - direct MITRE ATT&CK mapping as the primary modeling target
 - multi-dataset training across CUPID, CIC-IDS2018, and CTU-13
-
----
-
-## To Add Later
-
-- EBM as an interpretable baseline
-- advanced case management
-- richer analyst notes and evidence tagging
-- extended reporting templates
-- optional batch processing for large evidence sets
 
 ---
 
