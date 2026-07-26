@@ -15,4 +15,8 @@ ForenXAI is an advanced network forensic tool featuring an intrusion detection p
 * **EBM (Explainable Boosting Machines):** "glass-box" models that decompose predictions into additive contributions from individual features (and optional pairwise interactions), allowing for clear visualization of how each variable affects the outcome. They offer accuracy comparable to black-box models like XGBoost or Random Forest while remaining fully transparent.
 
 ## Download / Fetch the dataset from Google Drive:
-https://drive.google.com/drive/folders/1Q8MvO3O-SyuC1N0NaBsA61fhi6xC2bzz?usp=sharing 
+
+
+## Compatiblise Operating System for the tool
+* Windows 10/11 64-bit.
+
