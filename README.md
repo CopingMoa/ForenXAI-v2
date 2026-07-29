@@ -5,7 +5,7 @@ ForenXAI is a digital forensics and network anomaly detection tool for analyzing
 
 The current design uses a **single primary training dataset** and **two external validation datasets**:
 
-- **CUPID-2022** — primary training dataset
+- **TII-SSRC-23** — primary training dataset
 - **CIC-IDS2018** — external multiclass validation
 - **CTU-13** — external binary validation on real network traffic and malware traces
 
@@ -100,6 +100,7 @@ PCAP files are converted using a version-locked CICFlowMeter pipeline to maintai
 - Extra Trees (Black-box model)
 - LightGBM (Black-box model)
 - CatBoost (Black-box model)
+- XGBoost(Black-box model)
 
 ### Optional Future Model
 - EBM (Explainable Boosting Machines)
@@ -175,7 +176,7 @@ The tool generates:
 - live packet interception
 - retraining from user evidence
 - direct MITRE ATT&CK mapping as the primary modeling target
-- multi-dataset training across CUPID, CIC-IDS2018, and CTU-13
+- multi-dataset training across TII-SSRC-23, CIC-IDS2018, and CTU-13
 
 ---
 
