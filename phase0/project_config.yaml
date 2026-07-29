@@ -1,0 +1,35 @@
+# project_config.yaml
+
+project:
+  name: "FORENXAI"
+  pipeline_mode: "Track_A_Single_Corpus"
+  dataset: "TII-SSRC-23"
+
+directories:
+  raw_data: "./data/raw/tii-ssrc-23"
+  processed_data: "./data/processed"
+  models: "./artifacts/models"
+  audit_logs: "./artifacts/audit_logs"
+
+features:
+  target_column: "Label"
+  retain_columns: ["Attack"] # Explicitly retained for MITRE ATT&CK mapping downstream
+  drop_leakage: ["Flow ID", "Source IP", "Destination IP", "Timestamp"]
+
+metrics:
+  primary: "pr_auc"
+  calibration: "ece"
+  max_allowable_fpr: 0.001 # 0.1% false positive rate budget
+
+data_splitting:
+  train_split: 0.60
+  dev_split: 0.15 # Used for threshold optimization
+  calibration_split: 0.10 # Used to fit the calibrator
+  holdout_split: 0.15 # Untouched until Phase 8
+  random_seed: 42 # Strict lock for forensic reproducibility
+
+modeling:
+  algorithms: ["RandomForest", "IsolationForest"]
+  explainability: "tree_shap"
+  hpo_framework: "optuna"
+  optuna_trials: 50
