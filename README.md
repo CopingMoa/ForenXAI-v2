@@ -33,8 +33,8 @@ The system is built around a strict separation between:
 
 The development pipeline is used only for model creation and evaluation.
 
-- **Training data:** CUPID-2022
-- **Model selection:** Logistic Regression, CART, Extra Trees, LightGBM
+- **Training data:** TII-SSRC-23
+- **Model selection:** Logistic Regression, CART Decision Trees, Extra Trees, LightGBM, XGBoost
 - **Validation strategy:** group-aware splitting with leakage-safe preprocessing
 - **Imbalance handling:** class weights or SMOTE applied only to training folds
 - **Calibration:** Platt scaling or isotonic regression on untouched hold-out data
@@ -62,8 +62,8 @@ The operational pipeline is the user-facing tool.
 
 ## Development Data Flow
 
-### CUPID-2022
-CUPID-2022 is the only dataset used for training and model selection.
+### TII-SSRC-23
+TII-SSRC-23 is the only dataset used for training and model selection.
 
 Processing steps:
 
@@ -163,7 +163,7 @@ The tool generates:
 ## Current Scope
 
 ### Included
-- CUPID-2022-based training
+- TII-SSRC-23-based training
 - CIC-IDS2018 external validation
 - CTU-13 external validation
 - PCAP / PCAPNG analysis
@@ -182,7 +182,7 @@ The tool generates:
 ## Dataset Access
 
 ### Primary Dataset
-- CUPID-2022
+- TII-SSRC-23
 
 ### External Validation Datasets
 - CIC-IDS2018
