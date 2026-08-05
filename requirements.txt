@@ -26,3 +26,7 @@ seaborn
 
 # Jupyter / Google Colab
 ipykernel
+
+# UI
+tkinterdnd2
+
