@@ -54,15 +54,10 @@ except ImportError:
 # CONFIGURATION
 # ============================================================
 
-MODEL_PATH = (
-    r"C:\Users\HOME PC\Downloads"
-    r"\Processed-Copy\stage5_output\rf.pkl"
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CASE_OUTPUT_DIR = (
-    r"C:\Users\HOME PC\Downloads"
-    r"ForenXAI_Cases"
-)
+MODEL_PATH = os.path.join(BASE_DIR, "models", "rf.pkl")
+CASE_OUTPUT_DIR = os.path.join(BASE_DIR, "ForenXAI_Cases")
 
 os.makedirs(
     CASE_OUTPUT_DIR,
