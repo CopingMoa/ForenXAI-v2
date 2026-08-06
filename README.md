@@ -7,7 +7,7 @@ The current design uses a **single primary training dataset** and **two external
 
 - **TII-SSRC-23** — primary training dataset
 - **CIC-IDS2018** — external multiclass validation
-- **CTU-13** — external binary validation on real network traffic and malware traces
+- **CIC-IoT-IDAD-Dataset-2024** — external binary validation on real network traffic and malware traces
 
 The system is built around a strict separation between:
 
@@ -38,7 +38,7 @@ The development pipeline is used only for model creation and evaluation.
 - **Validation strategy:** group-aware splitting with leakage-safe preprocessing
 - **Imbalance handling:** class weights or SMOTE applied only to training folds
 - **Calibration:** Platt scaling or isotonic regression on untouched hold-out data
-- **External validation:** CIC-IDS2018 and CTU-13
+- **External validation:** CIC-IDS2018 and CIC-IoT-IDAD-Dataset-2024
 - **Artifact freezing:** trained model, preprocessing pipeline, feature schema, label encoder, calibrator, SHAP background data
 
 ### 2. Operational Forensic Pipeline
@@ -86,7 +86,7 @@ Processing steps:
 #### CIC-IDS2018
 Used only for frozen-model multiclass evaluation.
 
-#### CTU-13
+#### CIC-IoT-IDAD-Dataset-2024
 Used only for frozen-model binary evaluation.  
 PCAP files are converted using a version-locked CICFlowMeter pipeline to maintain feature compatibility.
 
@@ -98,6 +98,7 @@ PCAP files are converted using a version-locked CICFlowMeter pipeline to maintai
 - Logistic Regression (Glass-box model)
 - CART Decision Tree (Glass-box model)
 - Extra Trees (Black-box model)
+- *Random Forest (Black-box model)
 - LightGBM (Black-box model)
 - CatBoost (Black-box model)
 - XGBoost(Black-box model)
@@ -166,7 +167,7 @@ The tool generates:
 ### Included
 - TII-SSRC-23-based training
 - CIC-IDS2018 external validation
-- CTU-13 external validation
+- CIC-IoT-IDAD-Dataset-2024 external validation
 - PCAP / PCAPNG analysis
 - XAI explanations
 - analyst decision support
@@ -176,7 +177,7 @@ The tool generates:
 - live packet interception
 - retraining from user evidence
 - direct MITRE ATT&CK mapping as the primary modeling target
-- multi-dataset training across TII-SSRC-23, CIC-IDS2018, and CTU-13
+- multi-dataset training across TII-SSRC-23, CIC-IDS2018, and CIC-IoT-IDAD-Dataset-2024
 
 ---
 
@@ -185,9 +186,11 @@ The tool generates:
 ### Primary Dataset
 - TII-SSRC-23
 
-### External Validation Datasets
+### Combined Dataset
 - CIC-IDS2018
-- CTU-13
+  
+### External Validation Datasets
+- CIC-IoT-IDAD-Dataset-2024
 
 Dataset sources and fetch instructions will be documented separately.
 
