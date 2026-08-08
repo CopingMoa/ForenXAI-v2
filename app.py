@@ -2680,13 +2680,20 @@ root.configure(
 
 )
 
-root.resizable(
+root.resizable(True, True)
 
-    False,
+fullscreen_state = {"on": False}
 
-    False
+def toggle_fullscreen(event=None):
+    fullscreen_state["on"] = not fullscreen_state["on"]
+    root.attributes("-fullscreen", fullscreen_state["on"])
 
-)
+def exit_fullscreen(event=None):
+    fullscreen_state["on"] = False
+    root.attributes("-fullscreen", False)
+
+root.bind("<F11>", toggle_fullscreen)
+root.bind("<Escape>", exit_fullscreen)
 
 
 # ============================================================
