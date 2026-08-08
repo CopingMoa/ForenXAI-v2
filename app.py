@@ -1108,6 +1108,13 @@ def pipeline_worker(
             "success"
         )
 
+        # NEW: reject empty pcap before wasting time on extraction
+        if os.path.getsize(pcap_path) == 0:
+
+            raise ValueError(
+                "The uploaded PCAP file is empty (0 bytes)."
+            )
+
         # ====================================================
         # STAGE 2 — ZEEK EXTRACTION
         # ====================================================
@@ -2580,6 +2587,29 @@ def pcap_drop_file(
         )
 
     ):
+
+        # NEW: reject empty files immediately, before they're even selected
+        if os.path.getsize(raw_path) == 0:
+
+            selected_pcap = None
+
+            lbl_pcap_file.config(
+
+                text="Empty file. This PCAP contains no data.",
+
+                fg="#EF4444"
+
+            )
+
+            write_log(
+
+                f"[!] Rejected empty PCAP: {os.path.basename(raw_path)}",
+
+                "error"
+
+            )
+
+            return
 
         selected_pcap = raw_path
 
