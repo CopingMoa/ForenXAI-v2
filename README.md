@@ -1,214 +1,116 @@
-
 # ForenXAI: Explainable PCAP Network Anomaly Detection Forensic Tool
 
-ForenXAI is a digital forensics and network anomaly detection tool for analyzing user-supplied PCAP / PCAPNG evidence. It combines machine learning, calibrated prediction, and post-hoc explainability to support forensic review of suspicious network flows.
+## Project Overview
 
-The current design uses a **single primary training dataset** and **two external validation datasets**:
+ForenXAI is a digital forensics and network anomaly detection tool for analyzing user-supplied PCAP / PCAPNG evidence. It combines machine learning, calibrated prediction, and post-hoc explainability (SHAP) to support forensic review of suspicious network flows.
 
-- **TII-SSRC-23** — primary training dataset
-- **CIC-IDS2018** — external multiclass validation
-- **CIC-IoT-IDAD-Dataset-2024** — external binary validation on real network traffic and malware traces
-
-The system is built around a strict separation between:
-
-1. **Offline model development**
-2. **Frozen deployment artifacts**
-3. **Online forensic inference**
+**Tech Stack:**
+*   Language: Python
+*   GUI: Tkinter
+*   Build Tool: PyInstaller (for standalone executable generation)
+*   OS Target: Windows 10 / 11 64-bit (desktop forensic use)
 
 ---
 
-## Core Goals
+## Architectural Constraints (CRITICAL)
 
-- Detect malicious or anomalous network flows from PCAP evidence
-- Produce calibrated prediction scores rather than raw class outputs
-- Provide instance-level explanations using SHAP
-- Preserve evidence integrity through hashing and audit logging
-- Support analyst review with Confirm / Reject / Inconclusive decisions
+The system is built around a **strict separation** between three environments. Do not blend these pipelines in code or proposals:
 
----
-
-## System Architecture
-
-### 1. Offline Development Pipeline
-
-The development pipeline is used only for model creation and evaluation.
-
-- **Training data:** TII-SSRC-23
-- **Model selection:** Logistic Regression, CART Decision Trees, Extra Trees, LightGBM, XGBoost
-- **Validation strategy:** group-aware splitting with leakage-safe preprocessing
-- **Imbalance handling:** class weights or SMOTE applied only to training folds
-- **Calibration:** Platt scaling or isotonic regression on untouched hold-out data
-- **External validation:** CIC-IDS2018 and CIC-IoT-IDAD-Dataset-2024
-- **Artifact freezing:** trained model, preprocessing pipeline, feature schema, label encoder, calibrator, SHAP background data
-
-### 2. Operational Forensic Pipeline
-
-The operational pipeline is the user-facing tool.
-
-- PCAP / PCAPNG ingestion
-- SHA-256 evidence hashing
-- CICFlowMeter-based flow extraction
-- Extraction validation
-- Schema validation
-- Frozen preprocessing
-- Frozen model inference
-- Calibrated confidence scoring
-- SHAP explanation on attack, low-confidence, or analyst-requested cases
-- Analyst decision capture
-- Forensic report generation
-- Immutable audit logging
+1.  **Offline Model Development:** Used only for model creation, calibration, and evaluation.
+2.  **Frozen Deployment Artifacts:** The trained model, preprocessing pipeline, feature schema, label encoder, calibrator, and SHAP background data must be frozen.
+3.  **Online Forensic Inference:** The user-facing tool. Must not alter the frozen artifacts.
 
 ---
 
-## Development Data Flow
+## Research & Data Methodology
 
-### TII-SSRC-23
-TII-SSRC-23 is the only dataset used for training and model selection.
+The evaluation design strictly enforces the following dataset roles across two major experimental phases:
 
-Processing steps:
-
-1. Load Parquet partitions
-2. Merge partitions into a master table
-3. Audit for:
-   - duplicates
-   - missing values
-   - invalid values
-   - label consistency
-4. Clean and validate features
-5. Split using a group-aware strategy
-6. Fit preprocessing only on training folds
-7. Train and tune candidate models
-8. Select the champion model
-9. Calibrate probabilities on non-SMOTEd hold-out data
-
-### External Validation
-
-#### CIC-IDS2018
-Used only for frozen-model multiclass evaluation.
-
-#### CIC-IoT-IDAD-Dataset-2024
-Used only for frozen-model binary evaluation.  
-PCAP files are converted using a version-locked CICFlowMeter pipeline to maintain feature compatibility.
+*   **[Experiment 1] Merged Dataset (Baseline):** The initial methodology leveraging a merged multi-source dataset (TII-SSRC-23 and CSE-CIC-IDS2018) to establish baselines, which ultimately revealed dataset-origin leakage.
+*   **[Experiment 2] Parallel Pipeline (Refined):** The corrected methodology where TII-SSRC-23 & CSE-CIC-IDS2018 undergo identical, **parallel processing pipelines** to eliminate leakage and enforce strict external validation.
+*   **CIC-IoT-IDAD-Dataset-2024:** Used strictly for **external binary validation** (real network traffic/malware traces) of the frozen models.
 
 ---
 
-## Model Pipeline
+## 1. Experiment 1: Merged Dataset Architecture (The Baseline)
 
-### Candidate Models
-- Logistic Regression (Glass-box model)
-- CART Decision Tree (Glass-box model)
-- Extra Trees (Black-box model)
-- *Random Forest (Black-box model)
-- LightGBM (Black-box model)
-- CatBoost (Black-box model)
-- XGBoost(Black-box model)
+Experiment 1 covers the initial workflow using a merged multi-source dataset. This experiment was conducted across two distinct iterations (Version 1 and Version 2) to refine feature selection and model diversity before the discovery of origin leakage.
 
-### Optional Future Model
-- EBM (Explainable Boosting Machines)
+### 1.1 Phases 1–4: Data Acquisition, Audit, and Cleaning
+*   **Data Sources:** Integrates **CSE-CIC-IDS2018** (background traffic and tool-based attacks) and **TII-SSRC-23** (modern attacks like Mirai botnets).
+*   **Data Repair:** Removed 59 corrupted header rows containing literal text labels and purged `Infinity`/`NaN` values caused by division-by-zero durations.
 
-EBM is a future enhancement candidate for a more interpretable glass-box baseline. It is not required for the current implementation.
+### 1.2 Phase 5: Label Preparation and Schema Alignment
+*   **Schema Alignment:** CICIDS2018 used CICFlowMeter V3, while TII-SSRC-23 used V4. A 48-column rename map was applied to align schemas.
+*   **Label Mapping:** Raw labels were unified into standard classes (Benign, DoS, Botnet, Bruteforce, Infiltration, Info-Gathering), producing a merged dataset of **1,160,639 rows**.
 
-### Model Selection
-Model candidates are compared using:
-- cross-validated performance
-- Friedman test
-- Nemenyi post-hoc comparison
+### 1.3 Phases 6–7: Data Split and Feature Selection
+*   **Method:** Boruta evaluated features against randomized "shadow features" on a stratified 100,000-row training subsample using a Random Forest estimator.
+*   **Highlighted Iterations:**
+    *   **[Version 1]:** Reduced the feature space from 78 to **68 features**, rejecting constant-zero columns.
+    *   **[Version 2]:** Further refined feature convergence down to a confirmed **64 features**.
 
-### Calibration
-The selected model is calibrated to produce usable confidence estimates for forensic analysis.
+### 1.4 Phases 8–10: Optimization, Imbalance Handling, and Base Training
+*   **Optimization:** Executed 25 Optuna trials per model using Tree-structured Parzen Estimator (TPE) optimized for `macro F1` across a 3-fold stratified cross-validation.
+*   **Highlighted Iterations:**
+    *   **[Version 1]:** Evaluated exclusively **tree-based algorithms** (LightGBM, XGBoost, Random Forest).
+    *   **[Version 2]:** Expanded to **non-tree algorithms** (MLP, Logistic Regression, Linear SVM) and compared artificially balanced training sets against realistic, imbalanced training proportions.
 
----
+### 1.5 Phases 11–13: Ensemble Stacking and Calibration
+*   **Meta-Learner:** Combined base learners using a Logistic Regression meta-learner via out-of-fold cross-validated probability predictions.
+*   **Calibration:** Evaluated via multiclass Brier score yielding **0.0938**, indicating reliable probability calibration.
 
-## Explainability
-
-ForenXAI uses SHAP to explain predictions.
-
-Explainability is triggered when:
-- the prediction is malicious,
-- the confidence score is below threshold,
-- or the analyst requests an explanation manually.
-
-This keeps the application responsive while still exposing meaningful explanations for suspicious cases.
+### 1.6 Phases 14–16: Evaluation and Leakage Discovery
+*   **Critical Finding:** An origin-prediction classifier achieved exactly **1.0000 (100%) accuracy** in predicting which dataset a flow came from.
+*   **Root Cause:** Features like initial TCP window sizes and inter-arrival times acted as environment fingerprints rather than pure attack behaviors, artificially inflating aggregate accuracy metrics.
 
 ---
 
-## User Workflow
+## 2. Experiment 2: Parallel Pipeline Architecture 
 
-1. User uploads PCAP / PCAPNG evidence
-2. System computes SHA-256 hash
-3. Flow extraction runs through CICFlowMeter
-4. Output is validated against the frozen schema
-5. Frozen model generates a calibrated prediction
-6. SHAP explanation is generated when needed
-7. Analyst reviews the result
-8. Analyst chooses:
-   - Confirm
-   - Reject
-   - Inconclusive
-9. System generates a forensic report and audit log
+### 2.1 Phases 1–4: Data Acquisition, Audit, and Environment Isolation
+*   **Environment Isolation:** The pipeline strictly audits for missing values and explicitly **removes capture-environment identifiers** (e.g., Flow ID, IPs, Ports, Timestamps) to prevent the model from artificially memorizing collection artifacts. 
+*   **Data Validation:** Valid flows are loaded while zero-duration infinites are handled.
 
----
+### 2.2 Phase 5: Label Preparation and Experimental Setup
+*   **Encoding:** Targets are integer-encoded to standardize modeling. 
+*   **Model 2 Focus:** Explicitly narrows its focus to multiclass classification of purely malicious traffic sub-types (DoS, Bruteforce, Information Gathering, and Botnet), requiring granular N×N confusion matrices to prevent major attack classes from masking minor ones.
 
-## Output Artifacts
+### 2.3 Phases 6–7: Data Split and Feature Selection
+*   **Data Split:** Implements a robust 70/15/15 stratified split.
+*   **Hierarchical Selection:** Because the dataset comprises millions of records, Hierarchical Feature Selection (Single-Pass LightGBM Gain) is implemented over BorutaSHAP to efficiently handle multicollinearity and scale computationally.
 
-The tool generates:
+### 2.4 Phases 8–10: Optimization, Imbalance Handling, and Base Training
+*   **Optimization:** Internal cross-validation via Optuna optimizes toward macro-F1. Seven distinct base classifiers are trained.
+*   **Imbalance Handling:** To address extreme class imbalances natively without synthesizing millions of points, cost-sensitive weighting (`class_weight='balanced'`) replaces SMOTE.
+* **Base Training:**
+* Logistic Regression	Glass-box	Fully transparent baseline; coefficients are directly interpretable
+* CART Decision Tree	Glass-box	Transparent, rule-based; captures nonlinear splits
+* Extra Trees	Black-box	High variance reduction via extra randomization
+* Random Forest	Black-box	Robust bagging baseline
+* LightGBM	Black-box	Fast gradient boosting, handles large feature sets efficiently
+* CatBoost	Black-box	Strong on categorical-heavy flow features, resistant to overfitting
+* XGBoost	Black-box	Regularized boosting; consistently top-performing in IDS literature
 
-- prediction results
-- calibrated confidence scores
-- SHAP explanation summaries
-- forensic reports
-- hash records
-- audit logs
+### 2.5 Phases 11–13: Ensemble Stacking and Calibration
+*   **Meta-Learner:** Out-of-fold base model predictions are stacked as features for a final Logistic Regression Meta-Learner. 
+*   **Calibration:** Tree-based predictions undergo Isotonic regression calibration, while linear boundaries use Platt scaling, ensuring generated confidence scores map accurately to real probabilities.
 
----
-
-## Current Scope
-
-### Included
-- TII-SSRC-23-based training
-- CIC-IDS2018 external validation
-- CIC-IoT-IDAD-Dataset-2024 external validation
-- PCAP / PCAPNG analysis
-- XAI explanations
-- analyst decision support
-- evidence integrity tracking
-
-### Not in current scope
-- live packet interception
-- retraining from user evidence
-- direct MITRE ATT&CK mapping as the primary modeling target
-- multi-dataset training across TII-SSRC-23, CIC-IDS2018, and CIC-IoT-IDAD-Dataset-2024
+### 2.6 Phases 14–16: XAI, External Validation, and Artifact Saving
+*   **Explainability:** Post-calibration, a SHAP `TreeExplainer` maps feature contributions per class.
+*   **External Validation:** The entire pipeline (hyperparameters, calibrators, weights) is strictly frozen and pushed against an untouched external dataset (**CIC-IoT-IDAD-Dataset-2024**) formatted via a version-locked CICFlowMeter.
+*   **Artifact Saving:** All models and selectors are persisted using loadable `joblib`/`pickle` objects for absolute forensic auditability.
 
 ---
 
-## Dataset Access
+## License
 
-### Primary Dataset
-- TII-SSRC-23
+**MIT License**
 
-### Combined Dataset
-- CIC-IDS2018
-  
-### External Validation Datasets
-- CIC-IoT-IDAD-Dataset-2024
+Copyright (c) 2026 ForenXAI Project
 
-Dataset sources and fetch instructions will be documented separately.
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
----
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-## Compatibility
-
-### Operating System
-- Windows 10 / 11 64-bit
-
-### Notes
-- The tool is designed for desktop forensic use.
-- Large PCAPs may require background extraction and validation.
-- The CICFlowMeter version used in deployment should remain consistent with the development pipeline.
-
----
-
-## Project Summary
-
-ForenXAI is a forensic ML system that separates **training**, **validation**, and **deployment** cleanly.  
-Its goal is not only to classify network traffic, but also to make the result explainable, auditable, and suitable for forensic review.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
