@@ -27,7 +27,7 @@ The system is built around a **strict separation** between three environments. D
 The evaluation design strictly enforces the following dataset roles across two major experimental phases:
 
 *   **[Experiment 1] Merged Dataset (Baseline):** The initial methodology leveraging a merged multi-source dataset (TII-SSRC-23 and CSE-CIC-IDS2018) to establish baselines, which ultimately revealed dataset-origin leakage.
-*   **[Experiment 2] Parallel Pipeline (Refined):** The corrected methodology where TII-SSRC-23 & CSE-CIC-IDS2018 undergo identical, **parallel processing pipelines** to eliminate leakage and enforce strict external validation.
+*   **[Experiment 2] Parallel Pipeline:** The corrected methodology where TII-SSRC-23 & CSE-CIC-IDS2018 undergo identical, **parallel processing pipelines** to eliminate leakage and enforce strict external validation.
 *   **CIC-IoT-IDAD-Dataset-2024:** Used strictly for **external binary validation** (real network traffic/malware traces) of the frozen models.
 
 ---
