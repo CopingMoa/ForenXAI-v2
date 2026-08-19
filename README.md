@@ -38,6 +38,11 @@ Experiment 1 covers the initial workflow using a merged multi-source dataset. Th
 
 ### 1.1 Phases 1–4: Data Acquisition, Audit, and Cleaning
 *   **Data Sources:** Integrates **CSE-CIC-IDS2018** (background traffic and tool-based attacks) and **TII-SSRC-23** (modern attacks like Mirai botnets).
+      ```text
+[ TII-SSRC-23 Dataset ]     ──┐
+                              ├──> [ Schema Alignment & Merging ] ──> [ Single Unified Pipeline ]
+[ CSE-CIC-IDS2018 Dataset ] ──┘
+      ```
 *   **Data Repair:** Removed 59 corrupted header rows containing literal text labels and purged `Infinity`/`NaN` values caused by division-by-zero durations.
 
 ### 1.2 Phase 5: Label Preparation and Schema Alignment
