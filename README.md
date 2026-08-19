@@ -69,6 +69,13 @@ Experiment 1 covers the initial workflow using a merged multi-source dataset. Th
 ## 2. Experiment 2: Parallel Pipeline Architecture 
 
 ### 2.1 Phases 1–4: Data Acquisition, Audit, and Environment Isolation
+*   **Parallel Independent Ingestion:** The **TII-SSRC-23** and **CSE-CIC-IDS2018** datasets are utilized **completely separately** in parallel, independent tracks rather than being combined. Each dataset is processed through its own dedicated pipeline to ensure their respective data preparation, feature extraction, and model training never mix. 
+
+    ```text
+    [ TII-SSRC-23 Dataset ]     ──> [ Dedicated Pipeline A ] ──> [ Isolated Track A ]
+                                                                                   
+    [ CSE-CIC-IDS2018 Dataset ] ──> [ Dedicated Pipeline B ] ──> [ Isolated Track B ]
+    ```
 *   **Environment Isolation:** The pipeline strictly audits for missing values and explicitly **removes capture-environment identifiers** (e.g., Flow ID, IPs, Ports, Timestamps) to prevent the model from artificially memorizing collection artifacts. 
 *   **Data Validation:** Valid flows are loaded while zero-duration infinites are handled.
 
