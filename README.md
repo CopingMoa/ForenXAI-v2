@@ -88,6 +88,17 @@ Experiment 1 covers the initial workflow using a merged multi-source dataset. Th
 
 ### 2.2 Phase 5: Label Preparation and Experimental Setup
 *   **Encoding:** Targets are integer-encoded to standardize modeling. 
+*   **Dataset Taxonomies:**
+    ```text
+    TII-SSRC-23
+    ├── Level 1: Binary
+    ├── Level 2: Attack Family
+    └── Level 3: Attack Subtype (omitted)
+
+    CIC-IDS2018
+    ├── Level 1: Binary
+    └── Level 2: Attack Family
+    ```
 *   **Model 2 Focus:** Explicitly narrows its focus to multiclass classification of purely malicious traffic sub-types (DoS, Bruteforce, Information Gathering, and Botnet), requiring granular N×N confusion matrices to prevent major attack classes from masking minor ones.
 
 ### 2.3 Phases 6–7: Data Split and Feature Selection
