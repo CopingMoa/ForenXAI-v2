@@ -54,15 +54,10 @@ except ImportError:
 # CONFIGURATION
 # ============================================================
 
-MODEL_PATH = (
-    r"C:\Users\HOME PC\Downloads"
-    r"\Processed-Copy\stage5_output\rf.pkl"
-)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-CASE_OUTPUT_DIR = (
-    r"C:\Users\HOME PC\Downloads"
-    r"ForenXAI_Cases"
-)
+MODEL_PATH = os.path.join(BASE_DIR, "models", "rf.pkl")
+CASE_OUTPUT_DIR = os.path.join(BASE_DIR, "ForenXAI_Cases")
 
 os.makedirs(
     CASE_OUTPUT_DIR,
@@ -1112,6 +1107,13 @@ def pipeline_worker(
             f"[+] PCAP SHA-256: {pcap_sha256}",
             "success"
         )
+
+        # NEW: reject empty pcap before wasting time on extraction
+        if os.path.getsize(pcap_path) == 0:
+
+            raise ValueError(
+                "The uploaded PCAP file is empty (0 bytes)."
+            )
 
         # ====================================================
         # STAGE 2 — ZEEK EXTRACTION
@@ -2586,6 +2588,29 @@ def pcap_drop_file(
 
     ):
 
+        # NEW: reject empty files immediately, before they're even selected
+        if os.path.getsize(raw_path) == 0:
+
+            selected_pcap = None
+
+            lbl_pcap_file.config(
+
+                text="Empty file. This PCAP contains no data.",
+
+                fg="#EF4444"
+
+            )
+
+            write_log(
+
+                f"[!] Rejected empty PCAP: {os.path.basename(raw_path)}",
+
+                "error"
+
+            )
+
+            return
+
         selected_pcap = raw_path
 
         lbl_pcap_file.config(
@@ -2655,13 +2680,20 @@ root.configure(
 
 )
 
-root.resizable(
+root.resizable(True, True)
 
-    False,
+fullscreen_state = {"on": False}
 
-    False
+def toggle_fullscreen(event=None):
+    fullscreen_state["on"] = not fullscreen_state["on"]
+    root.attributes("-fullscreen", fullscreen_state["on"])
 
-)
+def exit_fullscreen(event=None):
+    fullscreen_state["on"] = False
+    root.attributes("-fullscreen", False)
+
+root.bind("<F11>", toggle_fullscreen)
+root.bind("<Escape>", exit_fullscreen)
 
 
 # ============================================================
