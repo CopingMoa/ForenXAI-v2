@@ -1,0 +1,32 @@
+{
+  "feature_columns": [
+    "Average Packet Size",
+    "Bwd Header Length",
+    "Fwd Packet Length Min",
+    "Bwd Init Win Bytes",
+    "Bwd Packet Length Mean",
+    "Flow Packets/s",
+    "SYN Flag Count",
+    "Fwd Header Length",
+    "FIN Flag Count",
+    "Subflow Bwd Bytes",
+    "PSH Flag Count",
+    "Fwd Packet Length Std",
+    "Total Length of Bwd Packet",
+    "Dst Port",
+    "ACK Flag Count",
+    "Flow IAT Std",
+    "Bwd Packet Length Std",
+    "FWD Init Win Bytes",
+    "Flow Duration",
+    "Flow IAT Min"
+  ],
+  "family_mapping": {
+    "Benign": 0,
+    "Botnet": 1,
+    "Bruteforce": 2,
+    "DoS": 3,
+    "Infiltration": 4,
+    "Web Attack": 5
+  }
+}
