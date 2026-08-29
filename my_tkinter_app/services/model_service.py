@@ -1,52 +1,156 @@
 import os
+import json
 import joblib
 
-from services.config import MODEL_PATH
+# ============================================================
+# CHANGED:
+# Removed MODEL_PATH import.
+# We now detect every trained model inside /artifacts.
+# ============================================================
+
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
 
 
-def load_model():
+# ============================================================
+# NEW:
+# Scan available trained models
+# ============================================================
+
+def discover_models():
     """
-    Loads the trained Random Forest model from MODEL_PATH.
-    Returns the model, or None if it isn't available yet.
-    Never raises — a missing/broken model should not crash the app,
-    it should just leave the app running in a "no model loaded" state.
+    Detects every available model inside:
+
+        artifacts/
+            CIDS2018/
+            TII/
+            Combined/   (Brian later)
+
+    Returns:
+        {
+            "CIDS2018": {...},
+            "TII": {...}
+        }
     """
 
-    if not os.path.exists(MODEL_PATH):
-        print("[!] Model file not found:")
-        print(MODEL_PATH)
-        return None
+    models = {}
 
-    try:
-        model = joblib.load(MODEL_PATH)
-        print("[+] Random Forest model loaded successfully.")
-        return model
+    if not os.path.exists(ARTIFACTS_DIR):
+        return models
 
-    except Exception as e:
-        print(f"[!] Error loading model: {e}")
-        return None
+    for dataset in os.listdir(ARTIFACTS_DIR):
 
-
-def get_expected_features(model):
-    if model is None:
-        raise RuntimeError("Machine learning model is not loaded.")
-
-    if not hasattr(model, "feature_names_in_"):
-        raise RuntimeError(
-            "The trained model does not contain feature_names_in_. "
-            "The inference schema cannot be safely verified."
+        dataset_dir = os.path.join(
+            ARTIFACTS_DIR,
+            dataset
         )
 
-    return list(model.feature_names_in_)
+        if not os.path.isdir(dataset_dir):
+            continue
+
+        forensic_dir = os.path.join(
+            dataset_dir,
+            "forensic_tab"
+        )
+
+        xai_dir = os.path.join(
+            dataset_dir,
+            "xai_tab"
+        )
+
+        model_path = os.path.join(
+            forensic_dir,
+            "model.joblib"
+        )
+
+        schema_path = os.path.join(
+            forensic_dir,
+            "frozen_feature_schema_l2.json"
+        )
+
+        shap_bg_path = os.path.join(
+            xai_dir,
+            "kernel_shap_background_l2.joblib"
+        )
+
+        if os.path.exists(model_path):
+
+            models[dataset] = {
+                "name": dataset,
+                "model_path": model_path,
+                "schema_path": schema_path,
+                "shap_background": shap_bg_path
+            }
+
+    return models
 
 
-def validate_model_schema(model, df):
-    expected_features = get_expected_features(model)
+# ============================================================
+# NEW:
+# Load a selected model
+# ============================================================
 
-    missing_features = [
-        feature
-        for feature in expected_features
-        if feature not in df.columns
+def load_model(dataset_name):
+    """
+    Example:
+
+        load_model("CIDS2018")
+        load_model("TII")
+    """
+
+    models = discover_models()
+
+    if dataset_name not in models:
+        raise FileNotFoundError(
+            f"Model '{dataset_name}' was not found."
+        )
+
+    model = joblib.load(
+        models[dataset_name]["model_path"]
+    )
+
+    return model
+
+
+# ============================================================
+# NEW:
+# Load frozen schema JSON
+# ============================================================
+
+def load_feature_schema(dataset_name):
+
+    models = discover_models()
+
+    schema_path = models[dataset_name]["schema_path"]
+
+    with open(schema_path, "r") as f:
+        return json.load(f)
+
+
+# ============================================================
+# CHANGED:
+# Uses Dorothy's frozen schema instead of feature_names_in_
+# ============================================================
+
+def get_expected_features(dataset_name):
+
+    schema = load_feature_schema(dataset_name)
+
+    return schema["feature_columns"]
+
+
+# ============================================================
+# CHANGED:
+# Validation now depends on selected dataset
+# ============================================================
+
+def validate_model_schema(dataset_name, df):
+
+    expected = get_expected_features(dataset_name)
+
+    missing = [
+        f for f in expected
+        if f not in df.columns
     ]
 
-    return expected_features, missing_features
+    return expected, missing

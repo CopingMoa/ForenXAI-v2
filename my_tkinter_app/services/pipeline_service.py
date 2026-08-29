@@ -1,6 +1,5 @@
 import os
 import json
-
 from datetime import datetime
 
 import pandas as pd
@@ -35,8 +34,10 @@ def save_internal_csv(
     case_id
 ):
     """
-    Save the exact CICFlowMeter-derived feature table
-    used by the inference pipeline.
+    Save the normalized CICFlowMeter DataFrame as the
+    internal forensic CSV artifact.
+
+    This replaces the old Zeek-generated CSV artifact.
     """
 
     csv_path = os.path.join(
@@ -125,11 +126,17 @@ def generate_forensic_report(
     shap_sha256,
     total_flows,
     benign_flows,
-    threat_flows
+    threat_flows,
+    model_name
 ):
+    """
+    Generate the initial forensic case report.
+
+    The report now explicitly records CICFlowMeter v4 and
+    the selected ML model/dataset.
+    """
 
     report = {
-
         "case_information": {
             "case_id": case_id,
             "analysis_timestamp_utc": utc_timestamp(),
@@ -140,22 +147,27 @@ def generate_forensic_report(
             "pcap_sha256": pcap_sha256
         },
 
+        "analysis_configuration": {
+            "model_dataset": model_name,
+            "flow_extractor": "CICFlowMeter v4"
+        },
+
         "analysis_pipeline": [
             "PCAP / PCAPNG",
             "SHA-256 Integrity Check",
-            "CICFlowMeter v4 Flow Extraction",
+            "CICFlowMeter v4 Feature Extraction",
             "CICFlowMeter Flow CSV / DataFrame Generation",
+            "Feature Name Normalization",
             "Schema Validation",
             "Data Cleaning",
             "Required Feature Selection",
-            "Random Forest Prediction",
+            "ML Model Prediction",
             "SHAP Explanation",
             "Human Investigator Review",
             "Forensic Report and Audit Log"
         ],
 
         "artifacts": {
-
             "generated_csv": {
                 "path": csv_path,
                 "sha256": csv_sha256
@@ -173,11 +185,8 @@ def generate_forensic_report(
         },
 
         "ai_results": {
-
             "total_flows": total_flows,
-
             "benign_flows": benign_flows,
-
             "threat_flows": threat_flows,
 
             "note": (
@@ -187,11 +196,8 @@ def generate_forensic_report(
         },
 
         "human_review": {
-
             "decision": "Pending",
-
             "comment": "",
-
             "review_timestamp": None
         }
     }
@@ -227,53 +233,72 @@ def generate_forensic_report(
 def run_forensic_pipeline(
     pcap_path,
     model,
+    model_name,
     case_output_dir,
     log_fn,
     on_metrics_ready=None
 ):
     """
-    Runs the complete forensic pipeline:
+    Full forensic pipeline:
 
-        PCAP / PCAPNG
-            ↓
+        PCAP
+          ->
         SHA-256
-            ↓
+          ->
         CICFlowMeter v4
-            ↓
+          ->
         Flow CSV
-            ↓
+          ->
         DataFrame
-            ↓
-        Schema validation
-            ↓
-        Data cleaning
-            ↓
-        Feature selection
-            ↓
-        Random Forest
-            ↓
+          ->
+        Feature normalization
+          ->
+        Frozen model schema
+          ->
+        ML prediction
+          ->
         SHAP
-            ↓
+          ->
         Forensic report
 
-    log_fn(message, tag=None) is called for every progress line.
+    Parameters
+    ----------
+    pcap_path:
+        Path to .pcap or .pcapng evidence.
 
-    on_metrics_ready(total, benign, threat), if provided,
-    fires after model predictions are available and before
-    SHAP processing.
+    model:
+        Loaded sklearn-compatible ML model.
 
-    Returns:
+    model_name:
+        Name of the selected model artifact, e.g.
+        "CIDS2018" or "TII".
 
-        current_case,
-        shap_results
+    case_output_dir:
+        Root directory where forensic cases are created.
 
-    Raises on failure.
-    The view layer is responsible for displaying the error.
+    log_fn:
+        GUI logging callback.
+
+    on_metrics_ready:
+        Optional callback receiving:
+            total_flows,
+            benign_flows,
+            threat_flows
+
+    Returns
+    -------
+    current_case, shap_results
     """
 
-    # ========================================================
-    # CASE INITIALIZATION
-    # ========================================================
+    if model is None:
+        raise RuntimeError(
+            "Machine learning model is not loaded."
+        )
+
+    if not model_name:
+        raise RuntimeError(
+            "No ML model dataset has been selected."
+        )
 
     case_id = datetime.now().strftime(
         "CASE_%Y%m%d_%H%M%S_%f"
@@ -290,39 +315,32 @@ def run_forensic_pipeline(
     )
 
     current_case = {
-
         "case_id": case_id,
 
         "pcap_path": pcap_path,
-
         "pcap_sha256": None,
 
-        "generated_csv_path": None,
+        "model_dataset": model_name,
+        "flow_extractor": "CICFlowMeter v4",
 
+        "generated_csv_path": None,
         "generated_csv_sha256": None,
 
         "prediction_path": None,
-
         "prediction_sha256": None,
 
         "shap_path": None,
-
         "shap_sha256": None,
 
         "report_path": None,
-
         "report_sha256": None,
 
         "total_flows": 0,
-
         "benign_flows": 0,
-
         "threat_flows": 0,
 
         "investigator_decision": "Pending",
-
         "investigator_comment": "",
-
         "review_timestamp": None
     }
 
@@ -335,47 +353,38 @@ def run_forensic_pipeline(
         "info"
     )
 
-    if not os.path.isfile(pcap_path):
-        raise FileNotFoundError(
-            f"PCAP file does not exist:\n{pcap_path}"
-        )
-
-    if os.path.getsize(pcap_path) == 0:
-        raise ValueError(
-            "The uploaded PCAP file is empty (0 bytes)."
-        )
-
-    pcap_extension = os.path.splitext(
-        pcap_path
-    )[1].lower()
-
-    if pcap_extension not in (
-        ".pcap",
-        ".pcapng"
-    ):
-        raise ValueError(
-            "Only .pcap and .pcapng files are supported."
-        )
-
     pcap_sha256 = calculate_sha256(
         pcap_path
     )
 
-    current_case[
-        "pcap_sha256"
-    ] = pcap_sha256
+    current_case["pcap_sha256"] = (
+        pcap_sha256
+    )
 
     log_fn(
         f"[+] PCAP SHA-256: {pcap_sha256}",
         "success"
     )
 
+    if os.path.getsize(
+        pcap_path
+    ) == 0:
+
+        raise ValueError(
+            "The uploaded PCAP file is empty (0 bytes)."
+        )
+
     # ========================================================
-    # STAGE 2 — CICFLOWMETER EXTRACTION
+    # STAGE 2 — CICFLOWMETER v4 EXTRACTION
     # ========================================================
 
     log_fn(
-        "[Stage 2/9] Running CICFlowMeter v4 flow extraction...",
+        "[Stage 2/9] Running CICFlowMeter v4 feature extraction...",
+        "info"
+    )
+
+    log_fn(
+        f"[+] Selected ML dataset: {model_name}",
         "info"
     )
 
@@ -383,132 +392,27 @@ def run_forensic_pipeline(
         extract_flows_from_pcap(
             pcap_path=pcap_path,
             case_dir=case_dir,
-            log_fn=log_fn,
+            log_fn=log_fn
         )
     )
 
     if extracted_df.empty:
         raise ValueError(
-            "No network flows were extracted from PCAP."
+            "CICFlowMeter did not extract any network flows."
         )
 
     log_fn(
         f"[+] CICFlowMeter extracted "
-        f"{len(extracted_df):,} flows.",
+        f"{len(extracted_df):,} flow(s).",
         "success"
     )
 
     # ========================================================
-    # STAGE 3 — INTERNAL CSV / DATAFRAME
+    # STAGE 3 — INTERNAL DATAFRAME / CSV
     # ========================================================
 
     log_fn(
-        "[Stage 3/9] Loading CICFlowMeter flow CSV "
-        "into DataFrame...",
-        "info"
-    )
-
-    # Preserve the original CICFlowMeter CSV as a forensic
-    # artifact and create the ForenXAI working CSV separately.
-    #
-    # This prevents the generated evidence from being confused
-    # with the cleaned inference table.
-
-    generated_cic_csv_hash = calculate_sha256(
-        cicflowmeter_csv
-    )
-
-    internal_csv_path, internal_csv_hash = (
-        save_internal_csv(
-            extracted_df,
-            case_dir,
-            case_id
-        )
-    )
-
-    current_case[
-        "generated_csv_path"
-    ] = internal_csv_path
-
-    current_case[
-        "generated_csv_sha256"
-    ] = internal_csv_hash
-
-    current_case[
-        "cicflowmeter_csv_path"
-    ] = cicflowmeter_csv
-
-    current_case[
-        "cicflowmeter_csv_sha256"
-    ] = generated_cic_csv_hash
-
-    log_fn(
-        "[+] CICFlowMeter CSV: "
-        + cicflowmeter_csv,
-        "success"
-    )
-
-    log_fn(
-        "[+] CICFlowMeter CSV SHA-256: "
-        + generated_cic_csv_hash,
-        "info"
-    )
-
-    log_fn(
-        "[+] Internal inference CSV: "
-        + internal_csv_path,
-        "success"
-    )
-
-    log_fn(
-        "[+] Internal CSV SHA-256: "
-        + internal_csv_hash,
-        "info"
-    )
-
-    # ========================================================
-    # STAGE 4 — SCHEMA VALIDATION
-    # ========================================================
-
-    log_fn(
-        "[Stage 4/9] Validating model feature schema "
-        "against CICFlowMeter features...",
-        "info"
-    )
-
-    expected_features, missing_features = (
-        validate_model_schema(
-            model,
-            extracted_df
-        )
-    )
-
-    if missing_features:
-
-        raise ValueError(
-            "Required model features are missing from "
-            "CICFlowMeter-derived data:\n\n"
-            + "\n".join(
-                missing_features
-            )
-            + "\n\n"
-            "The model will NOT be executed because "
-            "the CICFlowMeter feature schema cannot "
-            "safely satisfy the trained model."
-        )
-
-    log_fn(
-        "[+] Model schema validated successfully "
-        "against CICFlowMeter output.",
-        "success"
-    )
-
-    # ========================================================
-    # STAGE 5 — DATA CLEANING
-    # ========================================================
-
-    log_fn(
-        "[Stage 5/9] Cleaning CICFlowMeter features...",
+        "[Stage 3/9] Preparing CICFlowMeter DataFrame...",
         "info"
     )
 
@@ -516,12 +420,82 @@ def run_forensic_pipeline(
         extracted_df
     )
 
+    csv_path, csv_hash = save_internal_csv(
+        cleaned_df,
+        case_dir,
+        case_id
+    )
+
+    current_case["generated_csv_path"] = csv_path
+    current_case["generated_csv_sha256"] = csv_hash
+
+    log_fn(
+        f"[+] Internal CSV generated: {csv_path}",
+        "success"
+    )
+
+    log_fn(
+        f"[+] Internal CSV SHA-256: {csv_hash}",
+        "info"
+    )
+
+
+    # ========================================================
+    # STAGE 4 — SCHEMA VALIDATION
+    # ========================================================
+
+    log_fn(
+        "[Stage 4/9] Validating selected model feature schema...",
+        "info"
+    )
+
+    expected_features, missing_features = (
+        validate_model_schema(
+            model_name,
+            cleaned_df
+        )
+    )
+
+    if missing_features:
+
+        raise ValueError(
+            f"The selected {model_name} model requires "
+            "features that were not produced by "
+            "CICFlowMeter:\n\n"
+            + "\n".join(
+                missing_features
+            )
+            + "\n\n"
+            "The ML model will NOT be executed because "
+            "the feature schema cannot be safely satisfied."
+        )
+
+    log_fn(
+        f"[+] {model_name} model schema validated successfully.",
+        "success"
+    )
+
+
+    # ========================================================
+    # STAGE 5 — DATA CLEANING
+    # ========================================================
+
+    log_fn(
+        "[Stage 5/9] Verifying cleaned feature data...",
+        "info"
+    )
+
+    # clean_features() has already been executed before
+    # schema validation. Keep cleaned_df as the canonical
+    # DataFrame from this point forward.
+
+    
     # ========================================================
     # STAGE 6 — REQUIRED FEATURE SELECTION
     # ========================================================
 
     log_fn(
-        "[Stage 6/9] Selecting required model features...",
+        "[Stage 6/9] Selecting frozen model features...",
         "info"
     )
 
@@ -530,10 +504,8 @@ def run_forensic_pipeline(
     ].copy()
 
     non_numeric_columns = [
-
         column
         for column in X.columns
-
         if not pd.api.types.is_numeric_dtype(
             X[column]
         )
@@ -549,18 +521,51 @@ def run_forensic_pipeline(
             )
         )
 
+    # --------------------------------------------------------
+    # Final NaN / infinity safety check
+    # --------------------------------------------------------
+
+    if X.isna().any().any():
+
+        nan_columns = list(
+            X.columns[
+                X.isna().any()
+            ]
+        )
+
+        raise ValueError(
+            "NaN values remain in required model features:\n"
+            + "\n".join(
+                nan_columns
+            )
+        )
+
+    if not X.map(
+        lambda value: pd.api.types.is_number(value)
+    ).all().all():
+
+        raise ValueError(
+            "One or more required model features "
+            "contain non-numeric values."
+        )
+
     log_fn(
         f"[+] Selected {len(X.columns)} "
         "model features.",
         "success"
     )
 
+    log_fn(
+        "[+] Feature order matches frozen model schema.",
+        "success"
+    )
+
     # ========================================================
-    # STAGE 7 — RANDOM FOREST PREDICTION
+    # STAGE 7 — ML PREDICTION
     # ========================================================
 
     log_fn(
-        "[Stage 7/9] Running Random Forest inference...",
+        f"[Stage 7/9] Running {model_name} ML inference...",
         "info"
     )
 
@@ -600,14 +605,21 @@ def run_forensic_pipeline(
         predictions
     )
 
+    # --------------------------------------------------------
+    # Current project convention:
+    # class 0 = benign
+    # class > 0 = threat/attack family
+    # --------------------------------------------------------
+
     malicious_count = sum(
-
         1
-
         for prediction in predictions
-
         if prediction in [
             1,
+            2,
+            3,
+            4,
+            5,
             True,
             "Attack",
             "attack"
@@ -659,8 +671,20 @@ def run_forensic_pipeline(
 
     log_fn(
         f"[+] Predictions generated for "
-        f"{total_flows:,} flows.",
+        f"{total_flows:,} flow(s).",
         "success"
+    )
+
+    log_fn(
+        f"[+] Benign findings: {benign_count:,}",
+        "info"
+    )
+
+    log_fn(
+        f"[+] Threat findings: {malicious_count:,}",
+        "error"
+        if malicious_count > 0
+        else "success"
     )
 
     # ========================================================
@@ -708,36 +732,20 @@ def run_forensic_pipeline(
 
     report_path, report_hash = (
         generate_forensic_report(
-
             case_dir,
-
             case_id,
-
             pcap_path,
-
             pcap_sha256,
-
-            internal_csv_path,
-
-            internal_csv_hash,
-
+            csv_path,
+            csv_hash,
             prediction_path,
-
             prediction_hash,
-
-            current_case[
-                "shap_path"
-            ],
-
-            current_case[
-                "shap_sha256"
-            ],
-
+            current_case["shap_path"],
+            current_case["shap_sha256"],
             total_flows,
-
             benign_count,
-
-            malicious_count
+            malicious_count,
+            model_name
         )
     )
 
@@ -774,6 +782,16 @@ def run_forensic_pipeline(
     )
 
     log_fn(
+        f"[+] Flow extractor: CICFlowMeter v4",
+        "info"
+    )
+
+    log_fn(
+        f"[+] ML dataset: {model_name}",
+        "info"
+    )
+
+    log_fn(
         f"[+] Total flows: {total_flows}",
         "info"
     )
@@ -790,10 +808,7 @@ def run_forensic_pipeline(
         "info"
     )
 
-    return (
-        current_case,
-        shap_results
-    )
+    return current_case, shap_results
 
 
 # ============================================================
@@ -808,8 +823,8 @@ def save_investigator_review(
 ):
     """
     Mutates current_case in place with the review decision,
-    writes the review JSON, appends to the audit log,
-    and returns the review SHA-256.
+    writes the review JSON + appends to the case audit log,
+    and returns the review file SHA-256.
     """
 
     case_id = current_case.get(
@@ -817,6 +832,7 @@ def save_investigator_review(
     )
 
     if not case_id:
+
         raise ValueError(
             "No forensic case is currently loaded."
         )
