@@ -104,13 +104,21 @@ def _build_cicflowmeter_command(
             executable
         )[1].lower()
 
+        # --------------------------------------------------------
+        # CICFlowMeter v4 expects an INPUT DIRECTORY
+        # --------------------------------------------------------
+
         if extension in (".bat", ".cmd"):
+
+            input_directory = os.path.dirname(
+                os.path.abspath(pcap_path)
+            )
 
             return [
                 "cmd",
                 "/c",
                 executable,
-                pcap_path,
+                input_directory,
                 output_dir,
             ]
 
@@ -270,6 +278,35 @@ def _find_generated_csv(
 # ============================================================
 # RUN CICFLOWMETER
 # ============================================================
+def _get_cicflowmeter_working_directory(command):
+    """
+    Determine the correct working directory for CICFlowMeter.
+
+    For cfm.bat, the working directory must be the CICFlowMeter
+    bin directory because cfm.bat uses:
+
+        -Djava.library.path=../lib/native
+    """
+
+    if not command:
+        return None
+
+    executable = command[2] if (
+        len(command) >= 3
+        and command[0].lower() == "cmd"
+        and command[1].lower() == "/c"
+    ) else command[0]
+
+    executable_ext = os.path.splitext(
+        executable
+    )[1].lower()
+
+    if executable_ext in (".bat", ".cmd"):
+        return os.path.dirname(
+            os.path.abspath(executable)
+        )
+
+    return None
 
 def run_cicflowmeter(
     pcap_path,
@@ -317,11 +354,15 @@ def run_cicflowmeter(
 
     try:
 
+        working_directory = _get_cicflowmeter_working_directory(
+            command
+        )
+
         result = subprocess.run(
             command,
             capture_output=True,
             text=True,
-            cwd=output_dir,
+            cwd=working_directory,
             check=False,
         )
 

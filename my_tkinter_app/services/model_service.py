@@ -121,10 +121,58 @@ def load_feature_schema(dataset_name):
 
     models = discover_models()
 
+    if dataset_name not in models:
+        raise FileNotFoundError(
+            f"Model '{dataset_name}' was not found."
+        )
+
     schema_path = models[dataset_name]["schema_path"]
 
-    with open(schema_path, "r") as f:
+    if not os.path.isfile(schema_path):
+        raise FileNotFoundError(
+            f"Frozen feature schema for '{dataset_name}' "
+            f"was not found:\n{schema_path}"
+        )
+
+    with open(
+        schema_path,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
         return json.load(f)
+
+# ============================================================
+# SHAP BACKGROUND
+# ============================================================
+
+def get_shap_background(dataset_name):
+    """
+    Load the frozen Kernel SHAP background for the
+    selected dataset.
+
+    Returns:
+        SHAP DenseData object
+    """
+
+    models = discover_models()
+
+    if dataset_name not in models:
+        raise FileNotFoundError(
+            f"Model '{dataset_name}' was not found."
+        )
+
+    background_path = models[dataset_name]["shap_background"]
+
+    if not os.path.isfile(background_path):
+        raise FileNotFoundError(
+            "SHAP background was not found:\n"
+            f"{background_path}"
+        )
+
+    return joblib.load(
+        background_path
+    )
 
 
 # ============================================================

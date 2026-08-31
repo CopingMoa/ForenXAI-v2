@@ -12,6 +12,7 @@ from services.utils import (
 
 from services.model_service import (
     validate_model_schema,
+    get_shap_background,
 )
 
 from services.cicflowmeter_service import (
@@ -37,7 +38,6 @@ def save_internal_csv(
     Save the normalized CICFlowMeter DataFrame as the
     internal forensic CSV artifact.
 
-    This replaces the old Zeek-generated CSV artifact.
     """
 
     csv_path = os.path.join(
@@ -408,11 +408,12 @@ def run_forensic_pipeline(
     )
 
     # ========================================================
-    # STAGE 3 — INTERNAL DATAFRAME / CSV
+    # STAGE 3 — INTERNAL CSV / DATAFRAME
     # ========================================================
 
     log_fn(
-        "[Stage 3/9] Preparing CICFlowMeter DataFrame...",
+        "[Stage 3/9] Cleaning and normalizing "
+        "CICFlowMeter features...",
         "info"
     )
 
@@ -420,22 +421,58 @@ def run_forensic_pipeline(
         extracted_df
     )
 
-    csv_path, csv_hash = save_internal_csv(
-        cleaned_df,
-        case_dir,
-        case_id
+    # Preserve the cleaned/normalized DataFrame as the
+    # ForenXAI inference artifact.
+
+    internal_csv_path, internal_csv_hash = (
+        save_internal_csv(
+            cleaned_df,
+            case_dir,
+            case_id
+        )
     )
 
-    current_case["generated_csv_path"] = csv_path
-    current_case["generated_csv_sha256"] = csv_hash
+    generated_cic_csv_hash = calculate_sha256(
+        cicflowmeter_csv
+    )
+
+    current_case[
+        "generated_csv_path"
+    ] = internal_csv_path
+
+    current_case[
+        "generated_csv_sha256"
+    ] = internal_csv_hash
+
+    current_case[
+        "cicflowmeter_csv_path"
+    ] = cicflowmeter_csv
+
+    current_case[
+        "cicflowmeter_csv_sha256"
+    ] = generated_cic_csv_hash
 
     log_fn(
-        f"[+] Internal CSV generated: {csv_path}",
+        "[+] CICFlowMeter CSV: "
+        + cicflowmeter_csv,
         "success"
     )
 
     log_fn(
-        f"[+] Internal CSV SHA-256: {csv_hash}",
+        "[+] CICFlowMeter CSV SHA-256: "
+        + generated_cic_csv_hash,
+        "info"
+    )
+
+    log_fn(
+        "[+] Normalized inference CSV: "
+        + internal_csv_path,
+        "success"
+    )
+
+    log_fn(
+        "[+] Normalized CSV SHA-256: "
+        + internal_csv_hash,
         "info"
     )
 
@@ -445,7 +482,8 @@ def run_forensic_pipeline(
     # ========================================================
 
     log_fn(
-        "[Stage 4/9] Validating selected model feature schema...",
+        f"[Stage 4/9] Validating {model_name} "
+        "frozen feature schema...",
         "info"
     )
 
@@ -459,49 +497,51 @@ def run_forensic_pipeline(
     if missing_features:
 
         raise ValueError(
-            f"The selected {model_name} model requires "
-            "features that were not produced by "
-            "CICFlowMeter:\n\n"
+            f"Required {model_name} model features are "
+            "missing from CICFlowMeter output:\n\n"
             + "\n".join(
                 missing_features
             )
             + "\n\n"
-            "The ML model will NOT be executed because "
-            "the feature schema cannot be safely satisfied."
+            "The model will NOT be executed because "
+            "the CICFlowMeter feature schema cannot "
+            "safely satisfy the trained model."
         )
 
     log_fn(
-        f"[+] {model_name} model schema validated successfully.",
+        f"[+] {model_name} schema validated successfully.",
         "success"
     )
 
-
-    # ========================================================
-    # STAGE 5 — DATA CLEANING
-    # ========================================================
-
     log_fn(
-        "[Stage 5/9] Verifying cleaned feature data...",
+        f"[+] Required features: "
+        f"{len(expected_features)}",
         "info"
     )
 
-    # clean_features() has already been executed before
-    # schema validation. Keep cleaned_df as the canonical
-    # DataFrame from this point forward.
 
-    
     # ========================================================
-    # STAGE 6 — REQUIRED FEATURE SELECTION
+    # STAGE 5 — REQUIRED FEATURE SELECTION
     # ========================================================
 
     log_fn(
-        "[Stage 6/9] Selecting frozen model features...",
+        "[Stage 5/9] Selecting required model features...",
         "info"
     )
 
     X = cleaned_df[
         expected_features
     ].copy()
+
+
+    # ========================================================
+    # STAGE 6 — NUMERIC VALIDATION
+    # ========================================================
+
+    log_fn(
+        "[Stage 6/9] Validating inference feature types...",
+        "info"
+    )
 
     non_numeric_columns = [
         column
@@ -515,11 +555,37 @@ def run_forensic_pipeline(
 
         raise ValueError(
             "Non-numeric features remain after "
-            "CICFlowMeter data cleaning:\n"
+            "CICFlowMeter cleaning:\n"
             + "\n".join(
                 non_numeric_columns
             )
         )
+
+    if X.isna().any().any():
+
+        nan_columns = list(
+            X.columns[
+                X.isna().any()
+            ]
+        )
+
+        raise ValueError(
+            "NaN values remain in required model features:\n"
+            + "\n".join(
+                nan_columns
+            )
+        )
+
+    log_fn(
+        f"[+] Selected {len(X.columns)} "
+        "model features.",
+        "success"
+    )
+
+    log_fn(
+        "[+] Feature order matches frozen schema.",
+        "success"
+    )
 
     # --------------------------------------------------------
     # Final NaN / infinity safety check
@@ -696,6 +762,10 @@ def run_forensic_pipeline(
         "info"
     )
 
+    shap_background = get_shap_background(
+        model_name
+    )
+
     shap_results, shap_metadata = (
         generate_shap_explanation(
             model,
@@ -703,7 +773,8 @@ def run_forensic_pipeline(
             predictions,
             case_id,
             case_dir,
-            log_fn
+            log_fn,
+            shap_background
         )
     )
 
@@ -736,8 +807,8 @@ def run_forensic_pipeline(
             case_id,
             pcap_path,
             pcap_sha256,
-            csv_path,
-            csv_hash,
+            internal_csv_path,
+            internal_csv_hash,
             prediction_path,
             prediction_hash,
             current_case["shap_path"],

@@ -36,12 +36,6 @@ class ForensicTab:
         self.root = root
 
         self.model = model
-
-        # NEW:
-        # Name of the selected model/dataset.
-        #
-        # MainWindow updates this whenever the user changes
-        # the model selector.
         self.model_name = None
 
         self.case_output_dir = (
@@ -617,22 +611,15 @@ class ForensicTab:
     # PIPELINE EXECUTION
     # ========================================================
 
-    def _pipeline_worker(
-        self,
-        pcap_path
-    ):
-
+    def _pipeline_worker(self, pcap_path):
         try:
-
-            current_case, shap_results = (
-                run_forensic_pipeline(
-                    pcap_path=pcap_path,
-                    model=self.model,
-                    model_name=self.model_name,
-                    case_output_dir=self.case_output_dir,
-                    log_fn=self.write_log,
-                    on_metrics_ready=self.update_dashboard_metrics
-                )
+            current_case, shap_results = run_forensic_pipeline(
+                pcap_path=pcap_path,
+                model=self.model,
+                model_name=self.model_name,
+                case_output_dir=self.case_output_dir,
+                log_fn=self.write_log,
+                on_metrics_ready=self.update_dashboard_metrics
             )
 
             self.root.after(
@@ -644,23 +631,22 @@ class ForensicTab:
             )
 
         except Exception as err:
+            error_message = str(err)
 
             self.write_log(
-                "\n[!] FORENSIC PIPELINE FAILED: "
-                + str(err),
+                f"\n[!] FORENSIC PIPELINE FAILED: {error_message}",
                 "error"
             )
 
             self.root.after(
                 0,
-                lambda: messagebox.showerror(
+                lambda msg=error_message: messagebox.showerror(
                     "Forensic Pipeline Error",
-                    str(err)
+                    msg
                 )
             )
 
         finally:
-
             self.analysis_running = False
 
             self.root.after(
