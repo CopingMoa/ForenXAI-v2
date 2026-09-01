@@ -32,6 +32,10 @@ class MainWindow:
 
         This class only handles GUI-level model selection
         and model loading.
+
+    IMPORTANT:
+        Progress/loading controls belong to ForensicTab.
+        They are NOT created here.
     """
 
     def __init__(
@@ -61,12 +65,6 @@ class MainWindow:
         # MODEL STATE
         # ====================================================
 
-        # NEW:
-        # Discover all available model artifacts when the
-        # application starts.
-        #
-        # This replaces the old single-model architecture
-        # where main.py loaded one hardcoded model.
         self.available_models = (
             discover_models()
         )
@@ -88,18 +86,49 @@ class MainWindow:
         self._build_model_selector()
 
         # ====================================================
+        # TAB BAR
+        # ====================================================
+
+        self.tab_header = tk.Frame(
+            self.root,
+            bg="#1E1E2E",
+            height=38
+        )
+
+        self.tab_header.pack(
+            fill="x",
+            padx=15,
+            pady=(5, 0)
+        )
+
+        self.tab_header.pack_propagate(
+            False
+        )
+
+        self.tab_buttons_frame = tk.Frame(
+            self.tab_header,
+            bg="#1E1E2E"
+        )
+
+        self.tab_buttons_frame.pack(
+            side=tk.LEFT,
+            fill=tk.Y
+        )
+
+        # ====================================================
         # NOTEBOOK
         # ====================================================
 
         notebook = ttk.Notebook(
-            self.root
+            self.root,
+            style="Hidden.TNotebook"
         )
 
         notebook.pack(
             fill="both",
             expand=True,
             padx=15,
-            pady=(5, 15)
+            pady=(0, 15)
         )
 
         self.notebook = notebook
@@ -108,9 +137,6 @@ class MainWindow:
         # XAI FORWARDING
         # ====================================================
 
-        # XaiTab does not exist yet when ForensicTab is
-        # created, so we resolve it lazily through this
-        # callback after XaiTab has been initialized.
         def forward_to_xai(
             current_case,
             shap_results
@@ -124,10 +150,6 @@ class MainWindow:
         # FORENSIC TAB
         # ====================================================
 
-        # ForensicTab still receives the actual model object.
-        #
-        # When the user changes the dataset through the
-        # selector, self.forensic_tab.model is replaced.
         self.forensic_tab = ForensicTab(
             notebook,
             self.root,
@@ -146,6 +168,28 @@ class MainWindow:
         )
 
         # ====================================================
+        # CUSTOM TAB BUTTONS
+        # ====================================================
+
+        self._build_custom_tab_buttons()
+
+        # ====================================================
+        # ANALYSIS STATUS / PROGRESS / CLEAR
+        # ====================================================
+        # IMPORTANT:
+        # Build these controls HERE, directly inside tab_header.
+        # This guarantees they are physically on the SAME ROW as
+        # the custom PCAP / SHAP tab buttons.
+        #
+        # We do NOT place them inside ForensicTab's dashboard because
+        # that dashboard is inside a scrollable Notebook page.
+        # ====================================================
+
+        self._build_analysis_toolbar()
+
+        self.notebook.select(0)
+
+        # ====================================================
         # EVALUATION TAB
         # ====================================================
 
@@ -154,7 +198,7 @@ class MainWindow:
         # The existing project intentionally has the
         # EvaluationTab disabled. We are not changing its
         # behavior in this step.
-        #
+
         # self.evaluation_tab = EvaluationTab(
         #     notebook,
         #     self.root,
@@ -174,11 +218,16 @@ class MainWindow:
                 selected_model = default_model
 
             else:
+
                 # CIDS2018 becomes the default when available.
                 # Otherwise use the first discovered model.
+
                 if "CIDS2018" in self.available_models:
+
                     selected_model = "CIDS2018"
+
                 else:
+
                     selected_model = next(
                         iter(
                             self.available_models
@@ -211,10 +260,259 @@ class MainWindow:
             )
 
     # ========================================================
+    # CUSTOM TAB BAR
+    # ========================================================
+
+    def _build_custom_tab_buttons(
+        self
+    ):
+        """
+        Build the visible tab buttons.
+        """
+
+        self.btn_forensic_tab = tk.Button(
+            self.tab_buttons_frame,
+            text="PCAP Forensic Analysis",
+            font=("Segoe UI", 9, "bold"),
+            bg="#3B82F6",
+            fg="white",
+            activebackground="#3B82F6",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=5,
+            cursor="hand2",
+            command=lambda: self._select_custom_tab(
+                0,
+                self.btn_forensic_tab,
+                self.btn_xai_tab
+            )
+        )
+
+        self.btn_forensic_tab.pack(
+            side=tk.LEFT,
+            fill=tk.Y
+        )
+
+        self.btn_xai_tab = tk.Button(
+            self.tab_buttons_frame,
+            text="SHAP & Human Review",
+            font=("Segoe UI", 9, "bold"),
+            bg="#27293D",
+            fg="white",
+            activebackground="#27293D",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=12,
+            pady=5,
+            cursor="hand2",
+            command=lambda: self._select_custom_tab(
+                1,
+                self.btn_xai_tab,
+                self.btn_forensic_tab
+            )
+        )
+
+        self.btn_xai_tab.pack(
+            side=tk.LEFT,
+            fill=tk.Y
+        )
+
+    # ========================================================
+    # ANALYSIS TOOLBAR
+    # ========================================================
+
+    def _build_analysis_toolbar(self):
+        """
+        Build Analysis status, progress bar, percentage and Clear
+        directly inside the top tab-header row.
+
+        This is intentionally owned by MainWindow so the controls
+        cannot be hidden by the Notebook's content area.
+        """
+
+        # The toolbar is packed on the RIGHT first so it reserves
+        # its width before the tab buttons consume the remaining area.
+        self.analysis_toolbar = tk.Frame(
+            self.tab_header,
+            bg="#BFC0C4",
+            highlightbackground="#9CA3AF",
+            highlightthickness=1,
+            width=470,
+            height=32
+        )
+
+        self.analysis_toolbar.pack(
+            side=tk.RIGHT,
+            fill=tk.Y,
+            padx=(8, 2),
+            pady=3
+        )
+
+        self.analysis_toolbar.pack_propagate(False)
+
+        # Analysis status
+        tk.Label(
+            self.analysis_toolbar,
+            text="Analysis:",
+            bg="#BFC0C4",
+            fg="#1F2937",
+            font=("Segoe UI", 8, "bold")
+        ).pack(
+            side=tk.LEFT,
+            padx=(8, 2)
+        )
+
+        self.analysis_status_label = tk.Label(
+            self.analysis_toolbar,
+            textvariable=self.forensic_tab.progress_status,
+            bg="#BFC0C4",
+            fg="#1F2937",
+            font=("Segoe UI", 8)
+        )
+
+        self.analysis_status_label.pack(
+            side=tk.LEFT,
+            padx=(0, 8)
+        )
+
+        # Progress bar style
+        style = ttk.Style()
+
+        try:
+            style.configure(
+                "ForenXAI.Header.Horizontal.TProgressbar",
+                troughcolor="#D1D5DB",
+                background="#3B82F6",
+                bordercolor="#9CA3AF",
+                lightcolor="#3B82F6",
+                darkcolor="#3B82F6",
+                thickness=10
+            )
+        except tk.TclError:
+            pass
+
+        self.analysis_progress_bar = ttk.Progressbar(
+            self.analysis_toolbar,
+            orient="horizontal",
+            mode="determinate",
+            maximum=100,
+            variable=self.forensic_tab.progress_var,
+            style="ForenXAI.Header.Horizontal.TProgressbar",
+            length=150
+        )
+
+        self.analysis_progress_bar.pack(
+            side=tk.LEFT,
+            fill=tk.X,
+            expand=True,
+            padx=(0, 5)
+        )
+
+        self.analysis_percent_label = tk.Label(
+            self.analysis_toolbar,
+            text="0%",
+            bg="#BFC0C4",
+            fg="#1F2937",
+            font=("Segoe UI", 8, "bold"),
+            width=4,
+            anchor="e"
+        )
+
+        self.analysis_percent_label.pack(
+            side=tk.LEFT,
+            padx=(0, 8)
+        )
+
+        # IMPORTANT: ForensicTab._set_progress() is the single source
+        # of truth for the analysis progress.  The visible progress bar
+        # and percentage label live in MainWindow, so expose these exact
+        # widgets back to ForensicTab.
+        #
+        # Without these aliases, ForensicTab sees no ``progress_bar``
+        # and returns before updating anything. That is why the UI could
+        # remain stuck at "Ready / 0%" even though the pipeline finished.
+        self.forensic_tab.progress_bar = self.analysis_progress_bar
+        self.forensic_tab.lbl_progress_percent = self.analysis_percent_label
+
+        # Clear button
+        self.analysis_clear_button = tk.Button(
+            self.analysis_toolbar,
+            text="Clear",
+            font=("Segoe UI", 8, "bold"),
+            bg="#6B7280",
+            fg="white",
+            activebackground="#4B5563",
+            activeforeground="white",
+            relief="flat",
+            bd=0,
+            padx=10,
+            pady=3,
+            cursor="hand2",
+            command=self.forensic_tab.clear_analysis
+        )
+
+        self.analysis_clear_button.pack(
+            side=tk.LEFT,
+            padx=(0, 6)
+        )
+
+        # Keep the percentage label synchronized with the shared
+        # DoubleVar used by ForensicTab.
+        self._sync_header_progress()
+
+    def _sync_header_progress(self):
+        """Keep the header percentage synchronized with the forensic progress."""
+        try:
+            value = float(self.forensic_tab.progress_var.get())
+            value = max(0.0, min(100.0, value))
+
+            if hasattr(self, "analysis_percent_label"):
+                self.analysis_percent_label.config(
+                    text=f"{value:.0f}%"
+                )
+        except Exception:
+            pass
+
+        self.root.after(100, self._sync_header_progress)
+
+    # ========================================================
+    # CUSTOM TAB SELECTION
+    # ========================================================
+
+    def _select_custom_tab(
+        self,
+        tab_identifier,
+        selected_button,
+        other_button
+    ):
+        """
+        Select a Notebook page through the custom tab buttons.
+        """
+
+        self.notebook.select(
+            tab_identifier
+        )
+
+        selected_button.config(
+            bg="#3B82F6",
+            activebackground="#3B82F6"
+        )
+
+        other_button.config(
+            bg="#27293D",
+            activebackground="#27293D"
+        )
+
+    # ========================================================
     # MODEL SELECTOR UI
     # ========================================================
 
-    def _build_model_selector(self):
+    def _build_model_selector(
+        self
+    ):
 
         self.model_frame = tk.Frame(
             self.root,
@@ -303,6 +601,7 @@ class MainWindow:
         self,
         event=None
     ):
+
         selected_name = (
             self.model_selector.get()
         )
@@ -349,8 +648,7 @@ class MainWindow:
             return
 
         # ----------------------------------------------------
-        # Prevent switching while forensic analysis is
-        # actively running.
+        # Prevent switching while analysis is running.
         # ----------------------------------------------------
 
         if hasattr(
@@ -390,16 +688,10 @@ class MainWindow:
 
             self.root.update_idletasks()
 
-            # NEW:
-            # Load the model based on the selected dataset.
-            #
-            # Old behavior:
-            #     load_model()
-            #
-            # New behavior:
-            #     load_model("CIDS2018")
-            #     load_model("TII")
-            #     load_model("Combined")
+            # ------------------------------------------------
+            # Load selected model
+            # ------------------------------------------------
+
             model = load_model(
                 model_name
             )
@@ -427,18 +719,10 @@ class MainWindow:
                     model
                 )
 
-                # NEW:
-                # Store the selected dataset name as well.
-                #
-                # This will be used in the next step when
-                # pipeline_service.py receives the dataset
-                # schema.
                 self.forensic_tab.model_name = (
                     model_name
                 )
 
-                # Write a visible message to the forensic
-                # pipeline console.
                 self.forensic_tab.write_log(
                     "",
                     None
@@ -582,6 +866,27 @@ class MainWindow:
             "default"
         )
 
+        # ----------------------------------------------------
+        # Hide native Notebook tabs.
+        # ----------------------------------------------------
+
+        try:
+
+            style.layout(
+                "Hidden.TNotebook.Tab",
+                []
+            )
+
+        except tk.TclError:
+
+            pass
+
+        style.configure(
+            "Hidden.TNotebook",
+            background="#1E1E2E",
+            borderwidth=0
+        )
+
         style.configure(
             "TNotebook",
             background="#1E1E2E",
@@ -606,9 +911,10 @@ class MainWindow:
             ]
         )
 
-        # NEW:
-        # Style the model selector so it fits the existing
-        # dark ForenXAI UI.
+        # ----------------------------------------------------
+        # Combobox
+        # ----------------------------------------------------
+
         style.configure(
             "TCombobox",
             fieldbackground="#1E1E2E",

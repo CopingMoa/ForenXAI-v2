@@ -102,8 +102,30 @@ class ForensicTab:
 
         self.analysis_running = False
 
+        # Progress/loading state
+        #
+        # IMPORTANT: the forensic pipeline runs in a background thread.
+        # Tkinter widgets/variables must only be updated by the GUI thread.
+        # The queue is created here (not inside the optional toolbar builder)
+        # because MainWindow owns the visible toolbar in the current layout.
+        self.progress_var = tk.DoubleVar(value=0.0)
+        self.progress_status = tk.StringVar(value="Ready")
+        self._progress_indeterminate = False
+        self._progress_job = None
+        self._progress_generation = 0
+        self._progress_target = 0.0
+        self._gui_progress_job = None
+        self._gui_progress_value = 0.0
+        self._analysis_completion_pending = False
+
         # Current table rows
         self.findings_rows = []
+
+        # Current flow-detail data.
+        # The selected threat row stores the corresponding
+        # CICFlowMeter CSV flow index here.
+        self.selected_flow_index = None
+        self.current_flow_details = []
 
         # Current dynamic threat data
         self.dynamic_threats = []
@@ -124,11 +146,6 @@ class ForensicTab:
 
         self._build_ui()
 
-        # IMPORTANT:
-        # Keep the original system initialization message.
-        self.write_log(
-            "System initialized. Awaiting PCAP evidence..."
-        )
 
 
     # ========================================================
@@ -139,6 +156,10 @@ class ForensicTab:
 
         # ----------------------------------------------------
         # SCROLLABLE FORENSIC PAGE
+        # ----------------------------------------------------
+        # Progress/loading controls are built by
+        # _build_progress_toolbar() and hosted by MainWindow
+        # on the same horizontal line as the custom Notebook tabs.
         # ----------------------------------------------------
         #
         # CHANGED:
@@ -255,10 +276,14 @@ class ForensicTab:
         self._build_findings_table()
 
         # ----------------------------------------------------
-        # SYSTEM LOG
+        # SELECTED FLOW DETAILS
         # ----------------------------------------------------
 
-        self._build_log_console()
+        self._build_flow_details_table()
+
+        # The forensic system-log console is intentionally not part
+        # of the current UI. Progress/status is shown in the compact
+        # toolbar above the Notebook.
 
         # Make sure the initial content size is registered.
         self.root.after(
@@ -577,6 +602,9 @@ class ForensicTab:
             fg=self.GREEN
         )
 
+        if not self.analysis_running:
+            self._reset_progress("Ready")
+
         self.write_log(
             "[+] Evidence selected: "
             + os.path.basename(
@@ -754,6 +782,349 @@ class ForensicTab:
 
         self._reset_dynamic_cards()
 
+
+    # ========================================================
+    # PROGRESS / CLEAR TOOLBAR
+    # ========================================================
+
+    def _build_progress_toolbar(self, parent):
+        """
+        Build the compact analysis toolbar.
+
+        MainWindow places this frame on the same horizontal row as
+        the custom tabs.  The actual progress animation is controlled
+        by the GUI thread, not by the forensic worker thread.
+        """
+        toolbar = tk.Frame(
+            parent,
+            bg="#BFC0C4",
+            height=32,
+            highlightbackground="#8B8D93",
+            highlightthickness=1
+        )
+        toolbar.pack_propagate(False)
+
+        controls = tk.Frame(toolbar, bg="#BFC0C4")
+        controls.pack(side=tk.RIGHT, fill=tk.Y, padx=5)
+
+        self.progress_status = tk.StringVar(value="Ready")
+        self.progress_var = tk.DoubleVar(value=0.0)
+
+        tk.Label(
+            controls,
+            text="Analysis:",
+            font=("Segoe UI", 8, "bold"),
+            bg="#BFC0C4",
+            fg="#1F2937"
+        ).pack(side=tk.LEFT, padx=(2, 4))
+
+        self.lbl_progress_status = tk.Label(
+            controls,
+            textvariable=self.progress_status,
+            font=("Segoe UI", 8),
+            bg="#BFC0C4",
+            fg="#1F2937",
+            width=17,
+            anchor="w"
+        )
+        self.lbl_progress_status.pack(side=tk.LEFT, padx=(0, 5))
+
+        style = ttk.Style()
+        try:
+            style.configure(
+                "ForenXAI.Horizontal.TProgressbar",
+                troughcolor="#E5E7EB",
+                background=self.BLUE,
+                bordercolor="#9CA3AF",
+                lightcolor=self.BLUE,
+                darkcolor=self.BLUE
+            )
+        except tk.TclError:
+            pass
+
+        self.progress_bar = ttk.Progressbar(
+            controls,
+            orient="horizontal",
+            mode="determinate",
+            maximum=100,
+            variable=self.progress_var,
+            style="ForenXAI.Horizontal.TProgressbar",
+            length=150
+        )
+        self.progress_bar.pack(side=tk.LEFT, padx=(0, 4))
+
+        self.lbl_progress_percent = tk.Label(
+            controls,
+            text="0%",
+            font=("Segoe UI", 8, "bold"),
+            bg="#BFC0C4",
+            fg="#1F2937",
+            width=4,
+            anchor="e"
+        )
+        self.lbl_progress_percent.pack(side=tk.LEFT, padx=(0, 6))
+
+        self.btn_clear = tk.Button(
+            controls,
+            text="Clear",
+            font=("Segoe UI", 8, "bold"),
+            bg="#9CA3AF",
+            fg="#111827",
+            activebackground="#6B7280",
+            activeforeground="white",
+            relief="flat",
+            padx=11,
+            pady=2,
+            cursor="hand2",
+            command=self.clear_analysis
+        )
+        self.btn_clear.pack(side=tk.LEFT)
+
+        return toolbar
+
+    def _start_gui_progress_animation(self):
+        """
+        Start a GUI-only progress animation in fixed 5% steps.
+
+        The visible progress is always:
+            0, 5, 10, 15, ... 95
+
+        100% is reserved for the actual successful completion event.
+        """
+        self._cancel_gui_progress_animation()
+
+        self._gui_progress_value = 0
+        self.progress_var.set(0)
+        self.lbl_progress_percent.config(text="0%")
+        self.progress_status.set("Starting analysis...")
+
+        self._gui_progress_job = self.root.after(
+            300,
+            self._advance_gui_progress
+        )
+
+    def _advance_gui_progress(self):
+        """Advance visible progress by exactly 5% while the worker runs."""
+        if not self.analysis_running:
+            self._gui_progress_job = None
+            return
+
+        current = int(self._gui_progress_value)
+        new_value = min(95, current + 5)
+
+        self._gui_progress_value = new_value
+        self.progress_var.set(new_value)
+        self.lbl_progress_percent.config(
+            text=f"{new_value}%"
+        )
+
+        if new_value < 20:
+            status = "Preparing evidence..."
+        elif new_value < 45:
+            status = "Extracting network flows..."
+        elif new_value < 65:
+            status = "Running ML inference..."
+        elif new_value < 90:
+            status = "Generating SHAP explanations..."
+        else:
+            status = "Finalizing analysis..."
+
+        self.progress_status.set(status)
+
+        # Keep moving in exact 5% increments until the real pipeline
+        # completion event tells us to finish at 100%.
+        if new_value < 95:
+            self._gui_progress_job = self.root.after(
+                300,
+                self._advance_gui_progress
+            )
+        else:
+            self._gui_progress_job = self.root.after(
+                300,
+                self._advance_gui_progress
+            )
+
+    def _cancel_gui_progress_animation(self):
+        """Cancel the running GUI progress timer, if any."""
+        job = getattr(self, "_gui_progress_job", None)
+        if job is not None:
+            try:
+                self.root.after_cancel(job)
+            except Exception:
+                pass
+        self._gui_progress_job = None
+
+    def _finish_gui_progress_success(self):
+        """
+        Finish the progress in exact 5% steps.
+
+        If the worker finishes while the GUI is at, for example, 65%,
+        the GUI displays:
+            70, 75, 80, 85, 90, 95, 100
+
+        "Ready" is displayed only after 100% is reached.
+        """
+        self._cancel_gui_progress_animation()
+
+        start = int(getattr(self, "_gui_progress_value", 0))
+        start = max(0, min(100, start))
+
+        # Normalize to a 5% boundary.
+        start = (start // 5) * 5
+        self._gui_progress_value = start
+        self.progress_var.set(start)
+        self.lbl_progress_percent.config(text=f"{start}%")
+        self.progress_status.set("Finalizing analysis...")
+
+        def finish_step():
+            current = int(self._gui_progress_value)
+
+            if current >= 100:
+                self.progress_var.set(100)
+                self.lbl_progress_percent.config(text="100%")
+                self.progress_status.set("Ready")
+                self._gui_progress_job = None
+                self._analysis_completion_pending = False
+                self.analysis_running = False
+                self._enable_analysis_buttons()
+                return
+
+            new_value = min(100, current + 5)
+
+            self._gui_progress_value = new_value
+            self.progress_var.set(new_value)
+            self.lbl_progress_percent.config(
+                text=f"{new_value}%"
+            )
+
+            if new_value >= 100:
+                self.progress_status.set("Ready")
+                self._gui_progress_job = None
+                self._analysis_completion_pending = False
+                self.analysis_running = False
+                self._enable_analysis_buttons()
+                return
+
+            self.progress_status.set("Finalizing analysis...")
+
+            self._gui_progress_job = self.root.after(
+                300,
+                finish_step
+            )
+
+        self._gui_progress_job = self.root.after(
+            300,
+            finish_step
+        )
+
+    def _finish_gui_progress_error(self):
+        """Stop the GUI progress animation after a failed analysis."""
+        self._cancel_gui_progress_animation()
+        self.progress_status.set("Failed")
+        self._analysis_completion_pending = False
+        self._enable_analysis_buttons()
+
+    def _enable_analysis_buttons(self):
+        """Restore Analyze/Clear buttons after analysis ends."""
+        if hasattr(self, "btn_analyze"):
+            self.btn_analyze.config(
+                state=tk.NORMAL,
+                text="Analyze PCAP",
+                bg=self.BLUE
+            )
+
+        if hasattr(self, "btn_clear"):
+            self.btn_clear.config(
+                state=tk.NORMAL,
+                bg="#9CA3AF"
+            )
+
+    def _set_progress(self, value, status=None, indeterminate=False):
+        """
+        Thread-safe progress/status notification.
+
+        The percentage itself is controlled by the GUI animation.  This
+        method only updates the human-readable status on the GUI thread.
+        That prevents the background pipeline from fighting the animation.
+        """
+        if status is None:
+            return
+
+        def update_status():
+            if not self.analysis_running:
+                return
+
+            # Never show Ready before the successful 100% completion step.
+            if str(status).strip().lower() == "ready":
+                return
+
+            self.progress_status.set(str(status))
+
+        self.root.after(0, update_status)
+
+    def _reset_progress(self, status="Ready"):
+        """Reset the visible progress indicator on the GUI thread."""
+        self.root.after(
+            0,
+            lambda: self._apply_progress_reset(status)
+        )
+
+    def _apply_progress_reset(self, status="Ready"):
+        """Actually reset progress widgets on the GUI thread."""
+        self._cancel_gui_progress_animation()
+
+        self._gui_progress_value = 0.0
+        self.progress_var.set(0.0)
+        self.lbl_progress_percent.config(text="0%")
+        self.progress_status.set(status)
+        self._analysis_completion_pending = False
+
+    # ========================================================
+    # CLEAR ANALYSIS
+    # ========================================================
+
+    def clear_analysis(
+        self
+    ):
+        """Clear the current evidence and all displayed analysis results."""
+
+        if self.analysis_running:
+            messagebox.showwarning(
+                "Analysis Running",
+                "Please wait for the current analysis to finish before clearing."
+            )
+            return
+
+        self.selected_pcap = None
+
+        if hasattr(self, "lbl_pcap_file"):
+            self.lbl_pcap_file.config(
+                text="No PCAP selected",
+                fg=self.TEXT_MUTED
+            )
+
+        self.current_case = None
+        self.findings_rows = []
+        self.dynamic_threats = []
+        self.selected_flow_index = None
+        self.current_flow_details = []
+
+        self._clear_findings_table()
+        self._clear_flow_details()
+        self.reset_dashboard()
+        self._reset_progress("Cleared")
+
+        if hasattr(self, "btn_analyze"):
+            self.btn_analyze.config(
+                state=tk.NORMAL,
+                text="Analyze PCAP",
+                bg=self.BLUE
+            )
+
+        self.write_log(
+            "[+] Ready for new PCAP evidence.",
+            "success"
+        )
 
     # ========================================================
     # FIXED METRIC CARD
@@ -1074,7 +1445,8 @@ class ForensicTab:
             highlightthickness=1
         )
 
-        # Keep the table compact so the system log below it remains visible.
+        # Keep the findings table compact so the selected-flow
+        # details remain accessible below it.
         table_frame.pack(
             fill="x",
             padx=10,
@@ -1255,6 +1627,13 @@ class ForensicTab:
             pady=(0, 5)
         )
 
+        # Clicking a threat row loads that flow's detailed
+        # CICFlowMeter information into the table below.
+        self.findings_table.bind(
+            "<<TreeviewSelect>>",
+            self._on_flow_selected
+        )
+
         scrollbar.pack(
             side=tk.RIGHT,
             fill="y",
@@ -1288,6 +1667,12 @@ class ForensicTab:
             )
 
         self.findings_rows = []
+
+        if hasattr(
+            self,
+            "flow_details_table"
+        ):
+            self._clear_flow_details()
 
 
     # ========================================================
@@ -1664,78 +2049,434 @@ class ForensicTab:
             self.findings_table.delete(item)
 
         for row in self.findings_rows:
-            self.findings_table.insert(
-                "",
-                tk.END,
-                values=row
-            )
+            # Use the flow index as the Treeview item ID so
+            # selecting a row can directly locate its source
+            # CICFlowMeter flow.
+            flow_index = None
+
+            if row:
+                try:
+                    flow_index = int(
+                        str(row[0]).split()[-1]
+                    )
+                except (
+                    TypeError,
+                    ValueError
+                ):
+                    flow_index = None
+
+            if flow_index is not None:
+                self.findings_table.insert(
+                    "",
+                    tk.END,
+                    iid=str(flow_index),
+                    values=row
+                )
+            else:
+                self.findings_table.insert(
+                    "",
+                    tk.END,
+                    values=row
+                )
 
 
     # ========================================================
-    # SYSTEM LOG CONSOLE
+    # SELECTED FLOW DETAILS TABLE
     # ========================================================
 
-    def _build_log_console(
+    def _build_flow_details_table(
         self
     ):
+        """
+        Build the investigator-facing flow detail table.
 
-        terminal_frame = tk.Frame(
+        The table is populated when the investigator selects a
+        threat flow in the AI Threat Findings table.
+
+        Data source:
+            CICFlowMeter-generated CSV saved by the pipeline.
+
+        The selected row's flow_index is used to locate the
+        corresponding CICFlowMeter row.
+        """
+
+        self.flow_details_frame = tk.Frame(
             self.scrollable_frame,
-            bg=self.BG_TERMINAL,
+            bg=self.BG_MAIN,
             highlightbackground=self.BORDER,
             highlightthickness=1
         )
 
-        # Keep the log at a readable height. The PAGE itself is
-        # scrollable, so the user can scroll to this section even
-        # when the application window is not tall enough.
-        terminal_frame.pack(
+        self.flow_details_frame.pack(
             fill="x",
             padx=10,
-            pady=(0, 10)
+            pady=(5, 5)
         )
 
-        terminal_frame.configure(
-            height=260
+        # Keep this section compact. The page itself is scrollable.
+        self.flow_details_frame.configure(
+            height=220
         )
 
-        terminal_frame.pack_propagate(False)
+        self.flow_details_frame.pack_propagate(False)
 
-        self.log_console = tk.Text(
-            terminal_frame,
-            bg=self.BG_TERMINAL,
-            fg="#A6ACCD",
-            font=("Consolas", 9),
-            state=tk.DISABLED,
-            padx=12,
-            pady=10,
-            relief="flat",
-            wrap=tk.WORD
+        tk.Label(
+            self.flow_details_frame,
+            text="Selected Flow Details",
+            font=("Segoe UI", 9, "bold"),
+            bg=self.BG_MAIN,
+            fg=self.TEXT_PRIMARY,
+            anchor="w"
+        ).pack(
+            fill="x",
+            padx=8,
+            pady=(5, 3)
         )
 
-        self.log_console.pack(
+        self.lbl_selected_flow = tk.Label(
+            self.flow_details_frame,
+            text="Select a threat flow above to view its details.",
+            font=("Segoe UI", 8),
+            bg=self.BG_MAIN,
+            fg=self.TEXT_SECONDARY,
+            anchor="w"
+        )
+
+        self.lbl_selected_flow.pack(
+            fill="x",
+            padx=8,
+            pady=(0, 3)
+        )
+
+        # Four-column layout keeps the information compact:
+        # Feature | Value | Feature | Value
+        columns = (
+            "field_1",
+            "value_1",
+            "field_2",
+            "value_2"
+        )
+
+        self.flow_details_table = ttk.Treeview(
+            self.flow_details_frame,
+            columns=columns,
+            show="headings",
+            height=6,
+            style="ForenXAI.Treeview"
+        )
+
+        self.flow_details_table.heading(
+            "field_1",
+            text="Flow Information"
+        )
+
+        self.flow_details_table.heading(
+            "value_1",
+            text="Value"
+        )
+
+        self.flow_details_table.heading(
+            "field_2",
+            text="Flow Information"
+        )
+
+        self.flow_details_table.heading(
+            "value_2",
+            text="Value"
+        )
+
+        self.flow_details_table.column(
+            "field_1",
+            width=180,
+            minwidth=130,
+            anchor="w"
+        )
+
+        self.flow_details_table.column(
+            "value_1",
+            width=300,
+            minwidth=160,
+            anchor="w"
+        )
+
+        self.flow_details_table.column(
+            "field_2",
+            width=180,
+            minwidth=130,
+            anchor="w"
+        )
+
+        self.flow_details_table.column(
+            "value_2",
+            width=300,
+            minwidth=160,
+            anchor="w"
+        )
+
+        detail_scrollbar = ttk.Scrollbar(
+            self.flow_details_frame,
+            orient="vertical",
+            command=self.flow_details_table.yview
+        )
+
+        self.flow_details_table.configure(
+            yscrollcommand=detail_scrollbar.set
+        )
+
+        self.flow_details_table.pack(
+            side=tk.LEFT,
             fill="both",
-            expand=True
+            expand=True,
+            padx=(5, 0),
+            pady=(0, 5)
         )
 
-        self.log_console.tag_config(
-            "info",
-            foreground="#82AAFF"
+        detail_scrollbar.pack(
+            side=tk.RIGHT,
+            fill="y",
+            padx=(0, 5),
+            pady=(0, 5)
         )
 
-        self.log_console.tag_config(
-            "success",
-            foreground="#C3E88D"
+    def _clear_flow_details(
+        self
+    ):
+        """Clear the selected-flow detail table."""
+
+        if not hasattr(
+            self,
+            "flow_details_table"
+        ):
+            return
+
+        for item in (
+            self.flow_details_table.get_children()
+        ):
+            self.flow_details_table.delete(
+                item
+            )
+
+        self.selected_flow_index = None
+        self.current_flow_details = []
+
+        if hasattr(
+            self,
+            "lbl_selected_flow"
+        ):
+            self.lbl_selected_flow.config(
+                text=(
+                    "Select a threat flow above to view "
+                    "its details."
+                )
+            )
+
+    def _on_flow_selected(
+        self,
+        event=None
+    ):
+        """
+        Handle a click/selection on a threat flow.
+
+        The first column contains text such as:
+            Flow 8
+
+        The corresponding Treeview item stores the actual
+        flow index as its iid.
+        """
+
+        selection = (
+            self.findings_table.selection()
         )
 
-        self.log_console.tag_config(
-            "error",
-            foreground="#F07178"
+        if not selection:
+            return
+
+        item_id = selection[0]
+
+        try:
+            flow_index = int(
+                item_id
+            )
+        except (
+            TypeError,
+            ValueError
+        ):
+            # Fallback: extract the number from "Flow 8".
+            values = self.findings_table.item(
+                item_id,
+                "values"
+            )
+
+            if not values:
+                return
+
+            try:
+                flow_index = int(
+                    str(values[0]).split()[-1]
+                )
+            except (
+                TypeError,
+                ValueError
+            ):
+                self.write_log(
+                    "[!] Could not determine selected flow index.",
+                    "error"
+                )
+                return
+
+        self._show_flow_details(
+            flow_index
+        )
+
+    def _show_flow_details(
+        self,
+        flow_index
+    ):
+        """
+        Load and display the CICFlowMeter row associated
+        with the selected threat flow.
+
+        The pipeline stores the original CICFlowMeter CSV
+        path in current_case["cicflowmeter_csv_path"].
+        """
+
+        self._clear_flow_details()
+
+        self.selected_flow_index = flow_index
+
+        # The current case is retained after analysis.
+        current_case = getattr(
+            self,
+            "current_case",
+            None
+        )
+
+        if not isinstance(
+            current_case,
+            dict
+        ):
+            self.write_log(
+                "[!] No forensic case is loaded for flow details.",
+                "error"
+            )
+            return
+
+        csv_path = (
+            current_case.get(
+                "cicflowmeter_csv_path"
+            )
+        )
+
+        # Fallback to the normalized inference artifact if
+        # the original CICFlowMeter CSV path is unavailable.
+        if not csv_path:
+            csv_path = (
+                current_case.get(
+                    "generated_csv_path"
+                )
+            )
+
+        if not csv_path or not os.path.isfile(
+            csv_path
+        ):
+            self.write_log(
+                "[!] Flow detail CSV was not found.",
+                "error"
+            )
+            return
+
+        try:
+            import pandas as pd
+
+            df = pd.read_csv(
+                csv_path,
+                low_memory=False
+            )
+
+        except Exception as err:
+            self.write_log(
+                "[!] Could not read flow detail CSV: "
+                + str(err),
+                "error"
+            )
+            return
+
+        if flow_index < 0 or flow_index >= len(df):
+            self.write_log(
+                f"[!] Flow index {flow_index} is outside "
+                f"the CSV range (0-{max(len(df) - 1, 0)}).",
+                "error"
+            )
+            return
+
+        row = df.iloc[
+            flow_index
+        ]
+
+        self.current_flow_details = []
+
+        for column in df.columns:
+            value = row[column]
+
+            # Make NaN display cleanly.
+            try:
+                if pd.isna(value):
+                    value = "N/A"
+            except Exception:
+                pass
+
+            self.current_flow_details.append(
+                (
+                    str(column).strip(),
+                    str(value)
+                )
+            )
+
+        # Update title/status.
+        self.lbl_selected_flow.config(
+            text=(
+                f"Flow {flow_index} selected — "
+                f"Detailed CICFlowMeter flow information"
+            )
+        )
+
+        # Insert two field/value pairs per row.
+        details = self.current_flow_details
+
+        for i in range(
+            0,
+            len(details),
+            2
+        ):
+            left = details[i]
+
+            if i + 1 < len(details):
+                right = details[i + 1]
+            else:
+                right = (
+                    "",
+                    ""
+                )
+
+            self.flow_details_table.insert(
+                "",
+                tk.END,
+                values=(
+                    left[0],
+                    left[1],
+                    right[0],
+                    right[1]
+                )
+            )
+
+        self.write_log(
+            f"[+] Displaying detailed information for Flow {flow_index}.",
+            "success"
         )
 
 
     # ========================================================
-    # LOGGING
+    # PIPELINE LOG COMPATIBILITY
     # ========================================================
 
     def write_log(
@@ -1743,40 +2484,18 @@ class ForensicTab:
         message,
         tag=None
     ):
+        """
+        Pipeline logging compatibility hook.
 
-        def append():
+        The black system console has been removed from the UI, but
+        pipeline_service.py still calls write_log(). Keeping this method
+        prevents the pipeline from breaking while allowing the UI to
+        remain table-focused.
+        """
 
-            self.log_console.config(
-                state=tk.NORMAL
-            )
-
-            if tag:
-
-                self.log_console.insert(
-                    tk.END,
-                    message + "\n",
-                    tag
-                )
-
-            else:
-
-                self.log_console.insert(
-                    tk.END,
-                    message + "\n"
-                )
-
-            self.log_console.see(
-                tk.END
-            )
-
-            self.log_console.config(
-                state=tk.DISABLED
-            )
-
-        self.root.after(
-            0,
-            append
-        )
+        # Do not create or display a black console.
+        # Progress is handled separately by _set_progress().
+        return
 
 
     # ========================================================
@@ -1824,6 +2543,8 @@ class ForensicTab:
 
         self._clear_findings_table()
 
+        self._clear_flow_details()
+
         self.reset_dashboard()
 
         # ----------------------------------------------------
@@ -1831,12 +2552,23 @@ class ForensicTab:
         # ----------------------------------------------------
 
         self.analysis_running = True
+        self._analysis_completion_pending = False
+
+        # Start the visible progress animation immediately on the GUI
+        # thread. The forensic worker starts just after this.
+        self._start_gui_progress_animation()
 
         self.btn_analyze.config(
             state=tk.DISABLED,
             text="Analyzing Evidence...",
             bg="#4B5563"
         )
+
+        if hasattr(self, "btn_clear"):
+            self.btn_clear.config(
+                state=tk.DISABLED,
+                bg="#374151"
+            )
 
         self.write_log(
             "",
@@ -1899,6 +2631,11 @@ class ForensicTab:
             # )
             # ------------------------------------------------
 
+            self._set_progress(
+                5,
+                "Running forensic pipeline..."
+            )
+
             current_case, shap_results = (
                 run_forensic_pipeline(
                     pcap_path=pcap_path,
@@ -1910,6 +2647,15 @@ class ForensicTab:
                         self.update_dashboard_metrics
                     )
                 )
+            )
+
+            # Keep the completed case available for the
+            # selected-flow detail table.
+            self.current_case = current_case
+
+            self._set_progress(
+                70,
+                "Processing ML predictions..."
             )
 
             # ------------------------------------------------
@@ -1941,6 +2687,11 @@ class ForensicTab:
                 total - benign
             )
 
+            self._set_progress(
+                85,
+                "Updating forensic findings..."
+            )
+
             # ------------------------------------------------
             # Update dynamic cards
             # ------------------------------------------------
@@ -1966,6 +2717,11 @@ class ForensicTab:
                 )
             )
 
+            self._set_progress(
+                95,
+                "Finalizing SHAP & Human Review..."
+            )
+
             # ------------------------------------------------
             # Forward to XAI tab
             # ------------------------------------------------
@@ -1978,6 +2734,13 @@ class ForensicTab:
                     case,
                     shap
                 )
+            )
+
+            # The pipeline has genuinely completed. Schedule the final
+            # 95% -> 100% animation on the GUI thread.
+            self.root.after(
+                0,
+                self._finish_gui_progress_success
             )
 
         except Exception as err:
@@ -2004,17 +2767,20 @@ class ForensicTab:
             )
 
         finally:
-
-            self.analysis_running = False
-
-            self.root.after(
-                0,
-                lambda: self.btn_analyze.config(
-                    state=tk.NORMAL,
-                    text="Analyze PCAP",
-                    bg=self.BLUE
+            # Keep analysis_running true until the GUI has completed the
+            # final 95% -> 100% animation. This also prevents Clear from
+            # being enabled while the visible analysis is still finishing.
+            if 'error_message' in locals():
+                self.root.after(
+                    0,
+                    self._mark_analysis_failed
                 )
-            )
+
+
+    def _mark_analysis_failed(self):
+        """Mark the analysis as stopped after a worker-side failure."""
+        self.analysis_running = False
+        self._finish_gui_progress_error()
 
 
     # ========================================================

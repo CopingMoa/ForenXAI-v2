@@ -1,8 +1,62 @@
 import os
 import json
 import joblib
+import numpy as np
 
+def get_shap_background(dataset_name):
+    """
+    Load the frozen Kernel SHAP background dataset
+    for the selected model.
 
+    Returns:
+        numpy.ndarray with shape:
+            (background_samples, model_features)
+    """
+
+    models = discover_models()
+
+    if dataset_name not in models:
+        raise FileNotFoundError(
+            f"Model '{dataset_name}' was not found."
+        )
+
+    background_path = models[
+        dataset_name
+    ]["shap_background"]
+
+    if not os.path.isfile(
+        background_path
+    ):
+        raise FileNotFoundError(
+            "Frozen SHAP background file was not found:\n"
+            + background_path
+        )
+
+    background = joblib.load(
+        background_path
+    )
+
+    # Your artifact is a SHAP DenseData object.
+    # Extract the actual NumPy matrix.
+    if hasattr(
+        background,
+        "data"
+    ):
+        background = background.data
+
+    background = np.asarray(
+        background,
+        dtype=float
+    )
+
+    if background.ndim != 2:
+        raise ValueError(
+            "Frozen SHAP background must be a "
+            "2-dimensional feature matrix."
+        )
+
+    return background
+    
 # ============================================================
 # ARTIFACTS DIRECTORY
 # ============================================================
@@ -250,40 +304,6 @@ def get_family_mapping(
         return {}
 
     return mapping
-
-def get_shap_background(dataset_name):
-    """
-    Return the SHAP background artifact for the
-    selected dataset.
-    """
-
-    models = discover_models()
-
-    if dataset_name not in models:
-        raise FileNotFoundError(
-            f"SHAP background for model '{dataset_name}' "
-            "was not found."
-        )
-
-    shap_background_path = models[
-        dataset_name
-    ].get("shap_background")
-
-    if not shap_background_path:
-        raise FileNotFoundError(
-            f"No SHAP background is configured for "
-            f"'{dataset_name}'."
-        )
-
-    if not os.path.isfile(
-        shap_background_path
-    ):
-        raise FileNotFoundError(
-            "SHAP background artifact does not exist:\n"
-            + shap_background_path
-        )
-
-    return shap_background_path
 
 
 # ============================================================

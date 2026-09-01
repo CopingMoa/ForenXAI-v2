@@ -7,10 +7,18 @@ import matplotlib.pyplot as plt
 
 from services.utils import calculate_sha256
 
+
+# ============================================================
+# SHAP AVAILABILITY
+# ============================================================
+
 try:
     import shap
+
     SHAP_AVAILABLE = True
+
 except ImportError:
+
     SHAP_AVAILABLE = False
 
 
@@ -26,29 +34,63 @@ def normalize_shap_values(
     """
     Normalize SHAP output into:
 
-        shape = (n_samples, n_features)
+        (n_samples, n_features)
 
-    For classification models, the explanation corresponding
-    to each flow's predicted class is selected.
+    SHAP can return different shapes depending on the
+    SHAP version and model output.
 
-    Supports common SHAP output formats.
+    Supported cases:
+
+        Binary / single-output:
+            (samples, features)
+
+        Multiclass / multi-output:
+            (samples, features, classes)
+
+    For multiclass output, the SHAP values corresponding
+    to each flow's predicted class are selected.
     """
 
-    values = np.asarray(shap_values)
+    # --------------------------------------------------------
+    # Convert to NumPy
+    # --------------------------------------------------------
+
+    values = np.asarray(
+        shap_values
+    )
 
     # --------------------------------------------------------
-    # SHAP may return:
+    # Case 1:
     #
-    # Binary:
-    #   (samples, features)
+    # Already:
     #
-    # Multiclass:
-    #   (samples, features, classes)
+    #     samples × features
     # --------------------------------------------------------
 
     if values.ndim == 2:
 
+        if values.shape[0] != len(X):
+
+            raise ValueError(
+                "SHAP output sample count does not match "
+                "the inference DataFrame."
+            )
+
+        if values.shape[1] != len(X.columns):
+
+            raise ValueError(
+                "SHAP output feature count does not match "
+                "model input feature count."
+            )
+
         return values
+
+
+    # --------------------------------------------------------
+    # Case 2:
+    #
+    # samples × features × classes
+    # --------------------------------------------------------
 
     if values.ndim == 3:
 
@@ -57,34 +99,41 @@ def normalize_shap_values(
         n_classes = values.shape[2]
 
         if n_samples != len(X):
+
             raise ValueError(
                 "SHAP output sample count does not match "
                 "the inference DataFrame."
             )
 
         if n_features != len(X.columns):
+
             raise ValueError(
                 "SHAP output feature count does not match "
                 "model input feature count."
             )
-
-        # ----------------------------------------------------
-        # Select the SHAP class for each prediction.
-        #
-        # For binary classification this normally selects
-        # class 1 when the model predicts 1.
-        # ----------------------------------------------------
 
         class_indices = []
 
         for prediction in predictions:
 
             try:
-                class_index = int(prediction)
-            except (TypeError, ValueError):
+
+                class_index = int(
+                    prediction
+                )
+
+            except (
+                TypeError,
+                ValueError
+            ):
+
                 class_index = 0
 
-            if class_index < 0 or class_index >= n_classes:
+            if (
+                class_index < 0
+                or class_index >= n_classes
+            ):
+
                 class_index = 0
 
             class_indices.append(
@@ -92,7 +141,10 @@ def normalize_shap_values(
             )
 
         normalized = np.zeros(
-            (n_samples, n_features),
+            (
+                n_samples,
+                n_features
+            ),
             dtype=float
         )
 
@@ -107,6 +159,11 @@ def normalize_shap_values(
             ]
 
         return normalized
+
+
+    # --------------------------------------------------------
+    # Unsupported SHAP format
+    # --------------------------------------------------------
 
     raise ValueError(
         "Unsupported SHAP output shape: "
@@ -128,45 +185,31 @@ def generate_shap_explanation(
     shap_background
 ):
     """
-    Generate Kernel SHAP explanations for the final
+    Generate Kernel SHAP explanations for the selected
     ForenXAI model.
 
-    This implementation is intentionally model-agnostic.
+    IMPORTANT:
 
-    It explains:
+    shap_background must contain the ACTUAL background
+    data, not the path to the .joblib file.
+
+    Expected background:
+
+        SHAP DenseData
+        or
+        NumPy array
+
+    The function explains:
 
         model.predict_proba(X)
 
-    rather than trying to inspect the internal estimators.
-
-    This is required because the CIDS2018 model is a:
-
-        sklearn.calibration.CalibratedClassifierCV
-
-    Parameters
-    ----------
-    model:
-        Loaded sklearn-compatible classifier.
-
-    X:
-        Final model feature DataFrame.
-
-    predictions:
-        Predictions generated by model.predict(X).
-
-    case_id:
-        Current forensic case ID.
-
-    case_dir:
-        Current forensic case directory.
-
-    log_fn:
-        GUI logging callback.
-
-    shap_background:
-        Frozen Kernel SHAP background loaded from the
-        selected model artifact.
+    This is intentionally model-agnostic and therefore
+    works with the current CalibratedClassifierCV model.
     """
+
+    # ========================================================
+    # SHAP AVAILABILITY
+    # ========================================================
 
     if not SHAP_AVAILABLE:
 
@@ -178,6 +221,11 @@ def generate_shap_explanation(
 
         return None, None
 
+
+    # ========================================================
+    # BACKGROUND VALIDATION
+    # ========================================================
+
     if shap_background is None:
 
         log_fn(
@@ -188,10 +236,11 @@ def generate_shap_explanation(
 
         return None, None
 
+
     try:
 
         # ====================================================
-        # VALIDATE BACKGROUND
+        # STAGE 1 — PREPARE BACKGROUND
         # ====================================================
 
         log_fn(
@@ -199,10 +248,17 @@ def generate_shap_explanation(
             "info"
         )
 
-        # The stored artifact is SHAP DenseData.
+
+        # ----------------------------------------------------
+        # Your .joblib artifact contains:
         #
-        # KernelExplainer accepts the underlying NumPy
-        # matrix, so use .data when available.
+        # shap.utils._legacy.DenseData
+        #
+        # The actual NumPy matrix is stored in:
+        #
+        #     shap_background.data
+        #
+        # ----------------------------------------------------
 
         if hasattr(
             shap_background,
@@ -221,10 +277,20 @@ def generate_shap_explanation(
                 )
             )
 
+
+        # ----------------------------------------------------
+        # Convert to numeric NumPy matrix
+        # ----------------------------------------------------
+
         background_data = np.asarray(
             background_data,
             dtype=float
         )
+
+
+        # ====================================================
+        # VALIDATE BACKGROUND DIMENSIONS
+        # ====================================================
 
         if background_data.ndim != 2:
 
@@ -232,6 +298,11 @@ def generate_shap_explanation(
                 "SHAP background must be a "
                 "2-dimensional matrix."
             )
+
+
+        # ----------------------------------------------------
+        # Number of features must match X
+        # ----------------------------------------------------
 
         if background_data.shape[1] != len(
             X.columns
@@ -246,6 +317,21 @@ def generate_shap_explanation(
                 f"{len(X.columns)}"
             )
 
+
+        # ----------------------------------------------------
+        # Make sure background contains no NaN/Infinity
+        # ----------------------------------------------------
+
+        if not np.isfinite(
+            background_data
+        ).all():
+
+            raise ValueError(
+                "SHAP background contains "
+                "NaN or infinite values."
+            )
+
+
         log_fn(
             "[+] Frozen SHAP background loaded: "
             f"{background_data.shape[0]} samples × "
@@ -253,8 +339,9 @@ def generate_shap_explanation(
             "success"
         )
 
+
         # ====================================================
-        # KERNEL SHAP
+        # STAGE 2 — CREATE KERNEL SHAP EXPLAINER
         # ====================================================
 
         log_fn(
@@ -262,18 +349,38 @@ def generate_shap_explanation(
             "info"
         )
 
+
+        # ----------------------------------------------------
+        # IMPORTANT:
+        #
+        # DO NOT use:
+        #
+        #     shap.TreeExplainer(model)
+        #
+        # because the current CIDS2018 model is:
+        #
+        #     CalibratedClassifierCV
+        #
+        # Instead, explain the complete model through:
+        #
+        #     model.predict_proba
+        #
+        # ----------------------------------------------------
+
         explainer = shap.KernelExplainer(
             model.predict_proba,
             background_data
         )
+
 
         log_fn(
             "[+] Kernel SHAP explainer created.",
             "success"
         )
 
+
         # ====================================================
-        # GENERATE SHAP VALUES
+        # STAGE 3 — CALCULATE SHAP VALUES
         # ====================================================
 
         log_fn(
@@ -282,10 +389,18 @@ def generate_shap_explanation(
             "info"
         )
 
-        raw_shap_values = explainer.shap_values(
-            X,
-            nsamples="auto"
+
+        raw_shap_values = (
+            explainer.shap_values(
+                X,
+                nsamples="auto"
+            )
         )
+
+
+        # ====================================================
+        # NORMALIZE SHAP OUTPUT
+        # ====================================================
 
         shap_values = normalize_shap_values(
             raw_shap_values,
@@ -293,24 +408,32 @@ def generate_shap_explanation(
             predictions
         )
 
-        if shap_values.shape != (
+
+        # ----------------------------------------------------
+        # Final shape validation
+        # ----------------------------------------------------
+
+        expected_shape = (
             len(X),
             len(X.columns)
-        ):
+        )
+
+        if shap_values.shape != expected_shape:
 
             raise ValueError(
-                "Normalized SHAP output shape does "
-                "not match inference data.\n\n"
+                "Normalized SHAP output shape "
+                "does not match inference data.\n\n"
                 f"SHAP shape: {shap_values.shape}\n"
-                f"Expected: "
-                f"({len(X)}, {len(X.columns)})"
+                f"Expected: {expected_shape}"
             )
 
+
         # ====================================================
-        # PER-FLOW EXPLANATIONS
+        # STAGE 4 — PER-FLOW EXPLANATIONS
         # ====================================================
 
         explanation_records = []
+
 
         for i in range(
             len(X)
@@ -319,6 +442,11 @@ def generate_shap_explanation(
             feature_values = X.iloc[i]
 
             shap_row = shap_values[i]
+
+
+            # ------------------------------------------------
+            # Rank features by absolute SHAP contribution
+            # ------------------------------------------------
 
             ranked_features = sorted(
                 zip(
@@ -331,38 +459,55 @@ def generate_shap_explanation(
                 reverse=True
             )
 
+
             top_features = []
+
 
             for feature, value in (
                 ranked_features[:10]
             ):
 
                 top_features.append({
-                    "feature": str(feature),
-                    "feature_value": str(
-                        feature_values[feature]
+
+                    "feature": str(
+                        feature
                     ),
+
+                    "feature_value": str(
+                        feature_values[
+                            feature
+                        ]
+                    ),
+
                     "shap_value": float(
                         value
                     )
                 })
 
+
             explanation_records.append({
-                "flow_index": int(i),
+
+                "flow_index": int(
+                    i
+                ),
+
                 "prediction": str(
                     predictions[i]
                 ),
+
                 "top_features": top_features
             })
 
+
         # ====================================================
-        # SAVE SHAP JSON
+        # STAGE 5 — SAVE SHAP JSON
         # ====================================================
 
         shap_path = os.path.join(
             case_dir,
             f"{case_id}_shap.json"
         )
+
 
         with open(
             shap_path,
@@ -376,23 +521,32 @@ def generate_shap_explanation(
                 indent=4
             )
 
+
         shap_hash = calculate_sha256(
             shap_path
         )
 
+
         # ====================================================
-        # GLOBAL SHAP IMPORTANCE
+        # STAGE 6 — GLOBAL SHAP IMPORTANCE
         # ====================================================
 
         mean_importance = np.mean(
-            np.abs(shap_values),
+            np.abs(
+                shap_values
+            ),
             axis=0
         )
 
+
         importance_df = pd.DataFrame({
+
             "feature": X.columns,
+
             "importance": mean_importance
+
         })
+
 
         importance_df.sort_values(
             "importance",
@@ -400,42 +554,60 @@ def generate_shap_explanation(
             inplace=True
         )
 
-        top_global = importance_df.tail(
-            15
+
+        # Show top 15 globally important features
+
+        top_global = (
+            importance_df.tail(
+                15
+            )
         )
+
+
+        # ====================================================
+        # CREATE CHART
+        # ====================================================
 
         fig, ax = plt.subplots(
             figsize=(8, 5)
         )
+
 
         ax.barh(
             top_global["feature"],
             top_global["importance"]
         )
 
+
         ax.set_title(
             "Global SHAP Feature Importance"
         )
+
 
         ax.set_xlabel(
             "Mean |SHAP Value|"
         )
 
+
         fig.tight_layout()
+
 
         shap_plot_path = os.path.join(
             case_dir,
             f"{case_id}_shap_importance.png"
         )
 
+
         fig.savefig(
             shap_plot_path,
             dpi=150
         )
 
+
         plt.close(
             fig
         )
+
 
         # ====================================================
         # COMPLETE
@@ -446,11 +618,13 @@ def generate_shap_explanation(
             "success"
         )
 
+
         log_fn(
             "[+] SHAP explanation file: "
             + shap_path,
             "success"
         )
+
 
         log_fn(
             "[+] SHAP importance chart: "
@@ -458,11 +632,20 @@ def generate_shap_explanation(
             "success"
         )
 
-        return explanation_records, {
-            "shap_path": shap_path,
-            "shap_sha256": shap_hash,
-            "shap_plot_path": shap_plot_path
-        }
+
+        return (
+            explanation_records,
+            {
+                "shap_path": shap_path,
+                "shap_sha256": shap_hash,
+                "shap_plot_path": shap_plot_path
+            }
+        )
+
+
+    # ========================================================
+    # SHAP ERROR
+    # ========================================================
 
     except Exception as e:
 
