@@ -49,7 +49,7 @@ class ForensicTab:
 
     FIXED_CARD_COUNT = 2
 
-    DYNAMIC_CARD_COUNT = 4
+    DYNAMIC_CARD_COUNT = 5
 
 
     # ========================================================
@@ -138,83 +138,11 @@ class ForensicTab:
     def _build_ui(self):
 
         # ----------------------------------------------------
-        # SCROLLABLE FORENSIC PAGE
-        # ----------------------------------------------------
-        #
-        # CHANGED:
-        # The previous version relied on fixed heights for the
-        # dashboard/table/log. On smaller windows or when the
-        # application layout changes, the log could fall below
-        # the visible area.
-        #
-        # The entire PCAP Forensic Analysis page is now placed
-        # inside a vertical Canvas scrollbar. Nothing is removed;
-        # the user can simply scroll down to reach the findings
-        # table and forensic system log.
-        # ----------------------------------------------------
-
-        self.scroll_canvas = tk.Canvas(
-            self.frame,
-            bg=self.BG_MAIN,
-            highlightthickness=0,
-            borderwidth=0
-        )
-
-        self.scrollbar = ttk.Scrollbar(
-            self.frame,
-            orient="vertical",
-            command=self.scroll_canvas.yview
-        )
-
-        self.scroll_canvas.configure(
-            yscrollcommand=self.scrollbar.set
-        )
-
-        self.scrollbar.pack(
-            side=tk.RIGHT,
-            fill=tk.Y
-        )
-
-        self.scroll_canvas.pack(
-            side=tk.LEFT,
-            fill=tk.BOTH,
-            expand=True
-        )
-
-        self.scrollable_frame = tk.Frame(
-            self.scroll_canvas,
-            bg=self.BG_MAIN
-        )
-
-        self.scroll_window = self.scroll_canvas.create_window(
-            (0, 0),
-            window=self.scrollable_frame,
-            anchor="nw"
-        )
-
-        # Keep the content width equal to the visible canvas width.
-        self.scrollable_frame.bind(
-            "<Configure>",
-            self._update_scroll_region
-        )
-
-        self.scroll_canvas.bind(
-            "<Configure>",
-            self._resize_scrollable_frame
-        )
-
-        # Mouse-wheel scrolling.
-        self.scroll_canvas.bind_all(
-            "<MouseWheel>",
-            self._on_mousewheel
-        )
-
-        # ----------------------------------------------------
         # TOP AREA
         # ----------------------------------------------------
 
         top_frame = tk.Frame(
-            self.scrollable_frame,
+            self.frame,
             bg=self.BG_MAIN
         )
 
@@ -223,12 +151,6 @@ class ForensicTab:
             padx=10,
             pady=(8, 5)
         )
-
-        top_frame.configure(
-            height=390
-        )
-
-        top_frame.pack_propagate(False)
 
         top_frame.grid_columnconfigure(
             0,
@@ -259,35 +181,6 @@ class ForensicTab:
         # ----------------------------------------------------
 
         self._build_log_console()
-
-        # Make sure the initial content size is registered.
-        self.root.after(
-            0,
-            self._update_scroll_region
-        )
-
-
-    def _update_scroll_region(self, event=None):
-        """Update the Canvas scrollable area to match its content."""
-        self.scroll_canvas.configure(
-            scrollregion=self.scroll_canvas.bbox("all")
-        )
-
-
-    def _resize_scrollable_frame(self, event):
-        """Keep the inner page as wide as the visible Canvas."""
-        self.scroll_canvas.itemconfigure(
-            self.scroll_window,
-            width=event.width
-        )
-
-
-    def _on_mousewheel(self, event):
-        """Scroll the forensic page vertically with the mouse wheel."""
-        self.scroll_canvas.yview_scroll(
-            int(-1 * (event.delta / 120)),
-            "units"
-        )
 
 
     # ========================================================
@@ -421,14 +314,6 @@ class ForensicTab:
         self.btn_analyze.pack(
             pady=(3, 15)
         )
-
-
-    def _destroy_scroll_bindings(self):
-        """Remove the global mouse-wheel binding before tab destruction."""
-        try:
-            self.scroll_canvas.unbind_all("<MouseWheel>")
-        except Exception:
-            pass
 
 
     # ========================================================
@@ -627,27 +512,22 @@ class ForensicTab:
             padx=(5, 0)
         )
 
-        # Two equal columns.
         for column in range(2):
+
             metrics_frame.grid_columnconfigure(
                 column,
                 weight=1
             )
 
-        # Four dashboard rows:
-        #   Row 0 = Total Network Flows
-        #   Row 1 = Benign / Threat
-        #   Row 2 = Top Threat #1 / #2
-        #   Row 3 = Top Threat #3 / #4
         for row in range(4):
+
             metrics_frame.grid_rowconfigure(
                 row,
                 weight=1
             )
 
         # ----------------------------------------------------
-        # ROW 0 — TOTAL NETWORK FLOWS
-        # Full width (2 columns)
+        # FIXED CARD 1
         # ----------------------------------------------------
 
         (
@@ -662,14 +542,13 @@ class ForensicTab:
         self.card_total.grid(
             row=0,
             column=0,
-            columnspan=2,
             sticky="nsew",
             padx=3,
             pady=3
         )
 
         # ----------------------------------------------------
-        # ROW 1 — BENIGN / THREAT
+        # FIXED CARD 2
         # ----------------------------------------------------
 
         (
@@ -682,24 +561,7 @@ class ForensicTab:
         )
 
         self.card_benign.grid(
-            row=1,
-            column=0,
-            sticky="nsew",
-            padx=3,
-            pady=3
-        )
-
-        (
-            self.card_threat,
-            self.lbl_val_threat
-        ) = self._create_metric_card(
-            metrics_frame,
-            "THREAT NETWORK FLOWS",
-            color=self.RED
-        )
-
-        self.card_threat.grid(
-            row=1,
+            row=0,
             column=1,
             sticky="nsew",
             padx=3,
@@ -707,16 +569,17 @@ class ForensicTab:
         )
 
         # ----------------------------------------------------
-        # ROWS 2–3 — FOUR DYNAMIC TOP-THREAT CARDS
+        # FIVE DYNAMIC CARDS
         # ----------------------------------------------------
 
         self.dynamic_cards = []
 
         dynamic_positions = [
-            (2, 0),  # Top Threat #1
-            (2, 1),  # Top Threat #2
-            (3, 0),  # Top Threat #3
-            (3, 1),  # Top Threat #4
+            (1, 0),
+            (1, 1),
+            (2, 0),
+            (2, 1),
+            (3, 0)
         ]
 
         for index, (
@@ -749,7 +612,7 @@ class ForensicTab:
             })
 
         # ----------------------------------------------------
-        # Initialize dynamic cards
+        # Initialize cards
         # ----------------------------------------------------
 
         self._reset_dynamic_cards()
@@ -931,35 +794,6 @@ class ForensicTab:
                 text=f"{benign:,}"
             )
 
-            self.lbl_val_threat.config(
-                text=f"{threat:,}"
-            )
-
-            # Highlight the fixed threat card when threats exist.
-            if threat > 0:
-
-                self.card_threat.config(
-                    bg="#3F1D24",
-                    highlightbackground=self.RED
-                )
-
-                self.lbl_val_threat.config(
-                    bg="#3F1D24",
-                    fg=self.RED
-                )
-
-            else:
-
-                self.card_threat.config(
-                    bg=self.BG_PANEL,
-                    highlightbackground=self.BORDER
-                )
-
-                self.lbl_val_threat.config(
-                    bg=self.BG_PANEL,
-                    fg=self.TEXT_MUTED
-                )
-
             # ------------------------------------------------
             # Dynamic threat cards
             # ------------------------------------------------
@@ -986,7 +820,7 @@ class ForensicTab:
                 reverse=True
             )
 
-            # Keep only top four
+            # Keep only top five
             threat_items = threat_items[
                 :self.DYNAMIC_CARD_COUNT
             ]
@@ -1068,20 +902,17 @@ class ForensicTab:
     ):
 
         table_frame = tk.Frame(
-            self.scrollable_frame,
+            self.frame,
             bg=self.BG_MAIN,
             highlightbackground=self.BORDER,
             highlightthickness=1
         )
 
-        # Keep the table compact so the system log below it remains visible.
         table_frame.pack(
             fill="x",
             padx=10,
             pady=(5, 5)
         )
-        table_frame.configure(height=155)
-        table_frame.pack_propagate(False)
 
         # ----------------------------------------------------
         # Table title
@@ -1249,7 +1080,7 @@ class ForensicTab:
 
         self.findings_table.pack(
             side=tk.LEFT,
-            fill="both",
+            fill="x",
             expand=True,
             padx=(5, 0),
             pady=(0, 5)
@@ -1316,13 +1147,6 @@ class ForensicTab:
             )
         )
 
-        # Log the artifact path used by the table so missing/mismatched
-        # pipeline return values are immediately visible during testing.
-        self.write_log(
-            f"[*] Findings table prediction artifact: {prediction_path}",
-            "info"
-        )
-
         if not prediction_path:
 
             self.write_log(
@@ -1370,11 +1194,6 @@ class ForensicTab:
             )
 
             return
-
-        self.write_log(
-            f"[+] Findings table loaded {len(prediction_records)} prediction record(s).",
-            "success"
-        )
 
         # ----------------------------------------------------
         # Get frozen class mapping
@@ -1656,14 +1475,12 @@ class ForensicTab:
         self
     ):
 
-        # IMPORTANT: Do not call _clear_findings_table() here.
-        # That method also resets self.findings_rows, which previously
-        # erased the rows immediately before they were inserted.
-        # We only clear the Treeview widgets, then insert the saved rows.
-        for item in self.findings_table.get_children():
-            self.findings_table.delete(item)
+        self._clear_findings_table()
 
-        for row in self.findings_rows:
+        for row in (
+            self.findings_rows
+        ):
+
             self.findings_table.insert(
                 "",
                 tk.END,
@@ -1680,26 +1497,18 @@ class ForensicTab:
     ):
 
         terminal_frame = tk.Frame(
-            self.scrollable_frame,
+            self.frame,
             bg=self.BG_TERMINAL,
             highlightbackground=self.BORDER,
             highlightthickness=1
         )
 
-        # Keep the log at a readable height. The PAGE itself is
-        # scrollable, so the user can scroll to this section even
-        # when the application window is not tall enough.
         terminal_frame.pack(
-            fill="x",
+            fill="both",
+            expand=True,
             padx=10,
             pady=(0, 10)
         )
-
-        terminal_frame.configure(
-            height=260
-        )
-
-        terminal_frame.pack_propagate(False)
 
         self.log_console = tk.Text(
             terminal_frame,

@@ -2,50 +2,71 @@ import os
 import json
 import joblib
 
-# ============================================================
-# CHANGED:
-# Removed MODEL_PATH import.
-# We now detect every trained model inside /artifacts.
-# ============================================================
-
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
-
 
 # ============================================================
-# NEW:
-# Scan available trained models
+# ARTIFACTS DIRECTORY
+# ============================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.dirname(__file__)
+)
+
+ARTIFACTS_DIR = os.path.join(
+    BASE_DIR,
+    "artifacts"
+)
+
+
+# ============================================================
+# DISCOVER AVAILABLE MODELS
 # ============================================================
 
 def discover_models():
     """
-    Detects every available model inside:
+    Detect every available trained model inside:
 
         artifacts/
             CIDS2018/
+                forensic_tab/
+                    model.joblib
+                    frozen_feature_schema_l2.json
+
             TII/
-            Combined/   (Brian later)
+                forensic_tab/
+                    model.joblib
+                    frozen_feature_schema_l2.json
 
     Returns:
         {
-            "CIDS2018": {...},
-            "TII": {...}
+            "CIDS2018": {
+                "name": "CIDS2018",
+                "model_path": "...",
+                "schema_path": "...",
+                "shap_background": "..."
+            },
+            ...
         }
     """
 
     models = {}
 
-    if not os.path.exists(ARTIFACTS_DIR):
+    if not os.path.exists(
+        ARTIFACTS_DIR
+    ):
         return models
 
-    for dataset in os.listdir(ARTIFACTS_DIR):
+    for dataset in os.listdir(
+        ARTIFACTS_DIR
+    ):
 
         dataset_dir = os.path.join(
             ARTIFACTS_DIR,
             dataset
         )
 
-        if not os.path.isdir(dataset_dir):
+        if not os.path.isdir(
+            dataset_dir
+        ):
             continue
 
         forensic_dir = os.path.join(
@@ -73,7 +94,9 @@ def discover_models():
             "kernel_shap_background_l2.joblib"
         )
 
-        if os.path.exists(model_path):
+        if os.path.exists(
+            model_path
+        ):
 
             models[dataset] = {
                 "name": dataset,
@@ -86,12 +109,13 @@ def discover_models():
 
 
 # ============================================================
-# NEW:
-# Load a selected model
+# LOAD SELECTED MODEL
 # ============================================================
 
 def load_model(dataset_name):
     """
+    Load the trained model for the selected dataset.
+
     Example:
 
         load_model("CIDS2018")
@@ -101,6 +125,7 @@ def load_model(dataset_name):
     models = discover_models()
 
     if dataset_name not in models:
+
         raise FileNotFoundError(
             f"Model '{dataset_name}' was not found."
         )
@@ -113,25 +138,37 @@ def load_model(dataset_name):
 
 
 # ============================================================
-# NEW:
-# Load frozen schema JSON
+# LOAD FROZEN FEATURE SCHEMA
 # ============================================================
 
-def load_feature_schema(dataset_name):
+def load_feature_schema(
+    dataset_name
+):
+    """
+    Load the frozen schema associated with
+    the selected dataset.
+    """
 
     models = discover_models()
 
     if dataset_name not in models:
+
         raise FileNotFoundError(
-            f"Model '{dataset_name}' was not found."
+            f"Schema for model '{dataset_name}' "
+            "was not found."
         )
 
-    schema_path = models[dataset_name]["schema_path"]
+    schema_path = models[
+        dataset_name
+    ]["schema_path"]
 
-    if not os.path.isfile(schema_path):
+    if not os.path.isfile(
+        schema_path
+    ):
+
         raise FileNotFoundError(
-            f"Frozen feature schema for '{dataset_name}' "
-            f"was not found:\n{schema_path}"
+            f"Frozen feature schema does not exist:\n"
+            f"{schema_path}"
         )
 
     with open(
@@ -142,63 +179,139 @@ def load_feature_schema(dataset_name):
 
         return json.load(f)
 
+
 # ============================================================
-# SHAP BACKGROUND
+# EXPECTED MODEL FEATURES
 # ============================================================
+
+def get_expected_features(
+    dataset_name
+):
+    """
+    Return the frozen feature list used by the
+    selected trained model.
+    """
+
+    schema = load_feature_schema(
+        dataset_name
+    )
+
+    return schema[
+        "feature_columns"
+    ]
+
+
+# ============================================================
+# NEW:
+# GET DATASET CLASS MAPPING
+# ============================================================
+
+def get_family_mapping(
+    dataset_name
+):
+    """
+    Return the frozen multiclass family mapping
+    stored inside the selected model schema.
+
+    Example:
+
+        {
+            "Benign": 0,
+            "Botnet": 1,
+            "Bruteforce": 2,
+            "DoS": 3,
+            "Infiltration": 4,
+            "Web Attack": 5
+        }
+
+    The UI uses this mapping to convert model
+    predictions such as 0, 1, 2, 3... into
+    their actual classification names.
+
+    IMPORTANT:
+        The mapping comes from the frozen schema.
+        It is NOT hardcoded inside the UI.
+    """
+
+    schema = load_feature_schema(
+        dataset_name
+    )
+
+    mapping = schema.get(
+        "family_mapping",
+        {}
+    )
+
+    if not isinstance(
+        mapping,
+        dict
+    ):
+
+        return {}
+
+    return mapping
 
 def get_shap_background(dataset_name):
     """
-    Load the frozen Kernel SHAP background for the
+    Return the SHAP background artifact for the
     selected dataset.
-
-    Returns:
-        SHAP DenseData object
     """
 
     models = discover_models()
 
     if dataset_name not in models:
         raise FileNotFoundError(
-            f"Model '{dataset_name}' was not found."
+            f"SHAP background for model '{dataset_name}' "
+            "was not found."
         )
 
-    background_path = models[dataset_name]["shap_background"]
+    shap_background_path = models[
+        dataset_name
+    ].get("shap_background")
 
-    if not os.path.isfile(background_path):
+    if not shap_background_path:
         raise FileNotFoundError(
-            "SHAP background was not found:\n"
-            f"{background_path}"
+            f"No SHAP background is configured for "
+            f"'{dataset_name}'."
         )
 
-    return joblib.load(
-        background_path
+    if not os.path.isfile(
+        shap_background_path
+    ):
+        raise FileNotFoundError(
+            "SHAP background artifact does not exist:\n"
+            + shap_background_path
+        )
+
+    return shap_background_path
+
+
+# ============================================================
+# VALIDATE MODEL SCHEMA
+# ============================================================
+
+def validate_model_schema(
+    dataset_name,
+    df
+):
+    """
+    Validate that every frozen model feature
+    exists in the supplied DataFrame.
+
+    Returns:
+
+        expected_features,
+        missing_features
+    """
+
+    expected = get_expected_features(
+        dataset_name
     )
 
-
-# ============================================================
-# CHANGED:
-# Uses Dorothy's frozen schema instead of feature_names_in_
-# ============================================================
-
-def get_expected_features(dataset_name):
-
-    schema = load_feature_schema(dataset_name)
-
-    return schema["feature_columns"]
-
-
-# ============================================================
-# CHANGED:
-# Validation now depends on selected dataset
-# ============================================================
-
-def validate_model_schema(dataset_name, df):
-
-    expected = get_expected_features(dataset_name)
-
     missing = [
-        f for f in expected
-        if f not in df.columns
+        feature
+        for feature in expected
+        if feature not in df.columns
     ]
 
     return expected, missing
