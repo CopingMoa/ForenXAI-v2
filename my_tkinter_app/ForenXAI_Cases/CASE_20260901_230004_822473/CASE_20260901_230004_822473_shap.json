@@ -1,0 +1,1290 @@
+[
+    {
+        "flow_index": 0,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.17064857395297983
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.0806252548586199
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "60.0",
+                "shap_value": -0.061035238784261175
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.05768115003173478
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.04281937314720701
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "5.0",
+                "shap_value": 0.04273001901816239
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.034597763056901376
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1023.0",
+                "shap_value": 0.03340875624824842
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "505.0",
+                "shap_value": 0.029847452249993547
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "2280.0",
+                "shap_value": 0.029002605108283612
+            }
+        ]
+    },
+    {
+        "flow_index": 1,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.1616467569638959
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.08250762027980654
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "60.0",
+                "shap_value": -0.06357623016370802
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.054270510592967315
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "5.0",
+                "shap_value": 0.04033591283040359
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.038451700067179045
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1023.0",
+                "shap_value": 0.0346618260184894
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "6096.0",
+                "shap_value": 0.02217359069884659
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "505.0",
+                "shap_value": 0.02088564469097472
+            },
+            {
+                "feature": "Average Packet Size",
+                "feature_value": "12.4",
+                "shap_value": 0.014082000722641097
+            }
+        ]
+    },
+    {
+        "flow_index": 2,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.16102472207677357
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "14.560219778561036",
+                "shap_value": -0.0894971643614597
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.05891529796890189
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.038155236355013916
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.026168784394898004
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "51.0",
+                "shap_value": 0.020228718049975235
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "219.8092056095309",
+                "shap_value": 0.017163887551020184
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "53.0",
+                "shap_value": 0.014765657240191873
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "1.0",
+                "shap_value": 0.012648092791281387
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "45494.0",
+                "shap_value": 0.011870003505115356
+            }
+        ]
+    },
+    {
+        "flow_index": 3,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.15951175023145392
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "14.560219778561036",
+                "shap_value": -0.08974043242827019
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.06008711104514157
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.03351668559584731
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.03263814361860413
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "180.33289452329",
+                "shap_value": 0.022058092467421582
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "85.0",
+                "shap_value": 0.017129108450890967
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "0.0",
+                "shap_value": 0.01254561851277014
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "53.0",
+                "shap_value": 0.01072269373495495
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "15300.11785176107",
+                "shap_value": 0.010009600546080103
+            }
+        ]
+    },
+    {
+        "flow_index": 4,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.1383053619472637
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "3.0",
+                "shap_value": -0.06718562790180772
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.058161880213702
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.03548501884765634
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.03490392729432942
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "155.46055188495922",
+                "shap_value": 0.02301744177893356
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "127.0",
+                "shap_value": 0.01861734602121784
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "14112.798099400574",
+                "shap_value": 0.017224460953552113
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "64325.0",
+                "shap_value": 0.01299323616599119
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.008786367461645628
+            }
+        ]
+    },
+    {
+        "flow_index": 5,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.1233399080031227
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.051977085441913574
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.028203462894780117
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.01906249506019889
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "84086.0",
+                "shap_value": 0.017816377240399146
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "89.0",
+                "shap_value": 0.011540565854984922
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "118.92586161786744",
+                "shap_value": 0.010949650070355078
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "53.0",
+                "shap_value": 0.008521344334330452
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "19194.43931484093",
+                "shap_value": 0.00343794638444348
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "38.0",
+                "shap_value": 0.00241969049640256
+            }
+        ]
+    },
+    {
+        "flow_index": 6,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.1419264069582789
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "3.0",
+                "shap_value": -0.0656002947462008
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.05709564969553609
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.03346009779979353
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.030979039567261092
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "130.0",
+                "shap_value": 0.022509748713473995
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "53.0",
+                "shap_value": 0.018558568983876932
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "160.4724308363823",
+                "shap_value": 0.016735627204526652
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "12648.024885332889",
+                "shap_value": 0.013543087341938154
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "1.0",
+                "shap_value": 0.010559452769562635
+            }
+        ]
+    },
+    {
+        "flow_index": 7,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.13941184513038354
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "3.0",
+                "shap_value": -0.06800046974176825
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.05910740470348157
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "9.0",
+                "shap_value": 0.03932078866013146
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "3650.0",
+                "shap_value": 0.028584222042518675
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "92.0",
+                "shap_value": 0.02508938032519035
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "140.3942269893862",
+                "shap_value": 0.016246352110473077
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "37.0",
+                "shap_value": 0.01322204582152596
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "71228.0",
+                "shap_value": 0.01179918856778815
+            },
+            {
+                "feature": "Average Packet Size",
+                "feature_value": "15.2",
+                "shap_value": 0.007688048627516375
+            }
+        ]
+    },
+    {
+        "flow_index": 8,
+        "prediction": "1",
+        "top_features": [
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "444.0",
+                "shap_value": 0.23712107334411991
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "190134.8329114274",
+                "shap_value": 0.18185705611112193
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "1900.0",
+                "shap_value": 0.06676791323154731
+            },
+            {
+                "feature": "Average Packet Size",
+                "feature_value": "525.3571428571429",
+                "shap_value": 0.054183562432785305
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "25.54472483768355",
+                "shap_value": -0.04922122940334841
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "626.0",
+                "shap_value": -0.0391716972888748
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "5.663622873916428",
+                "shap_value": -0.03686230775288076
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": -0.03565241854606401
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.03167387119071343
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.02854265643597842
+            }
+        ]
+    },
+    {
+        "flow_index": 9,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "11.0",
+                "shap_value": -0.10317999492539315
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.0796564753234485
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "60.03447694247267",
+                "shap_value": 0.0761886065918024
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.06905432033409174
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "513.0",
+                "shap_value": 0.060961351876219275
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "220.0",
+                "shap_value": -0.05956361700700169
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "931.0",
+                "shap_value": 0.05902039697876054
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "1.0",
+                "shap_value": 0.05208823102739611
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.048824584337705486
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "64.58069887099911",
+                "shap_value": -0.044935089844073135
+            }
+        ]
+    },
+    {
+        "flow_index": 10,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "13.0",
+                "shap_value": -0.12909792643432877
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "408.0",
+                "shap_value": -0.08829404070314435
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.0679461520546757
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1026.0",
+                "shap_value": 0.05979266813811128
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "70501.48589409099",
+                "shap_value": -0.05542894393515416
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "443.0",
+                "shap_value": 0.040294621394494974
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.037855822945147846
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "62.963466971599416",
+                "shap_value": 0.03699262890149167
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "0.0",
+                "shap_value": 0.026372135711407854
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "4515.0",
+                "shap_value": 0.025869769586554868
+            }
+        ]
+    },
+    {
+        "flow_index": 11,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "409986.0930791433",
+                "shap_value": -0.1321258766600594
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.08073540951779673
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.07488732367235935
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.06914668458807492
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.06301687765326258
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.06013930210405368
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.05318623138932632
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.04092760236857047
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "0.0",
+                "shap_value": -0.0397889820180507
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "18939.0",
+                "shap_value": -0.034846437825425194
+            }
+        ]
+    },
+    {
+        "flow_index": 12,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.1140399332309581
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.09806541456404416
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.06032805927811275
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.05800765541146418
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "1.0",
+                "shap_value": -0.05408077596218869
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.049202374503730016
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "1.0",
+                "shap_value": 0.04856780969228896
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1022.0",
+                "shap_value": 0.04499962396968085
+            },
+            {
+                "feature": "Average Packet Size",
+                "feature_value": "15.5",
+                "shap_value": 0.036368219332986694
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "501.0",
+                "shap_value": 0.03266740858525746
+            }
+        ]
+    },
+    {
+        "flow_index": 13,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.1149603772031857
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.10175642951882578
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.06545088883398488
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.05842724491151861
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "1.0",
+                "shap_value": -0.0548902670294837
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "1.0",
+                "shap_value": 0.047629034250593415
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1022.0",
+                "shap_value": 0.044044207061221356
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.04242461225908897
+            },
+            {
+                "feature": "Average Packet Size",
+                "feature_value": "15.5",
+                "shap_value": 0.040945817367915985
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "4.0",
+                "shap_value": 0.024920497491264834
+            }
+        ]
+    },
+    {
+        "flow_index": 14,
+        "prediction": "4",
+        "top_features": [
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "23194.0",
+                "shap_value": 0.08120641838309219
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.06177750924254349
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.060789419912132804
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.058182773927814624
+            },
+            {
+                "feature": "Bwd Packet Length Mean",
+                "feature_value": "12.5",
+                "shap_value": -0.05484169794694126
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.03659471707407386
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.03101101524492579
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.023529135009389492
+            },
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "69626.613836473",
+                "shap_value": 0.022512117046072602
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "233015.0",
+                "shap_value": 0.011677828755498436
+            }
+        ]
+    },
+    {
+        "flow_index": 15,
+        "prediction": "4",
+        "top_features": [
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "22009.0",
+                "shap_value": 0.07372797257979957
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.06759188607479873
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.06509714419058736
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.060077734719248675
+            },
+            {
+                "feature": "Bwd Packet Length Mean",
+                "feature_value": "14.0",
+                "shap_value": -0.04908622285939125
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.039426783234593685
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "22.62741699796952",
+                "shap_value": -0.03914064827413877
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.034633080830718393
+            },
+            {
+                "feature": "Bwd Packet Length Std",
+                "feature_value": "19.79898987322333",
+                "shap_value": -0.025294965163617816
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "203058.0",
+                "shap_value": 0.021165475246322174
+            }
+        ]
+    },
+    {
+        "flow_index": 16,
+        "prediction": "4",
+        "top_features": [
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "24263.0",
+                "shap_value": 0.07239758881155459
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.0673072173125016
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.06662854933723614
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.06603621671650498
+            },
+            {
+                "feature": "Bwd Packet Length Mean",
+                "feature_value": "12.5",
+                "shap_value": -0.049485939518167515
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.03425721503029031
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.0335649211770677
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "21.920310216782973",
+                "shap_value": -0.03249918307130331
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "199016.0",
+                "shap_value": 0.026562771142449544
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.02060855227943581
+            }
+        ]
+    },
+    {
+        "flow_index": 17,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "Flow IAT Std",
+                "feature_value": "267888.80030616006",
+                "shap_value": -0.18587205875801266
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.08886508329369235
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.06185715646641969
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.06171117943602558
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "0.0",
+                "shap_value": -0.05217725929889754
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "6.62203854158872",
+                "shap_value": 0.050272869724946934
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.04809157333109061
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.0441404702384791
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "78.05672701041819",
+                "shap_value": -0.042638304598622695
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.038921716768875035
+            }
+        ]
+    },
+    {
+        "flow_index": 18,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "0.8039871329899236",
+                "shap_value": 0.08526005210164576
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.0653983229046076
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.05199144936482904
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.05036805114747474
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "0.0",
+                "shap_value": -0.04980504692395618
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.04804477981756546
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.047025367472476855
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.042305617690317876
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.04136426673127974
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.026499433974085218
+            }
+        ]
+    },
+    {
+        "flow_index": 19,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.08316855420652551
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.08093432524501451
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "0.0",
+                "shap_value": -0.054867188633207685
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.05455032146817557
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.052980091839398516
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "35616.0",
+                "shap_value": -0.05115985945571814
+            },
+            {
+                "feature": "Flow Packets/s",
+                "feature_value": "56.15453728661276",
+                "shap_value": 0.05044403750441585
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.0485092770659187
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.046088143962343384
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.04009317950833781
+            }
+        ]
+    },
+    {
+        "flow_index": 20,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.07897820834423802
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.07694079036568746
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": -0.06667377838905639
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "8.0",
+                "shap_value": -0.061226620083821244
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.058919869277091357
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.04975247539666884
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "25.0",
+                "shap_value": 0.04631398100564464
+            },
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "6971.0",
+                "shap_value": -0.0456475114801873
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.040707275064471735
+            },
+            {
+                "feature": "Dst Port",
+                "feature_value": "443.0",
+                "shap_value": 0.03920237336439738
+            }
+        ]
+    },
+    {
+        "flow_index": 21,
+        "prediction": "4",
+        "top_features": [
+            {
+                "feature": "Flow IAT Min",
+                "feature_value": "18161.0",
+                "shap_value": 0.07136651583502754
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.07059334066270415
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "2.0",
+                "shap_value": 0.0691123096949194
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.0653448027715938
+            },
+            {
+                "feature": "Bwd Packet Length Mean",
+                "feature_value": "12.5",
+                "shap_value": -0.04911102668936119
+            },
+            {
+                "feature": "Subflow Bwd Bytes",
+                "feature_value": "0.0",
+                "shap_value": 0.042293110218323604
+            },
+            {
+                "feature": "Fwd Packet Length Std",
+                "feature_value": "20.50609665440988",
+                "shap_value": -0.03787173892606998
+            },
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": 0.033074378024653114
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "185738.0",
+                "shap_value": 0.025255981172389027
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.024821563223224485
+            }
+        ]
+    },
+    {
+        "flow_index": 22,
+        "prediction": "0",
+        "top_features": [
+            {
+                "feature": "SYN Flag Count",
+                "feature_value": "0.0",
+                "shap_value": -0.12303576581609942
+            },
+            {
+                "feature": "Bwd Header Length",
+                "feature_value": "40.0",
+                "shap_value": -0.10765000566346043
+            },
+            {
+                "feature": "Fwd Packet Length Min",
+                "feature_value": "0.0",
+                "shap_value": 0.07134427952983985
+            },
+            {
+                "feature": "PSH Flag Count",
+                "feature_value": "1.0",
+                "shap_value": -0.060398317504304945
+            },
+            {
+                "feature": "Total Length of Bwd Packet",
+                "feature_value": "0.0",
+                "shap_value": 0.04818523258295056
+            },
+            {
+                "feature": "FIN Flag Count",
+                "feature_value": "1.0",
+                "shap_value": 0.034806938576380855
+            },
+            {
+                "feature": "FWD Init Win Bytes",
+                "feature_value": "501.0",
+                "shap_value": 0.03373526544321863
+            },
+            {
+                "feature": "Bwd Init Win Bytes",
+                "feature_value": "1021.0",
+                "shap_value": 0.03266628182183126
+            },
+            {
+                "feature": "ACK Flag Count",
+                "feature_value": "4.0",
+                "shap_value": 0.026170788973155605
+            },
+            {
+                "feature": "Flow Duration",
+                "feature_value": "1305.0",
+                "shap_value": 0.02302884999231484
+            }
+        ]
+    }
+]

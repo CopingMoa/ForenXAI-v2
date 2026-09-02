@@ -1,0 +1,23 @@
+{
+    "case_id": "CASE_20260831_094107_979790",
+    "pcap_path": "C:/Tools/CICFlowMeter/test/test.pcap",
+    "pcap_sha256": "77cea9de9e4d629575256a03053b4a28b6e6f79815b7ff2b63b084f8f944689a",
+    "model_dataset": "CIDS2018",
+    "flow_extractor": "CICFlowMeter v4",
+    "generated_csv_path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_094107_979790\\CASE_20260831_094107_979790_cicflowmeter_features.csv",
+    "generated_csv_sha256": "a69acc061f1305efafbc473323aadd6deb3f9a0735b60d79ad1664881c791832",
+    "prediction_path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_094107_979790\\CASE_20260831_094107_979790_predictions.json",
+    "prediction_sha256": "e019a331fc8a62e508edec6f9d6d4bcc62a5792b82cd9fc80dee5cba3665ff58",
+    "shap_path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_094107_979790\\CASE_20260831_094107_979790_shap.json",
+    "shap_sha256": "283ad917ae00310b0e883af95d969333418f7519f5bb8695f37d02305d77a276",
+    "report_path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_094107_979790\\CASE_20260831_094107_979790_forensic_report.json",
+    "report_sha256": "821ae30e7d0163ff2ddee83b53a4031ba6959562e33f067653790dbacfd11ace",
+    "total_flows": 23,
+    "benign_flows": 18,
+    "threat_flows": 5,
+    "investigator_decision": "Pending",
+    "investigator_comment": "",
+    "review_timestamp": "2026-08-31T01:47:14.211210+00:00",
+    "cicflowmeter_csv_path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_094107_979790\\test.pcap_Flow.csv",
+    "cicflowmeter_csv_sha256": "d44cec930fa08b55d9c2cfa9afd04e7ccef654fc95a144508cc629c172035e38"
+}

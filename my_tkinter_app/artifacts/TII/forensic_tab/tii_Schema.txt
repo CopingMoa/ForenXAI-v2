@@ -1,0 +1,33 @@
+tii -- DUMMY schema (synthetic data, real pipeline architecture)
+============================================================
+
+Base learners kept (4 of 7 candidates): ['et', 'lgb', 'rf', 'xgb']
+
+Selected feature columns (20 of 36 pool):
+  - Fwd Packet Length Min
+  - Fwd Packet Length Std
+  - Total Bwd packets
+  - Flow Duration
+  - Total Length of Fwd Packet
+  - Bwd Packet Length Max
+  - FIN Flag Count
+  - Dst Port
+  - Bwd Packet Length Std
+  - Fwd Header Length
+  - Protocol
+  - Bwd Packet Length Mean
+  - Total Length of Bwd Packet
+  - Bwd Init Win Bytes
+  - FWD Init Win Bytes
+  - Subflow Bwd Bytes
+  - Bwd Header Length
+  - PSH Flag Count
+  - ACK Flag Count
+  - Flow Packets/s
+
+Classes (5, Benign included, multiclass only):
+  0 -> Benign
+  1 -> Botnet
+  2 -> Bruteforce
+  3 -> DoS
+  4 -> Information Gathering

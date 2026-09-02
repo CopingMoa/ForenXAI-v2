@@ -41,56 +41,29 @@ os.makedirs(
 # CICFLOWMETER V4 CONFIGURATION
 # ============================================================
 
-# Recommended:
-#
-# Set CICFLOWMETER_JAR to the location of your
-# CICFlowMeter-4.0.jar.
-#
-# Example Windows:
-#
-# set CICFLOWMETER_JAR=C:\Tools\CICFlowMeter\CICFlowMeter-4.0.jar
-#
-# Or use an environment variable permanently.
-#
-CICFLOWMETER_JAR = os.environ.get(
-    "CICFLOWMETER_JAR",
-    ""
+# CICFlowMeter v4 installation
+CICFLOWMETER_DIR = r"C:\Tools\CICFlowMeter\installed\CICFlowMeter-4.0"
+
+# Working Windows launcher
+CICFLOWMETER_EXECUTABLE = os.path.join(
+    CICFLOWMETER_DIR,
+    "bin",
+    "cfm.bat"
 )
 
+# Java executable
+CICFLOWMETER_JAVA = "java"
 
-# Java executable.
-#
-# Usually "java" is sufficient if Java is already in PATH.
-#
-CICFLOWMETER_JAVA = os.environ.get(
-    "CICFLOWMETER_JAVA",
-    "java"
+# jNetPcap native libraries
+CICFLOWMETER_NATIVE_DIR = os.path.join(
+    CICFLOWMETER_DIR,
+    "lib",
+    "native"
 )
 
-
-# Optional native jNetPcap directory.
-#
-# CICFlowMeter v4 uses jNetPcap. If the JAR requires the native
-# DLL directory to be explicitly supplied, configure this.
-#
-# Example:
-#
-# C:\Tools\CICFlowMeter\jnetpcap\win\jnetpcap-1.4.r1425
-#
-CICFLOWMETER_NATIVE_DIR = os.environ.get(
-    "CICFLOWMETER_NATIVE_DIR",
-    ""
-)
-
-
-# Optional direct executable.
-#
-# This can be used if you have a CICFlowMeter command wrapper
-# such as CICFlowMeter.bat / cfm.bat.
-#
-# If this is configured, it takes priority over the JAR.
-#
-CICFLOWMETER_EXECUTABLE = os.environ.get(
-    "CICFLOWMETER_EXECUTABLE",
-    ""
+# JAR location
+CICFLOWMETER_JAR = os.path.join(
+    CICFLOWMETER_DIR,
+    "lib",
+    "CICFlowMeter-4.0.jar"
 )

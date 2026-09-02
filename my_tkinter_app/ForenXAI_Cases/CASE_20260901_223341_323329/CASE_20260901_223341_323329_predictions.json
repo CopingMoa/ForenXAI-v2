@@ -1,0 +1,117 @@
+[
+    {
+        "flow_index": 0,
+        "ai_prediction": "0",
+        "threat_probability": 0.08722358461148262
+    },
+    {
+        "flow_index": 1,
+        "ai_prediction": "0",
+        "threat_probability": 0.08684876416199053
+    },
+    {
+        "flow_index": 2,
+        "ai_prediction": "0",
+        "threat_probability": 0.06510317158389117
+    },
+    {
+        "flow_index": 3,
+        "ai_prediction": "0",
+        "threat_probability": 0.06765225370323062
+    },
+    {
+        "flow_index": 4,
+        "ai_prediction": "0",
+        "threat_probability": 0.06312077331911999
+    },
+    {
+        "flow_index": 5,
+        "ai_prediction": "0",
+        "threat_probability": 0.060897615151590444
+    },
+    {
+        "flow_index": 6,
+        "ai_prediction": "0",
+        "threat_probability": 0.06343420141073569
+    },
+    {
+        "flow_index": 7,
+        "ai_prediction": "0",
+        "threat_probability": 0.06300090185953613
+    },
+    {
+        "flow_index": 8,
+        "ai_prediction": "1",
+        "threat_probability": 0.4338821905081077
+    },
+    {
+        "flow_index": 9,
+        "ai_prediction": "0",
+        "threat_probability": 0.1251729394940754
+    },
+    {
+        "flow_index": 10,
+        "ai_prediction": "0",
+        "threat_probability": 0.10092913806994892
+    },
+    {
+        "flow_index": 11,
+        "ai_prediction": "0",
+        "threat_probability": 0.08814406857216889
+    },
+    {
+        "flow_index": 12,
+        "ai_prediction": "0",
+        "threat_probability": 0.15340009362680282
+    },
+    {
+        "flow_index": 13,
+        "ai_prediction": "0",
+        "threat_probability": 0.158458411317677
+    },
+    {
+        "flow_index": 14,
+        "ai_prediction": "4",
+        "threat_probability": 0.14441008762020235
+    },
+    {
+        "flow_index": 15,
+        "ai_prediction": "4",
+        "threat_probability": 0.16491790558979671
+    },
+    {
+        "flow_index": 16,
+        "ai_prediction": "4",
+        "threat_probability": 0.15154542348637162
+    },
+    {
+        "flow_index": 17,
+        "ai_prediction": "0",
+        "threat_probability": 0.24346109673827426
+    },
+    {
+        "flow_index": 18,
+        "ai_prediction": "0",
+        "threat_probability": 0.13878677204882053
+    },
+    {
+        "flow_index": 19,
+        "ai_prediction": "0",
+        "threat_probability": 0.05004668902084342
+    },
+    {
+        "flow_index": 20,
+        "ai_prediction": "0",
+        "threat_probability": 0.05735248890516265
+    },
+    {
+        "flow_index": 21,
+        "ai_prediction": "4",
+        "threat_probability": 0.1623680641676797
+    },
+    {
+        "flow_index": 22,
+        "ai_prediction": "0",
+        "threat_probability": 0.15053112643047148
+    }
+]

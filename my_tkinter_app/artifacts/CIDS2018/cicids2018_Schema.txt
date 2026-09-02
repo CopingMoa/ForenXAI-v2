@@ -1,0 +1,34 @@
+cicids2018 -- DUMMY schema (synthetic data, real pipeline architecture)
+============================================================
+
+Base learners kept (4 of 7 candidates): ['cat', 'et', 'rf', 'xgb']
+
+Selected feature columns (20 of 36 pool):
+  - Average Packet Size
+  - Bwd Header Length
+  - Fwd Packet Length Min
+  - Bwd Init Win Bytes
+  - Bwd Packet Length Mean
+  - Flow Packets/s
+  - SYN Flag Count
+  - Fwd Header Length
+  - FIN Flag Count
+  - Subflow Bwd Bytes
+  - PSH Flag Count
+  - Fwd Packet Length Std
+  - Total Length of Bwd Packet
+  - Dst Port
+  - ACK Flag Count
+  - Flow IAT Std
+  - Bwd Packet Length Std
+  - FWD Init Win Bytes
+  - Flow Duration
+  - Flow IAT Min
+
+Classes (6, Benign included, multiclass only):
+  0 -> Benign
+  1 -> Botnet
+  2 -> Bruteforce
+  3 -> DoS
+  4 -> Infiltration
+  5 -> Web Attack

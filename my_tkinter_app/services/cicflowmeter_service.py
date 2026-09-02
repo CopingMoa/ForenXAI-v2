@@ -104,13 +104,21 @@ def _build_cicflowmeter_command(
             executable
         )[1].lower()
 
+        # --------------------------------------------------------
+        # CICFlowMeter v4 expects an INPUT DIRECTORY
+        # --------------------------------------------------------
+
         if extension in (".bat", ".cmd"):
+
+            input_directory = os.path.dirname(
+                os.path.abspath(pcap_path)
+            )
 
             return [
                 "cmd",
                 "/c",
                 executable,
-                pcap_path,
+                input_directory,
                 output_dir,
             ]
 
@@ -270,6 +278,35 @@ def _find_generated_csv(
 # ============================================================
 # RUN CICFLOWMETER
 # ============================================================
+def _get_cicflowmeter_working_directory(command):
+    """
+    Determine the correct working directory for CICFlowMeter.
+
+    For cfm.bat, the working directory must be the CICFlowMeter
+    bin directory because cfm.bat uses:
+
+        -Djava.library.path=../lib/native
+    """
+
+    if not command:
+        return None
+
+    executable = command[2] if (
+        len(command) >= 3
+        and command[0].lower() == "cmd"
+        and command[1].lower() == "/c"
+    ) else command[0]
+
+    executable_ext = os.path.splitext(
+        executable
+    )[1].lower()
+
+    if executable_ext in (".bat", ".cmd"):
+        return os.path.dirname(
+            os.path.abspath(executable)
+        )
+
+    return None
 
 def run_cicflowmeter(
     pcap_path,
@@ -317,11 +354,15 @@ def run_cicflowmeter(
 
     try:
 
+        working_directory = _get_cicflowmeter_working_directory(
+            command
+        )
+
         result = subprocess.run(
             command,
             capture_output=True,
             text=True,
-            cwd=output_dir,
+            cwd=working_directory,
             check=False,
         )
 
@@ -421,6 +462,204 @@ def load_cicflowmeter_csv(
 
     return df
 
+# ============================================================
+# FEATURE NAME NORMALIZATION
+# ============================================================
+
+def normalize_feature_names(df):
+    """
+    Normalize CICFlowMeter v4 feature names into the feature
+    naming convention used by the frozen ForenXAI model schemas.
+
+    IMPORTANT:
+        This changes column names only.
+        It does NOT change feature values.
+
+    Examples:
+
+        Destination Port
+            -> Dst Port
+
+        Total Backward Packets
+            -> Total Bwd packets
+
+        Total Length of Bwd Packets
+            -> Total Length of Bwd Packet
+
+        Fwd Init Win bytes
+            -> FWD Init Win Bytes
+    """
+
+    df = df.copy()
+
+    # --------------------------------------------------------
+    # Explicit aliases
+    # --------------------------------------------------------
+
+    aliases = {
+
+        # ----------------------------------------------------
+        # Ports / protocol
+        # ----------------------------------------------------
+
+        "Destination Port":
+            "Dst Port",
+
+        "Dst Port":
+            "Dst Port",
+
+        "Protocol":
+            "Protocol",
+
+        # ----------------------------------------------------
+        # Packet counts
+        # ----------------------------------------------------
+
+        "Total Fwd Packets":
+            "Total Fwd Packet",
+
+        "Total Fwd Packet":
+            "Total Fwd Packet",
+
+        "Total Backward Packets":
+            "Total Bwd packets",
+
+        "Total Bwd Packets":
+            "Total Bwd packets",
+
+        "Total Bwd packets":
+            "Total Bwd packets",
+
+        # ----------------------------------------------------
+        # Packet lengths
+        # ----------------------------------------------------
+
+        "Total Length of Fwd Packets":
+            "Total Length of Fwd Packet",
+
+        "Total Length of Fwd Packet":
+            "Total Length of Fwd Packet",
+
+        "Total Length of Bwd Packets":
+            "Total Length of Bwd Packet",
+
+        "Total Length of Bwd Packet":
+            "Total Length of Bwd Packet",
+
+        # ----------------------------------------------------
+        # Initial TCP window
+        # ----------------------------------------------------
+
+        "Fwd Init Win bytes":
+            "FWD Init Win Bytes",
+
+        "Fwd Init Win Bytes":
+            "FWD Init Win Bytes",
+
+        "FWD Init Win Bytes":
+            "FWD Init Win Bytes",
+
+        "Bwd Init Win bytes":
+            "Bwd Init Win Bytes",
+
+        "Bwd Init Win Bytes":
+            "Bwd Init Win Bytes",
+
+        # ----------------------------------------------------
+        # Subflow
+        # ----------------------------------------------------
+
+        "Subflow Bwd Bytes":
+            "Subflow Bwd Bytes",
+
+        # ----------------------------------------------------
+        # Common CICFlowMeter naming variants
+        # ----------------------------------------------------
+
+        "Flow IAT Mean":
+            "Flow IAT Mean",
+
+        "Flow IAT Std":
+            "Flow IAT Std",
+
+        "Flow IAT Max":
+            "Flow IAT Max",
+
+        "Flow IAT Min":
+            "Flow IAT Min",
+
+        "Flow Packets/s":
+            "Flow Packets/s",
+
+        "Average Packet Size":
+            "Average Packet Size",
+
+        "Bwd Header Length":
+            "Bwd Header Length",
+
+        "Fwd Header Length":
+            "Fwd Header Length",
+
+        "Fwd Packet Length Min":
+            "Fwd Packet Length Min",
+
+        "Fwd Packet Length Std":
+            "Fwd Packet Length Std",
+
+        "Bwd Packet Length Mean":
+            "Bwd Packet Length Mean",
+
+        "Bwd Packet Length Max":
+            "Bwd Packet Length Max",
+
+        "Bwd Packet Length Std":
+            "Bwd Packet Length Std",
+
+        "FIN Flag Count":
+            "FIN Flag Count",
+
+        "SYN Flag Count":
+            "SYN Flag Count",
+
+        "PSH Flag Count":
+            "PSH Flag Count",
+
+        "ACK Flag Count":
+            "ACK Flag Count",
+
+        "Flow Duration":
+            "Flow Duration",
+    }
+
+    renamed_columns = {}
+
+    for column in df.columns:
+
+        clean_name = str(
+            column
+        ).strip()
+
+        if clean_name in aliases:
+
+            canonical_name = aliases[
+                clean_name
+            ]
+
+            if clean_name != canonical_name:
+
+                renamed_columns[
+                    clean_name
+                ] = canonical_name
+
+    if renamed_columns:
+
+        df.rename(
+            columns=renamed_columns,
+            inplace=True
+        )
+
+    return df
+
 
 # ============================================================
 # DATA CLEANING
@@ -428,15 +667,15 @@ def load_cicflowmeter_csv(
 
 def clean_features(df):
     """
-    Generic cleaning for CICFlowMeter feature data.
+    Clean and normalize CICFlowMeter v4 feature data.
 
-    This intentionally does NOT rename features.
-
-    The trained model's feature_names_in_ is the authoritative
-    inference schema.
+    Feature names are normalized into the naming convention
+    used by the frozen ForenXAI model schemas.
     """
 
-    df = df.copy()
+    df = normalize_feature_names(
+        df
+    )
 
     # --------------------------------------------------------
     # Remove accidental whitespace from column names

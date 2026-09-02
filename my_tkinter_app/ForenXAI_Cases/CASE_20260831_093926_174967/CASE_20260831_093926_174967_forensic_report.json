@@ -1,0 +1,52 @@
+{
+    "case_information": {
+        "case_id": "CASE_20260831_093926_174967",
+        "analysis_timestamp_utc": "2026-08-31T01:39:38.820237+00:00",
+        "pcap_filename": "test.pcap",
+        "pcap_path": "C:/Tools/CICFlowMeter/test/test.pcap",
+        "pcap_sha256": "77cea9de9e4d629575256a03053b4a28b6e6f79815b7ff2b63b084f8f944689a"
+    },
+    "analysis_configuration": {
+        "model_dataset": "CIDS2018",
+        "flow_extractor": "CICFlowMeter v4"
+    },
+    "analysis_pipeline": [
+        "PCAP / PCAPNG",
+        "SHA-256 Integrity Check",
+        "CICFlowMeter v4 Feature Extraction",
+        "CICFlowMeter Flow CSV / DataFrame Generation",
+        "Feature Name Normalization",
+        "Schema Validation",
+        "Data Cleaning",
+        "Required Feature Selection",
+        "ML Model Prediction",
+        "SHAP Explanation",
+        "Human Investigator Review",
+        "Forensic Report and Audit Log"
+    ],
+    "artifacts": {
+        "generated_csv": {
+            "path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_093926_174967\\CASE_20260831_093926_174967_cicflowmeter_features.csv",
+            "sha256": "a69acc061f1305efafbc473323aadd6deb3f9a0735b60d79ad1664881c791832"
+        },
+        "predictions": {
+            "path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_093926_174967\\CASE_20260831_093926_174967_predictions.json",
+            "sha256": "8bd36fbfaafe9c27c8e14243b83c409464e44b3875d468667bb4441a047c13d7"
+        },
+        "shap_explanation": {
+            "path": "C:\\Users\\caynn\\Downloads\\ForenXAI-v2\\my_tkinter_app\\ForenXAI_Cases\\CASE_20260831_093926_174967\\CASE_20260831_093926_174967_shap.json",
+            "sha256": "38654a3722f566383e6507778f85a953a8022bf98604ddeed20ba2c4b03a5e16"
+        }
+    },
+    "ai_results": {
+        "total_flows": 23,
+        "benign_flows": 18,
+        "threat_flows": 5,
+        "note": "AI predictions are analytical findings and do not constitute confirmed ground truth."
+    },
+    "human_review": {
+        "decision": "Pending",
+        "comment": "",
+        "review_timestamp": null
+    }
+}

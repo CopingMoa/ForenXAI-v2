@@ -1,0 +1,452 @@
+# ============================================================
+# FORENXAI - PYTHON REQUIREMENTS + SETUP GUIDE
+# ============================================================
+#
+# IMPORTANT:
+# This file installs PYTHON dependencies only.
+#
+# ForenXAI also requires two external programs that pip CANNOT
+# install:
+#
+#   1. Java JDK 8
+#   2. CICFlowMeter v4
+#
+# Follow the setup guide below from TOP to BOTTOM after cloning
+# the repository.
+#
+# ============================================================
+# STEP 1 - CLONE THE REPOSITORY
+# ============================================================
+#
+# Open PowerShell and run:
+#
+#   git clone <YOUR-GITHUB-REPOSITORY-URL>
+#   cd ForenXAI-v2
+#   cd my_tkinter_app
+#
+# If you already cloned the repository:
+#
+#   cd ForenXAI-v2
+#   git pull
+#   cd my_tkinter_app
+#
+#
+# ============================================================
+# STEP 2 - CHECK PYTHON
+# ============================================================
+#
+# ForenXAI is a Python desktop application.
+#
+# Check Python:
+#
+#   python --version
+#
+# Check pip:
+#
+#   pip --version
+#
+# If both commands work, continue.
+#
+#
+# ============================================================
+# STEP 3 - CREATE A VIRTUAL ENVIRONMENT (RECOMMENDED)
+# ============================================================
+#
+# From the "my_tkinter_app" directory:
+#
+#   python -m venv .venv
+#
+# Activate it:
+#
+#   .\.venv\Scripts\Activate.ps1
+#
+# If PowerShell blocks activation, run PowerShell as needed or
+# use the following instead:
+#
+#   .\.venv\Scripts\activate.bat
+#
+# After activation, the terminal should show something similar
+# to:
+#
+#   (.venv) PS C:\...\my_tkinter_app>
+#
+#
+# ============================================================
+# STEP 4 - UPGRADE PIP
+# ============================================================
+#
+# Run:
+#
+#   python -m pip install --upgrade pip
+#
+#
+# ============================================================
+# STEP 5 - INSTALL THIS FILE
+# ============================================================
+#
+# Run:
+#
+#   pip install -r requirements.txt
+#
+# This installs the Python packages required by the current
+# ForenXAI application.
+#
+#
+# ============================================================
+# STEP 6 - VERIFY PYTHON PACKAGES
+# ============================================================
+#
+# Run these commands one at a time:
+#
+#   python -c "import numpy; print('NumPy OK:', numpy.__version__)"
+#   python -c "import pandas; print('Pandas OK:', pandas.__version__)"
+#   python -c "import sklearn; print('scikit-learn OK:', sklearn.__version__)"
+#   python -c "import joblib; print('joblib OK')"
+#   python -c "import shap; print('SHAP OK:', shap.__version__)"
+#   python -c "import matplotlib; print('Matplotlib OK:', matplotlib.__version__)"
+#   python -c "import tkinterdnd2; print('tkinterdnd2 OK')"
+#   python -c "import xgboost; print('XGBoost OK:', xgboost.__version__)"
+#   python -c "import catboost; print('CatBoost OK:', catboost.__version__)"
+#
+# If all commands print OK, the Python environment is ready.
+#
+#
+# ============================================================
+# STEP 7 - CHECK TKINTER
+# ============================================================
+#
+# Tkinter normally comes with the Windows Python installation.
+# It is NOT installed through pip.
+#
+# Test it:
+#
+#   python -c "import tkinter; print('Tkinter OK')"
+#
+# If this fails, repair/reinstall Python with Tcl/Tk support.
+#
+#
+# ============================================================
+# STEP 8 - INSTALL JAVA JDK 8
+# ============================================================
+#
+# CICFlowMeter v4 requires Java.
+#
+# Install a JDK 8 installation.
+#
+# After installation, close and reopen PowerShell, then check:
+#
+#   java -version
+#   javac -version
+#
+# Both should report Java 8 / JDK 8.
+#
+# IMPORTANT:
+# JDK is required, not only a JRE.
+#
+#
+# ============================================================
+# STEP 9 - INSTALL CICFLOWMETER v4
+# ============================================================
+#
+# Use the same CICFlowMeter v4 build that was tested with
+# ForenXAI.
+#
+# Recommended Windows location:
+#
+#   C:\Tools\CICFlowMeter\
+#
+# The important executable should be:
+#
+#   C:\Tools\CICFlowMeter\installed\CICFlowMeter-4.0\bin\cfm.bat
+#
+# Do NOT place CICFlowMeter inside the ForenXAI repository.
+#
+#
+# ============================================================
+# STEP 10 - VERIFY CICFLOWMETER FILES
+# ============================================================
+#
+# Check the executable:
+#
+#   dir C:\Tools\CICFlowMeter\installed\CICFlowMeter-4.0\bin\cfm.bat
+#
+# Check the native jNetPcap libraries:
+#
+#   dir C:\Tools\CICFlowMeter\installed\CICFlowMeter-4.0\lib\native
+#
+# The native directory should contain the Windows DLL files,
+# including jnetpcap.dll.
+#
+#
+# ============================================================
+# STEP 11 - CREATE CICFLOWMETER TEST FOLDERS
+# ============================================================
+#
+# Run:
+#
+#   New-Item -ItemType Directory -Force C:\Tools\CICFlowMeter\test
+#   New-Item -ItemType Directory -Force C:\Tools\CICFlowMeter\test-output
+#
+# Put a TEST .pcap file inside:
+#
+#   C:\Tools\CICFlowMeter\test\test.pcap
+#
+# IMPORTANT:
+# The currently tested CICFlowMeter v4 command expects the
+# INPUT DIRECTORY and OUTPUT DIRECTORY:
+#
+#   .\installed\CICFlowMeter-4.0\bin\cfm.bat "C:\Tools\CICFlowMeter\test" "C:\Tools\CICFlowMeter\test-output"
+#
+# Do NOT test using only the individual .pcap path.
+#
+#
+# ============================================================
+# STEP 12 - VERIFY CICFLOWMETER GENERATES A CSV
+# ============================================================
+#
+# After running CICFlowMeter, check:
+#
+#   dir C:\Tools\CICFlowMeter\test-output
+#
+# You should see something similar to:
+#
+#   test.pcap_Flow.csv
+#
+# If the CSV is NOT generated, fix CICFlowMeter first.
+# Do not continue to ForenXAI until this standalone test works.
+#
+#
+# ============================================================
+# STEP 13 - CONFIGURE FORENXAI -> CICFLOWMETER
+# ============================================================
+#
+# ForenXAI's services/config.py supports:
+#
+#   CICFLOWMETER_EXECUTABLE
+#   CICFLOWMETER_JAR
+#   CICFLOWMETER_JAVA
+#   CICFLOWMETER_NATIVE_DIR
+#
+# The current working setup uses the CICFlowMeter BAT wrapper.
+#
+# Set the environment variable:
+#
+#   $env:CICFLOWMETER_EXECUTABLE="C:\Tools\CICFlowMeter\installed\CICFlowMeter-4.0\bin\cfm.bat"
+#
+# Verify it:
+#
+#   echo $env:CICFLOWMETER_EXECUTABLE
+#
+# IMPORTANT:
+# This environment variable only applies to the current
+# PowerShell window.
+#
+# If you want it to persist for future PowerShell sessions,
+# use Windows Environment Variables or set it permanently.
+#
+#
+# ============================================================
+# STEP 14 - VERIFY FORENXAI MODEL ARTIFACTS
+# ============================================================
+#
+# The current application discovers models from:
+#
+#   my_tkinter_app\artifacts\
+#
+# Expected structure:
+#
+#   artifacts/
+#   ├── CIDS2018/
+#   │   ├── forensic_tab/
+#   │   │   ├── model.joblib
+#   │   │   └── frozen_feature_schema_l2.json
+#   │   └── xai_tab/
+#   │       └── kernel_shap_background_l2.joblib
+#   │
+#   └── TII/
+#       ├── forensic_tab/
+#       │   ├── model.joblib
+#       │   └── frozen_feature_schema_l2.json
+#       └── xai_tab/
+#           └── kernel_shap_background_l2.joblib
+#
+# These files must exist in the cloned repository if they are
+# tracked by Git. If the repository intentionally excludes model
+# files, obtain the artifacts from the team member responsible
+# for the trained models and place them in the structure above.
+#
+#
+# ============================================================
+# STEP 15 - VERIFY MODEL DISCOVERY
+# ============================================================
+#
+# From:
+#
+#   my_tkinter_app
+#
+# run:
+#
+#   python -c "from services.model_service import discover_models; import json; print(json.dumps(discover_models(), indent=2))"
+#
+# You should see the available datasets, for example:
+#
+#   CIDS2018
+#   TII
+#
+#
+# ============================================================
+# STEP 16 - VERIFY THE CIDS2018 SCHEMA
+# ============================================================
+#
+# Run:
+#
+#   python -c "from services.model_service import get_expected_features; f=get_expected_features('CIDS2018'); print('CIDS2018 features:', len(f)); print('\\n'.join(f))"
+#
+# The current CIDS2018 frozen schema contains:
+#
+#   20 features
+#
+#
+# ============================================================
+# STEP 17 - RUN FORENXAI
+# ============================================================
+#
+# Make sure the virtual environment is active:
+#
+#   .\.venv\Scripts\Activate.ps1
+#
+# Make sure CICFlowMeter is configured in the current terminal:
+#
+#   echo $env:CICFLOWMETER_EXECUTABLE
+#
+# Then start ForenXAI:
+#
+#   python main.py
+#
+#
+# ============================================================
+# STEP 18 - TEST A PCAP
+# ============================================================
+#
+# In the ForenXAI application:
+#
+#   1. Select the CIDS2018 model.
+#   2. Select/drop a .pcap file.
+#   3. Click "Analyze PCAP".
+#   4. Wait for all 9 stages.
+#
+# A successful run should progress through:
+#
+#   Stage 1/9 - SHA-256
+#   Stage 2/9 - CICFlowMeter v4
+#   Stage 3/9 - Cleaning/normalization
+#   Stage 4/9 - Schema validation
+#   Stage 5/9 - Feature selection
+#   Stage 6/9 - Numeric validation
+#   Stage 7/9 - ML inference
+#   Stage 8/9 - SHAP
+#   Stage 9/9 - Forensic report
+#
+#
+# ============================================================
+# STEP 19 - CHECK THE FORENSIC CASE OUTPUT
+# ============================================================
+#
+# ForenXAI automatically creates:
+#
+#   my_tkinter_app\ForenXAI_Cases\
+#
+# Each analysis creates a separate CASE_... folder containing
+# the generated forensic artifacts.
+#
+#
+# ============================================================
+# TROUBLESHOOTING
+# ============================================================
+#
+# PROBLEM: "python is not recognized"
+# FIX:
+#   Reinstall Python and enable "Add Python to PATH", or use
+#   the Python launcher if available.
+#
+#
+# PROBLEM: "java is not recognized"
+# FIX:
+#   Install JDK 8 and make sure Java is available in PATH.
+#
+#
+# PROBLEM: "javac is not recognized"
+# FIX:
+#   Install a JDK, not just a JRE, and make sure its bin folder
+#   is available in PATH.
+#
+#
+# PROBLEM: CICFlowMeter cannot find Java
+# FIX:
+#   Check:
+#
+#       java -version
+#
+#   Then check the CICFlowMeter installation and JAVA_HOME.
+#
+#
+# PROBLEM: CICFlowMeter generates no CSV
+# FIX:
+#   Test CICFlowMeter separately using:
+#
+#       cfm.bat <input-directory> <output-directory>
+#
+#   Make sure the input directory contains a .pcap file.
+#
+#
+# PROBLEM: "CICFlowMeter executable was configured but could
+# not be found"
+# FIX:
+#   Check:
+#
+#       echo $env:CICFLOWMETER_EXECUTABLE
+#
+#   and verify that the cfm.bat file exists at that path.
+#
+#
+# PROBLEM: "Model was not found"
+# FIX:
+#   Verify the artifacts/ directory and run the
+#   discover_models() test from STEP 15.
+#
+#
+# PROBLEM: Model loading fails
+# FIX:
+#   The .joblib model can depend on the Python/scikit-learn/
+#   XGBoost/CatBoost versions used when it was trained.
+#   Do not immediately retrain or replace the model.
+#   Report the exact error to the team first so the training
+#   environment can be matched.
+#
+#
+# PROBLEM: SHAP fails
+# FIX:
+#   First verify:
+#
+#       python -c "import shap; print(shap.__version__)"
+#
+#   The current tested environment uses SHAP 0.52.0.
+#
+#
+# ============================================================
+# PYTHON DEPENDENCIES
+# ============================================================
+#
+# These are the packages imported by the current ForenXAI
+# application and/or required to load the trained ensemble
+# model artifacts.
+#
+numpy==2.3.3
+pandas==2.3.2
+scikit-learn==1.9.0
+joblib==1.5.2
+matplotlib==3.10.6
+shap==0.52.0
+tkinterdnd2==0.4.3
+xgboost==3.0.5
+catboost==1.2.8
