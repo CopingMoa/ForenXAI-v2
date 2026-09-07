@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 my_tkinter_app/test_xai_panels_report.txt
+my_tkinter_app/panel_*.png
+my_tkinter_app/screen.png
+my_tkinter_app/app_run.log
