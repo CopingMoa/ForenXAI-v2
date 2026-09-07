@@ -29,6 +29,8 @@ import numpy as np
 import pandas as pd
 
 from services.config import BASE_DIR
+from services.flow_intake import (IntakeError, read_flows, to_matrix,
+                                  describe)
 
 
 # ============================================================
@@ -190,38 +192,19 @@ def bundle_available():
 
 def prepare(flows, bundle):
     """
-    CICFlowMeter rows -> the scaled matrix the model expects.
+    A validated flow table -> the scaled matrix the model expects.
 
-    Infinities appear in the rate columns whenever flow duration is zero.
-    They are filled with 0 rather than dropped, because at inference a
-    forensic tool cannot discard flows an investigator may need to see.
+    Column presence, coercion limits and size are checked by
+    services/flow_intake.py before this is reached. Returns (X, report) so
+    the summary panel can report what had to be coerced.
     """
 
-    missing = [
-        f for f in bundle["features"]
-        if f not in flows.columns
-    ]
+    raw, report = to_matrix(flows, bundle["features"])
 
-    if missing:
-        raise ValueError(
-            f"The flow table is missing {len(missing)} feature(s) the model "
-            f"needs, starting with: {missing[:5]}. Check the CICFlowMeter "
-            f"column names."
-        )
-
-    X = flows[bundle["features"]].apply(
-        pd.to_numeric,
-        errors="coerce"
-    )
-
-    X = X.replace(
-        [np.inf, -np.inf],
-        np.nan
-    ).fillna(0.0)
-
-    return bundle["scaler"].transform(
-        X.astype("float32").values
-    )
+    # transform, never fit: the scaler carries the training distribution and
+    # refitting it on an uploaded capture would silently redefine what every
+    # feature value means.
+    return bundle["scaler"].transform(raw), report
 
 
 def classify(flows, bundle):
@@ -232,13 +215,13 @@ def classify(flows, bundle):
     5,168 microseconds one at a time.
     """
 
-    X = prepare(flows, bundle)
+    X, report = prepare(flows, bundle)
 
     proba = bundle["model"].predict_proba(X)
     k = proba.argmax(1)
     names = bundle["encoder"].inverse_transform(k)
 
-    return X, proba, k, names
+    return X, proba, k, names, report
 
 
 # ============================================================
@@ -669,15 +652,26 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0):
 
     try:
         bundle = load_bundle()
-        flows = pd.read_csv(csv_path, low_memory=False)
-        flows.columns = [c.strip() for c in flows.columns]
 
-        X, proba, k, names = classify(flows, bundle)
+        # Every check on an uploaded file lives in flow_intake, and every
+        # refusal carries a message fit for a dialog box. A file that fails
+        # here must not reach the model: it will return confident
+        # predictions from a table whose columns mean something else.
+        flows, intake_report = read_flows(csv_path, bundle["features"])
 
+        X, proba, k, names, matrix_report = classify(flows, bundle)
+
+    except IntakeError as e:
+        return {"error": str(e), "kind": "intake"}
     except Exception as e:
-        return {"error": f"{type(e).__name__}: {e}"}
+        return {"error": f"{type(e).__name__}: {e}", "kind": "internal"}
 
     summary = summarise_capture(flows, names, proba, source_name)
+
+    # Put the intake facts in front of the investigator rather than in a log:
+    # a truncated file or a high coercion rate changes what the numbers mean.
+    summary["intake"] = {**intake_report, **matrix_report}
+    summary["lines"] = describe(intake_report, matrix_report) + summary["lines"][1:]
     findings = aggregate(names, proba, k, bundle)
 
     if not findings:
