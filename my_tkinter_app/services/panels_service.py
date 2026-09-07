@@ -122,6 +122,57 @@ LOW_CONFIDENCE_CLASSES = {
 _BUNDLE = None
 
 
+def check_manifest():
+    """
+    Compare every bundle file against the fingerprint script 13 recorded.
+
+    A .pkl is not data -- it is a list of instructions Python follows, so
+    joblib.load() on a swapped file runs whatever that file says. The
+    manifest already carries a SHA-256 per file, so checking it before
+    loading makes a silent substitution impossible.
+
+    This is a tamper-EVIDENT seal, not a lock: anyone who can replace a .pkl
+    can also edit manifest.json to match. Real protection needs a signature
+    with a key that does not live in the same folder. What this does buy is
+    real -- a corrupt copy, a half-finished download, a wrong-version file
+    and a casual swap all fail loudly instead of loading.
+
+    Returns a list of problems; empty means everything matched.
+    """
+
+    import hashlib
+
+    manifest_path = os.path.join(BUNDLE_DIR, "manifest.json")
+
+    if not os.path.isfile(manifest_path):
+        return ["manifest.json is missing, so the bundle cannot be verified"]
+
+    try:
+        with open(manifest_path, encoding="utf-8") as fh:
+            recorded = json.load(fh).get("files", {})
+    except (json.JSONDecodeError, OSError) as e:
+        return [f"manifest.json could not be read: {e}"]
+
+    problems = []
+
+    for name, meta in recorded.items():
+        path = os.path.join(BUNDLE_DIR, name)
+
+        if not os.path.isfile(path):
+            problems.append(f"{name} is missing")
+            continue
+
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for block in iter(lambda: fh.read(1 << 20), b""):
+                digest.update(block)
+
+        if digest.hexdigest()[:16] != meta.get("sha256_16"):
+            problems.append(f"{name} does not match the manifest")
+
+    return problems
+
+
 def load_bundle():
     """
     Load the model, scaler, feature list, label encoder and SHAP explainer.
@@ -135,6 +186,18 @@ def load_bundle():
 
     if _BUNDLE is not None:
         return _BUNDLE
+
+    # Verified before the first joblib.load, because after it the file has
+    # already had its say.
+    problems = check_manifest()
+    if problems:
+        raise IntakeError(
+            "Refusing to load the model bundle.\n\n"
+            + "\n".join(f"  - {p}" for p in problems)
+            + "\n\nA .pkl file is executed when it is loaded, so a modified "
+              "bundle is not analysed -- it is run. Reinstall "
+              "models/forenxai/ from a known-good copy."
+        )
 
     import joblib
     import shap
@@ -183,7 +246,13 @@ def bundle_available():
     except ImportError as e:
         return False, f"missing package: {e.name}"
 
-    return True, "bundle ready"
+    # Reported here as well as raised in load_bundle, so the tab can show a
+    # clear message before any analysis is attempted.
+    problems = check_manifest()
+    if problems:
+        return False, "bundle does not match its manifest: " + "; ".join(problems)
+
+    return True, "bundle verified"
 
 
 # ============================================================
