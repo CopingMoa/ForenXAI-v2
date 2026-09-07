@@ -358,10 +358,12 @@ class XaiTab:
     def _render_findings(self, findings):
         self.lst_findings.delete(0, tk.END)
         for f in findings:
+            tgt = (f.get("endpoints", {}).get("targets") or [{}])[0]
+            suffix = f"  {tgt['address']}" if tgt.get("address") else ""
             self.lst_findings.insert(
                 tk.END,
                 f"{f['class']:<15}{f['flow_count']:>5}  "
-                f"{f['confidence_mean']:.2f}"
+                f"{f['confidence_mean']:.2f}{suffix}"
             )
         if findings:
             self.lst_findings.selection_set(0)
@@ -373,6 +375,14 @@ class XaiTab:
             (f"{finding['flow_count']:,} flows, mean confidence "
              f"{finding['confidence_mean']:.2f}\n", None),
         ]
+
+        tgt = (finding.get("endpoints", {}).get("targets") or [{}])[0]
+        src = (finding.get("endpoints", {}).get("sources") or [{}])[0]
+        if tgt.get("address"):
+            blocks.append((
+                f"Mainly against {tgt['address']} ({tgt['flows']:,} flows)"
+                + (f", from {src['address']}" if src.get("address") else "")
+                + ".\n", None))
 
         if finding["dominant_runner_up_share"] > 0.25:
             blocks.append((

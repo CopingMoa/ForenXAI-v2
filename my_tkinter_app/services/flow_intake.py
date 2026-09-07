@@ -286,3 +286,104 @@ def describe(report, matrix_report):
             f"has no duration)."
         )
     return lines
+
+
+# ============================================================
+# IDENTITY COLUMNS
+#
+# CICFlowMeter writes 79 columns; the model uses 74. The five it does not
+# use are exactly the ones a forensic summary needs -- who talked to whom,
+# and when. They are correctly excluded from the MODEL (an address is an
+# identifier, not behaviour, and training on it memorises the lab) but
+# throwing them away in the interface loses the first question an
+# investigator asks.
+#
+# Every one is optional. A flow table without them still analyses; the
+# panel simply reports less.
+# ============================================================
+
+IDENTITY = ["Src IP", "Src Port", "Dst IP", "Dst Port", "Protocol",
+            "Timestamp"]
+
+
+def identity_columns(df):
+    """Which identity columns this file actually carries."""
+    return [c for c in IDENTITY if c in df.columns]
+
+
+def capture_window(df):
+    """
+    Real capture span from the Timestamp column.
+
+    This is what "how long was the capture" means. Summing flow durations
+    does NOT answer it -- flows overlap in time, so the sum counts the same
+    seconds many times over and reads as days for a capture of minutes.
+
+    Returns None when there is no usable Timestamp.
+    """
+    if "Timestamp" not in df.columns:
+        return None
+
+    # CICFlowMeter v4 writes dd/mm/yyyy hh:mm:ss AM/PM. Parsing that as
+    # month-first silently relabels 08/09 as 9 August instead of 8 September
+    # -- the span stays roughly right, the DATE in the report does not, and a
+    # wrong date in a forensic report is worse than no date.
+    ts = pd.to_datetime(df["Timestamp"], errors="coerce",
+                        format="mixed", dayfirst=True)
+
+    # Fall back to month-first only if day-first parsed almost nothing, so a
+    # US-formatted export is still read rather than reported as unusable.
+    if ts.notna().sum() < 0.5 * len(df):
+        alt = pd.to_datetime(df["Timestamp"], errors="coerce",
+                             format="mixed", dayfirst=False)
+        if alt.notna().sum() > ts.notna().sum():
+            ts = alt
+
+    ts = ts.dropna()
+
+    if ts.empty:
+        return None
+
+    first, last = ts.min(), ts.max()
+    seconds = float((last - first).total_seconds())
+
+    return {
+        "first_flow": first.isoformat(sep=" ", timespec="seconds"),
+        "last_flow": last.isoformat(sep=" ", timespec="seconds"),
+        "span_seconds": round(seconds, 1),
+        "span_human": _human_span(seconds),
+        "unparsed_timestamps": int(len(df) - len(ts)),
+    }
+
+
+def _human_span(seconds):
+    if seconds < 60:
+        return f"{seconds:.0f} s"
+    if seconds < 3600:
+        return f"{int(seconds // 60)} min {int(seconds % 60)} s"
+    return f"{int(seconds // 3600)} h {int((seconds % 3600) // 60)} min"
+
+
+def endpoints(df, mask=None, top=5):
+    """
+    Busiest sources and targets, optionally within one finding.
+
+    `mask` is a boolean array selecting the flows of a single class, so the
+    same function answers "who is in this capture" and "who is in this
+    finding".
+    """
+    sub = df if mask is None else df[mask]
+    out = {}
+
+    for role, column in (("sources", "Src IP"), ("targets", "Dst IP")):
+        if column in sub.columns and len(sub):
+            counts = sub[column].astype(str).value_counts().head(top)
+            out[role] = [{"address": a, "flows": int(n)}
+                         for a, n in counts.items()]
+
+    if "Dst Port" in sub.columns and len(sub):
+        counts = pd.to_numeric(sub["Dst Port"], errors="coerce")                    .dropna().astype(int).value_counts().head(top)
+        out["ports"] = [{"port": int(p), "flows": int(n)}
+                        for p, n in counts.items()]
+
+    return out

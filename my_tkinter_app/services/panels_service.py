@@ -30,7 +30,8 @@ import pandas as pd
 
 from services.config import BASE_DIR
 from services.flow_intake import (IntakeError, read_flows, to_matrix,
-                                  describe)
+                                  describe, identity_columns,
+                                  capture_window, endpoints)
 
 
 # ============================================================
@@ -330,6 +331,21 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
         "class_counts": dict(counts.most_common()),
     }
 
+    # WHO and WHEN. CICFlowMeter writes 79 columns; the model uses 74. The
+    # five it does not use are exactly what a forensic summary needs, and
+    # every one is optional -- a table without them still analyses.
+    facts["identity_columns"] = identity_columns(flows)
+
+    window = capture_window(flows)
+    if window:
+        # The REAL span, from first flow to last. Distinct from the sum of
+        # flow durations below, which counts overlapping seconds repeatedly.
+        facts["capture_window"] = window
+
+    ends = endpoints(flows)
+    if ends:
+        facts["endpoints"] = ends
+
     # Flow-duration facts, only where the extractor supplied the column.
     if "Flow Duration" in flows.columns:
 
@@ -363,6 +379,22 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
         f"{facts['low_confidence_flows']:,} flows below 0.60.",
     ]
 
+    w = facts.get("capture_window")
+    if w:
+        lines.insert(1, f"Capture ran {w['first_flow']} to {w['last_flow']} "
+                        f"({w['span_human']}).")
+    else:
+        lines.append("No Timestamp column, so the capture window is unknown. "
+                     "Flow durations below are a sum, not a span.")
+
+    e = facts.get("endpoints", {})
+    if e.get("targets"):
+        lines.append("Busiest targets: " + ", ".join(
+            f"{t['address']} ({t['flows']:,})" for t in e["targets"][:3]))
+    if e.get("sources"):
+        lines.append("Busiest sources: " + ", ".join(
+            f"{t['address']} ({t['flows']:,})" for t in e["sources"][:3]))
+
     if facts.get("flow_timeout_warning"):
         lines.append("")
         lines.append(
@@ -384,7 +416,7 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
 # AGGREGATION -- one finding per class, not one per flow
 # ============================================================
 
-def aggregate(names, proba, k, bundle):
+def aggregate(names, proba, k, bundle, flows=None):
     """
     Group flows into findings.
 
@@ -441,6 +473,15 @@ def aggregate(names, proba, k, bundle):
 
             "reliability_f1": LOW_CONFIDENCE_CLASSES.get(cls),
         })
+
+        # Which hosts this finding actually involves. "133 Slowloris flows"
+        # is not actionable; "133 Slowloris flows against 10.0.0.5" is.
+        if flows is not None:
+            sel = np.zeros(len(names), dtype=bool)
+            sel[mask] = True
+            who = endpoints(flows, sel, top=3)
+            if who:
+                findings[-1]["endpoints"] = who
 
     findings.sort(key=lambda f: -f["flow_count"])
 
@@ -741,7 +782,7 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0):
     # a truncated file or a high coercion rate changes what the numbers mean.
     summary["intake"] = {**intake_report, **matrix_report}
     summary["lines"] = describe(intake_report, matrix_report) + summary["lines"][1:]
-    findings = aggregate(names, proba, k, bundle)
+    findings = aggregate(names, proba, k, bundle, flows)
 
     if not findings:
         return {
