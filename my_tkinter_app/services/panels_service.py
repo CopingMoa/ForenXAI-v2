@@ -8,7 +8,7 @@ Nothing here builds widgets. Each function returns a dictionary and
 views/xai_tab.py renders it, so the panels can be tested without a
 display and the rendering can change without touching the analysis.
 
-    1  summarise_capture()   what is in this PCAP
+    1  summarise_capture()   what the flow table holds
     2  explain_detections()  why the model decided what it did
     3  recommend()           what to do, quoting retrieved documentation
 
@@ -295,7 +295,7 @@ def classify(flows, bundle):
 
 
 # ============================================================
-# PANEL 1 -- CAPTURE SUMMARY
+# PANEL 1 -- FLOW SUMMARY
 # ============================================================
 
 def summarise_capture(flows, names, proba, source_name="capture.pcap"):
@@ -406,7 +406,7 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
         )
 
     return {
-        "panel": "capture_summary",
+        "panel": "flow_summary",
         "facts": facts,
         "lines": lines,
     }
@@ -600,13 +600,17 @@ def _load_glossary():
 # PANEL 3 -- RECOMMENDATIONS
 # ============================================================
 
-def recommend(capture_facts, finding, detections=None):
+def recommend(finding, detections=None):
     """
     What to do about one finding, quoting the retrieved documentation.
 
     Takes the aggregate, not a single row, so the advice can account for
     scale: three PortScan flows and thirty thousand are the same class and a
     different situation.
+
+    Scale comes from the finding itself (flow_count, share_of_capture), not
+    from a separate capture summary -- one source for a number the advice
+    depends on.
 
     [UI CONNECTION: finding <- the selected row of the findings table]
     [UI CONNECTION: returns -> XaiTab._render_recommend().
@@ -805,6 +809,5 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0):
         "findings": findings,
         "selected": finding,
         "shap": shap_panel,
-        "recommend": recommend(summary["facts"], finding,
-                               shap_panel["detections"]),
+        "recommend": recommend(finding, shap_panel["detections"]),
     }

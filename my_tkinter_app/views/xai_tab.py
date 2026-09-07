@@ -4,7 +4,7 @@ xai_tab.py
 
 Tab 2 -- the three explanation panels, plus the investigator review.
 
-    1  Capture summary   what is in this PCAP
+    1  Flow summary      what the flow table holds, and who talked to whom
     2  Why this decision SHAP attributions for the selected finding
     3  Recommendations   what to do, quoting retrieved documentation
 
@@ -90,7 +90,7 @@ class XaiTab:
         self.panel_nb = ttk.Notebook(self.frame)
         self.panel_nb.pack(fill="both", expand=True, padx=15, pady=(0, 5))
 
-        self.txt_summary = self._add_panel("1 - Capture Summary")
+        self.txt_summary = self._add_panel("1 - Flow Summary")
         self._build_shap_panel()
         self.txt_recommend = self._add_panel("3 - Recommendations")
 
@@ -329,7 +329,7 @@ class XaiTab:
     def _render_summary(self, summary):
         """[UI CONNECTION: facts -> stat lines, lines -> prose]"""
         f = summary["facts"]
-        blocks = [("CAPTURE SUMMARY\n\n", "h")]
+        blocks = [("FLOW SUMMARY\n\n", "h")]
 
         for line in summary["lines"]:
             if line.startswith("WARNING"):
