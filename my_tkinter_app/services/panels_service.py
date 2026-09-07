@@ -63,24 +63,43 @@ KNOWLEDGE_DIR = os.path.join(
 # REPLACE THESE PATHS WITH YOUR OWN DOCUMENTS.
 # Only denial_of_service.md is present as a sample; the rest are declared
 # so the panel reports what is missing instead of inventing guidance.
+#
+# MITRE ATT&CK IDs were verified against attack.mitre.org. Every ID below is
+# real and correctly named. Three classes have no honest mapping and carry an
+# empty list rather than a plausible-looking wrong one:
+#
+#   Evasion   TRUSTLab means network-IDS evasion -- overlapping IP
+#             fragmentation, TTL creeping. T1205 Traffic Signaling is port
+#             knocking, a different thing; T1027 explicitly does not cover
+#             packet-level evasion. Enterprise ATT&CK has no technique for
+#             it, so none is claimed.
+#   TLSSSL    TRUSTLab means Heartbleed, POODLE, BEAST, certificate
+#             anomalies -- exploiting TLS weaknesses. T1573 Encrypted
+#             Channel is the opposite: an adversary USING encryption to hide
+#             C2. T1600 Weaken Encryption is device-level, not protocol.
+#             Heartbleed alone would be T1190/T1210; the class is broader
+#             than any single technique.
+#   Benign    not an attack.
 # ============================================================
 
 KNOWLEDGE_MAP = {
     "API":            {"doc": "incident_response/web_application.md",  "mitre": ["T1190"]},
     "Benign":         {"doc": None,                                    "mitre": []},
     "Bruteforce":     {"doc": "incident_response/credential_attack.md","mitre": ["T1110"]},
-    "BufferOverflow": {"doc": "incident_response/exploitation.md",     "mitre": ["T1203"]},
+    # T1203 is CLIENT-side exploitation (browsers, documents). TRUSTLab's
+    # BufferOverflow is against a listening network service, which is T1210.
+    "BufferOverflow": {"doc": "incident_response/exploitation.md",     "mitre": ["T1210"]},
     "C2Beaconing":    {"doc": "incident_response/command_and_control.md", "mitre": ["T1071"]},
     "DDoS":           {"doc": "incident_response/denial_of_service.md","mitre": ["T1498"]},
     "DNS":            {"doc": "incident_response/dns_abuse.md",        "mitre": ["T1071.004"]},
     "DoS":            {"doc": "incident_response/denial_of_service.md","mitre": ["T1499"]},
-    "Evasion":        {"doc": "incident_response/evasion.md",          "mitre": ["T1205"]},
+    "Evasion":        {"doc": "incident_response/evasion.md",          "mitre": []},
     "Exfiltration":   {"doc": "incident_response/data_exfiltration.md","mitre": ["T1041"]},
     "Exploitation":   {"doc": "incident_response/exploitation.md",     "mitre": ["T1190"]},
     "MITM":           {"doc": "incident_response/mitm.md",             "mitre": ["T1557"]},
     "PortScan":       {"doc": "incident_response/reconnaissance.md",   "mitre": ["T1046"]},
     "Slowloris":      {"doc": "incident_response/denial_of_service.md","mitre": ["T1499.002"]},
-    "TLSSSL":         {"doc": "incident_response/crypto_weakness.md",  "mitre": ["T1573"]},
+    "TLSSSL":         {"doc": "incident_response/crypto_weakness.md",  "mitre": []},
     "WebBased":       {"doc": "incident_response/web_application.md",  "mitre": ["T1190"]},
 }
 
