@@ -141,6 +141,10 @@ SOURCES = {
                     '10.17487/RFC3128.',
         "landing": "https://www.rfc-editor.org/rfc/rfc3128.html",
     },
+    # The 2025 index page. Kept for the citation, but note it is an INDEX:
+    # its text layer is a list of category names with no prose, which is why
+    # every draft that quoted it produced a list of headings and nothing
+    # actionable. Quote the per-category pages below instead.
     "OWASP.Top10.2025": {
         "url": "https://owasp.org/Top10/2025/",
         "kind": "html",
@@ -148,6 +152,33 @@ SOURCES = {
                     'Top 10:2025 — web application security risks," OWASP '
                     'Foundation, 2025.',
         "landing": "https://owasp.org/Top10/2025/",
+    },
+    "OWASP.A01.2025": {
+        "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
+        "kind": "html",
+        "citation": 'Open Worldwide Application Security Project, '
+                    '"A01:2025 — Broken access control," in OWASP Top '
+                    '10:2025, OWASP Foundation, 2025.',
+        "landing": "https://owasp.org/Top10/2025/"
+                   "A01_2025-Broken_Access_Control/",
+    },
+    "OWASP.A05.2025": {
+        "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
+        "kind": "html",
+        "citation": 'Open Worldwide Application Security Project, '
+                    '"A05:2025 — Injection," in OWASP Top 10:2025, OWASP '
+                    'Foundation, 2025.',
+        "landing": "https://owasp.org/Top10/2025/A05_2025-Injection/",
+    },
+    "OWASP.A07.2025": {
+        "url": "https://owasp.org/Top10/2025/"
+               "A07_2025-Authentication_Failures/",
+        "kind": "html",
+        "citation": 'Open Worldwide Application Security Project, '
+                    '"A07:2025 — Authentication failures," in OWASP Top '
+                    '10:2025, OWASP Foundation, 2025.',
+        "landing": "https://owasp.org/Top10/2025/"
+                   "A07_2025-Authentication_Failures/",
     },
 
     # --------------------------------------------------------------
@@ -607,6 +638,9 @@ CITATION_CLAIMS = {
     "RFC3128": ["Protection Against a Variant of the Tiny Fragment Attack",
                 "Request for Comments: 3128"],
     "OWASP.Top10.2025": ["Top 10"],
+    "OWASP.A01.2025": ["Broken Access Control", "How to prevent"],
+    "OWASP.A05.2025": ["Injection", "How to prevent"],
+    "OWASP.A07.2025": ["Authentication Failures", "How to prevent"],
 
     # Machine learning sources. Claims deliberately avoid characters the
     # PDF text layer renders as ligatures or curly quotes -- "Unified"
