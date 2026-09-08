@@ -1,49 +1,41 @@
 # Denial of service — response
 
-> **PLACEHOLDER.** Written to exercise the citation-verification path, not
-> sourced from any standard. Replace with the relevant sections of NIST
-> SP 800-61r3 and your own runbook before this is used on real traffic.
-> See `knowledge/INDEX.md`.
+> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
+>
+> Covers: DoS, DDoS, Slowloris
+>
+> Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
+>   retrieved 2026-09-08, sha256 e5593d6bb85daece
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+>   retrieved 2026-09-08, sha256 fc63bcd61715d018
+>
+> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
 
-## 4.1 Detection and analysis
 
-Record the source addresses, the destination service, and the request rate.
-Establish whether the traffic volume exceeds the normal baseline for that
-service before declaring an incident.
+## From NIST.SP.800-61r3
 
-Distinguish resource exhaustion from bandwidth exhaustion. A service that is
-unresponsive while the link is not saturated indicates connection or worker
-exhaustion rather than flooding.
+and availability of data-in-use are protected Medium N1: See the notes for PR. PR.DS-11 Backups of data are created, protected, maintained, and tested
 
-## 4.2 Containment
+Resilience) Security architectures are managed with the organization’s risk strategy to protect asset confidentiality, integrity, and availability, and
 
-Apply rate limiting at the perimeter for the identified source addresses.
-Where the source set is large or spoofed, apply rate limiting by
-destination service rather than by source.
+to protect their confidentiality, integrity, and availability Medium N1: See the notes for PR. PR.PS-01 Configuration management practices are established and applied
 
-Increase the connection timeout floor and reduce the maximum keep-alive
-duration on the affected service. This is the specific mitigation for
-connection-holding attacks that consume worker slots without generating
-volume.
+High N1: Backups can be particularly important for recovery purposes when data integrity or availability is affected. N1: See the notes for PR. PR.PS (Platform Security)
 
-Do not block on the basis of a single detection. Confirm the source is not an
-authorised scanner, monitoring probe, or health check before applying any
-block.
+Identify (Improvement Category) Containment, Eradication & Recovery Respond Recover Identify (Improvement Category) Post-Incident Activity Identify (Improvement Category)
 
-## 4.3 Eradication and recovery
+Data are managed consistent with the organization’s risk strategy to protect the confidentiality, integrity, and availability of information Medium N1: See the notes for PR.
 
-Restore normal timeout and rate-limit configuration once the source traffic
-has stopped for a sustained period. Record the configuration change and its
-reversal in the incident log.
+## From NIST.SP.800-53r5
 
-## 4.4 Distinguishing slow-rate from high-rate
+SC-4(2) MULTILEVEL OR PERIODS PROCESSING S SC-5 Denial-of-Service Protection S SC-5(1) RESTRICT ABILITY TO ATTACK OTHER SYSTEMS S SC-5(2) CAPACITY, BANDWIDTH, AND REDUNDANCY S SC-5(3) DETECTION AND MONITORING S SC-6 Resource Availability S √
 
-Slow-rate attacks hold many connections open with minimal traffic per
-connection; high-rate attacks generate large volumes across shorter
-connections. The mitigations differ: slow-rate is addressed by timeout and
-per-source connection limits, high-rate by rate limiting and upstream
-filtering.
+SC-5(2) CAPACITY, BANDWIDTH, AND REDUNDANCY S SC-5(3) DETECTION AND MONITORING S SC-6 Resource Availability S √ SC-7 Boundary Protection S SC-7(1) PHYSICALLY SEPARATED SUBNETWORKS W: Incorporated into SC-7. SC-7(2) PUBLIC ACCESS W: Incorporated into SC-7.
 
-Where the two cannot be distinguished from flow records alone, apply the
-slow-rate mitigations first, since they are lower impact on legitimate
-traffic.
+operate effectively and provide appropriate confidentiality, integrity, and availability protections through the application of cost-effective security controls. advanced persistent threat [SP 800-39]
+
+objects in a human-readable form in order to enable organizational, process-based enforcement of information security policies. security objective [FIPS 199] Confidentiality, integrity, or availability.
+
+[FIPS 200] A system in which at least one security objective (i.e., confidentiality, integrity, or availability) is assigned a FIPS Publication 199 potential impact value of high. hybrid control [OMB A-130]
+
+processing, storage, or transmission. system-related security risk [SP 800-30] Risk that arises through the loss of confidentiality, integrity, or availability of information or systems and that considers impacts

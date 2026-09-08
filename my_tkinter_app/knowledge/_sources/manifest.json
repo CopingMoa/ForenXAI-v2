@@ -1,0 +1,83 @@
+{
+  "NIST.SP.800-61r3": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-61r3.pdf",
+    "landing": "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
+    "citation": "A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, \"Incident response recommendations and considerations for cybersecurity risk management,\" NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.",
+    "file": "NIST.SP.800-61r3.pdf",
+    "bytes": 1040566,
+    "sha256": "e5593d6bb85daecec7e8d9549400c7b3473bcc3f06e469c82218073afa7fba2d",
+    "retrieved": "2026-09-08T10:01:06"
+  },
+  "NIST.SP.800-53r5": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf",
+    "landing": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+    "citation": "Joint Task Force, \"Security and privacy controls for information systems and organizations,\" NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.",
+    "file": "NIST.SP.800-53r5.pdf",
+    "bytes": 6073678,
+    "sha256": "fc63bcd61715d0181dd8e85998b1e6201ae3515fc6626102101cab1841e11ec6",
+    "retrieved": "2026-09-08T10:03:36"
+  },
+  "NIST.SP.800-52r2": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-52r2.pdf",
+    "landing": "https://csrc.nist.gov/pubs/sp/800/52/r2/final",
+    "citation": "K. McKay and D. Cooper, \"Guidelines for the selection, configuration, and use of Transport Layer Security (TLS) implementations,\" NIST SP 800-52r2, Aug. 2019, doi: 10.6028/NIST.SP.800-52r2.",
+    "file": "NIST.SP.800-52r2.pdf",
+    "bytes": 814862,
+    "sha256": "f9a4dbb9cc6ac6778bb9f4e6be9272c2f14d113f3ad241a295684ac6bd71f257",
+    "retrieved": "2026-09-08T10:03:54"
+  },
+  "NIST.CSWP.29": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+    "landing": "https://www.nist.gov/cyberframework",
+    "citation": "National Institute of Standards and Technology, \"The NIST Cybersecurity Framework (CSF) 2.0,\" NIST CSWP 29, Feb. 2024, doi: 10.6028/NIST.CSWP.29.",
+    "file": "NIST.CSWP.29.pdf",
+    "bytes": 1518858,
+    "sha256": "3c31f46fee98cac0c4323453e5109291a213b4de7fef8c058af9bf67f717433c",
+    "retrieved": "2026-09-08T10:04:07"
+  },
+  "CISA.playbooks": {
+    "url": "https://www.cisa.gov/sites/default/files/publications/Federal_Government_Cybersecurity_Incident_and_Vulnerability_Response_Playbooks_508C.pdf",
+    "landing": "https://www.cisa.gov/resources-tools/resources/federal-government-cybersecurity-incident-and-vulnerability-response-playbooks",
+    "citation": "Cybersecurity and Infrastructure Security Agency, \"Federal government cybersecurity incident and vulnerability response playbooks,\" CISA, Aug. 2024.",
+    "file": "CISA.playbooks.pdf",
+    "bytes": 2703130,
+    "sha256": "2277247542d844d2258c0f6892d649d6885f783fc629664924e60638086f47f0",
+    "retrieved": "2026-09-08T10:04:33"
+  },
+  "RFC9424": {
+    "url": "https://www.rfc-editor.org/rfc/rfc9424.txt",
+    "landing": "https://www.rfc-editor.org/rfc/rfc9424.html",
+    "citation": "K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, \"Indicators of compromise (IoCs) and their role in attack defence,\" RFC 9424, Aug. 2023, doi: 10.17487/RFC9424.",
+    "file": "RFC9424.txt",
+    "bytes": 70488,
+    "sha256": "c11e9ebbcf4c5df555c3038bd8661711a6c8f49cc7cb6206d1fa39e957aeeb46",
+    "retrieved": "2026-09-08T10:04:34"
+  },
+  "RFC1858": {
+    "url": "https://www.rfc-editor.org/rfc/rfc1858.txt",
+    "landing": "https://www.rfc-editor.org/rfc/rfc1858.html",
+    "citation": "G. Ziemba, D. Reed and P. Traina, \"Security considerations for IP fragment filtering,\" RFC 1858, Oct. 1995, doi: 10.17487/RFC1858.",
+    "file": "RFC1858.txt",
+    "bytes": 20468,
+    "sha256": "29f44b2153e734727882799fb476614b8f580c4627329b55966dfc510bcf8005",
+    "retrieved": "2026-09-08T10:04:34"
+  },
+  "RFC3128": {
+    "url": "https://www.rfc-editor.org/rfc/rfc3128.txt",
+    "landing": "https://www.rfc-editor.org/rfc/rfc3128.html",
+    "citation": "I. Miller, \"Protection against a variant of the tiny fragment attack,\" RFC 3128, Jun. 2001, doi: 10.17487/RFC3128.",
+    "file": "RFC3128.txt",
+    "bytes": 8242,
+    "sha256": "0e2bb17258b58a467ee5cf93a5b0828c85056f61ebdc67a5bd7d5a8dc00b9ec3",
+    "retrieved": "2026-09-08T10:04:35"
+  },
+  "OWASP.Top10.2025": {
+    "url": "https://owasp.org/Top10/2025/",
+    "landing": "https://owasp.org/Top10/2025/",
+    "citation": "Open Worldwide Application Security Project, \"OWASP Top 10:2025 \u2014 web application security risks,\" OWASP Foundation, 2025.",
+    "file": "OWASP.Top10.2025.html",
+    "bytes": 25877,
+    "sha256": "37db8253029a5a6afd4f8383cda997a0a482e45766110591bf8f5a3b0d423857",
+    "retrieved": "2026-09-08T10:04:36"
+  }
+}

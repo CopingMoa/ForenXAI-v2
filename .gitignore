@@ -5,3 +5,6 @@ my_tkinter_app/panel_*.png
 my_tkinter_app/screen.png
 my_tkinter_app/app_run.log
 my_tkinter_app/sample_data/sample_flows_full.csv
+my_tkinter_app/knowledge/_sources/*.pdf
+my_tkinter_app/knowledge/_sources/*.txt
+my_tkinter_app/knowledge/_sources/*.html
