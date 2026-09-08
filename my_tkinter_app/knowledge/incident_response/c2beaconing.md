@@ -1,4 +1,4 @@
-# Command and control — response
+# Command and control beaconing — response
 
 > **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
 >

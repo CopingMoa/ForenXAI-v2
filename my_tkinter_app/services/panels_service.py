@@ -83,28 +83,27 @@ KNOWLEDGE_DIR = os.path.join(
 # ============================================================
 
 KNOWLEDGE_MAP = {
-    "API":            {"doc": "incident_response/web_application.md",  "mitre": ["T1190"]},
-    # Benign has a document too. "No action" is still a finding, and the
-    # reasons it can be wrong -- low confidence, a weak class misfiled,
-    # slow-and-low traffic that looks ordinary -- deserve a source like any
-    # other recommendation.
-    "Benign":         {"doc": "incident_response/benign.md",           "mitre": []},
-    "Bruteforce":     {"doc": "incident_response/credential_attack.md","mitre": ["T1110"]},
+    # One document per class. A file covering three classes cannot say
+    # anything specific to any of them, and the panel quotes the whole file
+    # -- so a DoS finding was showing Slowloris guidance and the reverse.
+    "API":            {"doc": "incident_response/api.md",             "mitre": ["T1190"]},
+    "Benign":         {"doc": "incident_response/benign.md",          "mitre": []},
+    "Bruteforce":     {"doc": "incident_response/bruteforce.md",      "mitre": ["T1110"]},
     # T1203 is CLIENT-side exploitation (browsers, documents). TRUSTLab's
     # BufferOverflow is against a listening network service, which is T1210.
-    "BufferOverflow": {"doc": "incident_response/exploitation.md",     "mitre": ["T1210"]},
-    "C2Beaconing":    {"doc": "incident_response/command_and_control.md", "mitre": ["T1071"]},
-    "DDoS":           {"doc": "incident_response/denial_of_service.md","mitre": ["T1498"]},
-    "DNS":            {"doc": "incident_response/dns_abuse.md",        "mitre": ["T1071.004"]},
-    "DoS":            {"doc": "incident_response/denial_of_service.md","mitre": ["T1499"]},
-    "Evasion":        {"doc": "incident_response/evasion.md",          "mitre": []},
-    "Exfiltration":   {"doc": "incident_response/data_exfiltration.md","mitre": ["T1041"]},
-    "Exploitation":   {"doc": "incident_response/exploitation.md",     "mitre": ["T1190"]},
-    "MITM":           {"doc": "incident_response/mitm.md",             "mitre": ["T1557"]},
-    "PortScan":       {"doc": "incident_response/reconnaissance.md",   "mitre": ["T1046"]},
-    "Slowloris":      {"doc": "incident_response/denial_of_service.md","mitre": ["T1499.002"]},
-    "TLSSSL":         {"doc": "incident_response/crypto_weakness.md",  "mitre": []},
-    "WebBased":       {"doc": "incident_response/web_application.md",  "mitre": ["T1190"]},
+    "BufferOverflow": {"doc": "incident_response/bufferoverflow.md",  "mitre": ["T1210"]},
+    "C2Beaconing":    {"doc": "incident_response/c2beaconing.md",     "mitre": ["T1071"]},
+    "DDoS":           {"doc": "incident_response/ddos.md",            "mitre": ["T1498"]},
+    "DNS":            {"doc": "incident_response/dns.md",             "mitre": ["T1071.004"]},
+    "DoS":            {"doc": "incident_response/dos.md",             "mitre": ["T1499"]},
+    "Evasion":        {"doc": "incident_response/evasion.md",         "mitre": []},
+    "Exfiltration":   {"doc": "incident_response/exfiltration.md",    "mitre": ["T1041"]},
+    "Exploitation":   {"doc": "incident_response/exploitation.md",    "mitre": ["T1190"]},
+    "MITM":           {"doc": "incident_response/mitm.md",            "mitre": ["T1557"]},
+    "PortScan":       {"doc": "incident_response/portscan.md",        "mitre": ["T1046"]},
+    "Slowloris":      {"doc": "incident_response/slowloris.md",       "mitre": ["T1499.002"]},
+    "TLSSSL":         {"doc": "incident_response/tlsssl.md",          "mitre": []},
+    "WebBased":       {"doc": "incident_response/webbased.md",        "mitre": ["T1190"]},
 }
 
 # Pairs the model provably cannot separate, with the evidence.

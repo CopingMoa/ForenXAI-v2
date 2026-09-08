@@ -160,59 +160,102 @@ SOURCES = {
 # enforces.
 # ============================================================
 
+# One file per class, named after the class. A document that covers three
+# classes cannot say anything specific to any of them, and the interface
+# quotes the whole file -- so a DoS finding was showing Slowloris guidance
+# and vice versa. Sixteen classes, sixteen files.
+#
+# Where two classes genuinely share a response, the files say so and repeat
+# the shared steps. Duplication in a playbook is cheaper than a reader
+# working out which half applies to them.
+
 TARGETS = {
-    "denial_of_service.md": {
-        "classes": ["DoS", "DDoS", "Slowloris"],
-        "title": "Denial of service — response",
-        "sources": ["NIST.SP.800-61r3", "NIST.SP.800-53r5"],
-        "keywords": ["denial of service", "rate limit", "SC-5",
-                     "availability", "flooding", "containment"],
+    "benign.md": {
+        "classes": ["Benign"], "title": "Benign traffic — no action",
+        "sources": ["NIST.SP.800-61r3", "RFC9424"],
+        "keywords": [], "hand_written": True,
     },
-    "reconnaissance.md": {
+    "dos.md": {
+        "classes": ["DoS"],
+        "title": "Denial of service (single source) — response",
+        "sources": ["NIST.SP.800-61r3", "NIST.SP.800-53r5"],
+        "keywords": ["denial of service", "SC-5", "resource exhaustion",
+                     "availability", "containment"],
+    },
+    "ddos.md": {
+        "classes": ["DDoS"],
+        "title": "Distributed denial of service — response",
+        "sources": ["NIST.SP.800-61r3", "NIST.SP.800-53r5"],
+        "keywords": ["denial of service", "SC-5", "bandwidth", "flooding",
+                     "upstream", "capacity"],
+    },
+    "slowloris.md": {
+        "classes": ["Slowloris"],
+        "title": "Slow-rate connection exhaustion — response",
+        "sources": ["NIST.SP.800-61r3", "NIST.SP.800-53r5"],
+        "keywords": ["denial of service", "SC-5", "connection", "timeout",
+                     "session", "resource exhaustion"],
+    },
+    "portscan.md": {
         "classes": ["PortScan"],
-        "title": "Scanning and reconnaissance — response",
+        "title": "Port scanning and reconnaissance — response",
         "sources": ["NIST.SP.800-61r3", "NIST.SP.800-53r5", "RFC9424"],
-        "keywords": ["scanning", "reconnaissance", "SI-4", "port scan",
+        "keywords": ["scanning", "reconnaissance", "SI-4", "port",
                      "detection and analysis", "monitoring"],
     },
     "exploitation.md": {
-        "classes": ["Exploitation", "BufferOverflow"],
-        "title": "Exploitation of a service — response",
+        "classes": ["Exploitation"],
+        "title": "Exploitation of a public-facing service — response",
         "sources": ["CISA.playbooks", "NIST.SP.800-61r3"],
         "keywords": ["vulnerability response", "exploit", "patch",
-                     "remediation", "eradication", "SI-2"],
+                     "remediation", "public-facing", "SI-2"],
     },
-    "web_application.md": {
-        "classes": ["API", "WebBased"],
-        "title": "Web application attack — response",
+    "bufferoverflow.md": {
+        "classes": ["BufferOverflow"],
+        "title": "Memory-corruption exploitation — response",
+        "sources": ["CISA.playbooks", "NIST.SP.800-61r3",
+                    "NIST.SP.800-53r5"],
+        "keywords": ["vulnerability response", "patch", "memory",
+                     "eradication", "SI-2", "SI-16"],
+    },
+    "api.md": {
+        "classes": ["API"],
+        "title": "API abuse — response",
         "sources": ["OWASP.Top10.2025", "CISA.playbooks"],
         "keywords": ["injection", "how to prevent", "validation",
-                     "access control", "broken"],
+                     "access control", "authorization"],
     },
-    "credential_attack.md": {
+    "webbased.md": {
+        "classes": ["WebBased"],
+        "title": "Web application attack — response",
+        "sources": ["OWASP.Top10.2025", "CISA.playbooks"],
+        "keywords": ["injection", "how to prevent", "cross-site",
+                     "validation", "broken"],
+    },
+    "bruteforce.md": {
         "classes": ["Bruteforce"],
-        "title": "Credential attack — response",
+        "title": "Credential brute force — response",
         "sources": ["NIST.SP.800-53r5", "OWASP.Top10.2025",
                     "NIST.SP.800-61r3"],
         "keywords": ["AC-7", "unsuccessful logon", "authentication failure",
-                     "brute force", "lockout", "identification and "
+                     "lockout", "credential", "identification and "
                      "authentication"],
     },
-    "data_exfiltration.md": {
+    "exfiltration.md": {
         "classes": ["Exfiltration"],
         "title": "Data exfiltration — response",
         "sources": ["NIST.SP.800-61r3", "RFC9424", "NIST.SP.800-53r5"],
         "keywords": ["exfiltration", "data loss", "AC-4", "information flow",
                      "indicator", "containment"],
     },
-    "command_and_control.md": {
+    "c2beaconing.md": {
         "classes": ["C2Beaconing"],
-        "title": "Command and control — response",
+        "title": "Command and control beaconing — response",
         "sources": ["NIST.SP.800-61r3", "RFC9424", "NIST.SP.800-53r5"],
         "keywords": ["command and control", "beacon", "indicator of "
                      "compromise", "SI-4", "outbound", "containment"],
     },
-    "dns_abuse.md": {
+    "dns.md": {
         "classes": ["DNS"],
         "title": "DNS abuse — response",
         "sources": ["NIST.SP.800-53r5", "RFC9424", "NIST.SP.800-61r3"],
@@ -227,20 +270,13 @@ TARGETS = {
         "keywords": ["SC-8", "SC-23", "transmission confidentiality",
                      "session authenticity", "interception"],
     },
-    # These two are written by hand: no published playbook treats them as a
-    # single procedure. Listed so --status counts them, and skipped by
-    # --extract so a generated draft never overwrites the reasoned version.
-    "benign.md": {
-        "classes": ["Benign"], "title": "Benign traffic — no action",
-        "sources": ["NIST.SP.800-61r3", "RFC9424"],
-        "keywords": [], "hand_written": True,
-    },
+    # Hand-written: no published playbook treats either as one procedure.
     "evasion.md": {
         "classes": ["Evasion"], "title": "Detection evasion — response",
         "sources": ["RFC1858", "RFC3128", "NIST.SP.800-53r5"],
         "keywords": [], "hand_written": True,
     },
-    "crypto_weakness.md": {
+    "tlsssl.md": {
         "classes": ["TLSSSL"], "title": "TLS/SSL weakness — response",
         "sources": ["NIST.SP.800-52r2", "NIST.SP.800-53r5",
                     "CISA.playbooks"],

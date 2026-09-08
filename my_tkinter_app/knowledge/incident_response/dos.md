@@ -1,8 +1,8 @@
-# Denial of service — response
+# Denial of service (single source) — response
 
 > **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
 >
-> Covers: DoS, DDoS, Slowloris
+> Covers: DoS
 >
 > Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
 >   retrieved 2026-09-08, sha256 e5593d6bb85daece

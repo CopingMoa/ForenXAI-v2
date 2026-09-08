@@ -242,7 +242,7 @@ def test_panel3():
     if "Slowloris" in by_class:
         rec = ps.recommend(by_class["Slowloris"])
         check("a class with a document cites it",
-              rec["citations"] == ["incident_response/denial_of_service.md"],
+              rec["citations"] == ["incident_response/slowloris.md"],
               str(rec["citations"]))
         # Assert a durable property, not the sample text: the retrieved
         # document must reach the panel with its own provenance header
@@ -284,6 +284,13 @@ def test_panel3():
             uncited.append(cls)
     check("every quoted document carries an IEEE citation",
           not uncited, f"no citation for: {uncited}")
+
+    # One document per class. A file covering several classes cannot be
+    # specific to any of them, and the panel quotes the whole file.
+    docs = [e["doc"] for e in ps.KNOWLEDGE_MAP.values() if e["doc"]]
+    check("every class has its own document, none shared",
+          len(docs) == len(set(docs)) == len(ps.KNOWLEDGE_MAP),
+          f"{len(docs)} documents for {len(ps.KNOWLEDGE_MAP)} classes")
 
     check("every model class has a KNOWLEDGE_MAP entry",
           all(c in ps.KNOWLEDGE_MAP for c in b["encoder"].classes_))
