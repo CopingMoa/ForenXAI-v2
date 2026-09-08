@@ -1,41 +1,66 @@
-# Slow-rate connection exhaustion — response
+# Slowloris, slow-rate resource exhaustion — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: Slowloris
->
 > Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
 
-## From NIST.SP.800-61r3
+Holding many connections open with minimal data, exhausting a server's
+connection or worker pool rather than its bandwidth. Low volume by design,
+which is why it does not look like a flood.
 
-ransomware, account takeover, denial of service).  NIST SP 800-61r3 Incident Response Recommendations and April 2025 Considerations for Cyber Risk Management
+**This class scores F1 0.7593 and is confused with DoS**, which is the same
+objective by a different mechanism. When both appear, report the pair —
+"slow-rate resource exhaustion consistent with Slowloris or DoS" — not one
+name.
 
-High R1: Perform a more detailed review of incidents to help categorize them by incident type (e.g., data breach, ransomware, account takeover, denial of service).
+## 2. Detection and analysis
 
-provenance are preserved High N1: Facts discovered and actions taken during incident response tasks can be recorded by many means, including a paper logbook, audio/video recordings, or automatic session monitoring and logging,
+The signal is in the shape, not the volume:
 
-recorded by many means, including a paper logbook, audio/video recordings, or automatic session monitoring and logging, as permitted by the organization’s incident response plan and policy. R1: Safeguard the confidentiality and
-
-an information system; or constitutes a violation or imminent threat of violation of law, security policies, security procedures, or acceptable use policies. [FISMA2014] Examples of incidents include an attacker: • Employing a botnet to send high volumes of connection requests to an internet-facing service, making it unavailable to legitimate service users
-
-Examples of incidents include an attacker: • Employing a botnet to send high volumes of connection requests to an internet-facing service, making it unavailable to legitimate service users • Obtaining administrative credentials at a software-as-a-service provider, which puts sensitive tenant data entrusted to that provider at risk • Intruding upon an organization’s business network to steal credentials and use them to
+- **Concurrent connection count** on the target, against its normal level.
+- **Per-connection duration** — long-lived connections carrying almost no
+  data.
+- **Bytes per connection** — very low, sustained.
+- **Worker or thread pool state** on the server. Exhaustion here, with the
+  link nearly idle, is the confirmation.
 
 ## From NIST.SP.800-53r5
 
-AC-11 Device Lock S AC-11(1) PATTERN-HIDING DISPLAYS S AC-12 Session Termination S AC-12(1) USER-INITIATED LOGOUTS O/S AC-12(2) TERMINATION MESSAGE S AC-12(3) TIMEOUT WARNING MESSAGE S
+> Denial-of-service events may occur due to a variety of internal and
+> external causes, such as an attack by an adversary or a lack of planning
+> to support organizational needs with respect to capacity and bandwidth.
 
-ensures that connections established during nonlocal maintenance and diagnostic sessions have been terminated and are no longer available for use. Related Controls: AC-12. References: [FIPS 140-3], [FIPS 197], [FIPS 201-2], [SP 800-63-3], [SP 800-88]. MA-5 MAINTENANCE PERSONNEL Control:
+Low bandwidth use is what makes this hard to see. A capacity graph looks
+healthy while the service is unavailable.
 
-800-177], [IR 8023]. SC-9 TRANSMISSION CONFIDENTIALITY [Withdrawn: Incorporated into SC-8.] SC-10 NETWORK DISCONNECT Control: Terminate the network connection associated with a communications session at the end of the session or after [Assignment: organization-defined time period] of inactivity.
+## 3. Containment
 
-(FTP) sessions, systems typically send logout messages as final messages prior to terminating sessions. Related Controls: None. (3) SESSION TERMINATION | TIMEOUT WARNING MESSAGE Display an explicit message to users indicating that the session will end in [Assignment: organization-defined time until end of session].
+All three steps here are reversible and none blocks a legitimate user.
 
-of mission or business capabilities. Related Controls: SC-8, SC-12, SC-13. (7) NONLOCAL MAINTENANCE | DISCONNECT VERIFICATION Verify session and network connection termination after the completion of nonlocal maintenance and diagnostic sessions. Discussion: Verifying the termination of a connection once maintenance is completed
+**Set a connection timeout** on the server, and a header-completion timeout.
+The attack depends on the server waiting indefinitely.
 
-at the application level if multiple application sessions are using a single operating system-level network connection. Periods of inactivity may be established by organizations and include time periods by type of network access or for specific network accesses. Related Controls: AC-17, SC-23. Control Enhancements: None. References: None.
+**Limit concurrent connections per source address.**
+
+**Put a reverse proxy in front** that buffers complete requests before
+passing them upstream. This removes the mechanism entirely.
+
+Blocking source addresses is the least effective option: the technique needs
+few connections per source, so an attacker can spread across many.
+
+## 4. What would make this a false positive
+
+Long-polling, server-sent events and WebSocket clients all hold connections
+open with little traffic, and are indistinguishable at flow level. Mobile
+clients on poor links produce slow, long, low-data connections too.
+
+Check whether the connections belong to an application that legitimately
+uses them before acting.
+
+## 5. Not covered by these sources
+
+Neither names Slowloris, nor states a timeout value. SC-5 leaves the choice
+of controls to the organisation. Fill both from your own runbook.

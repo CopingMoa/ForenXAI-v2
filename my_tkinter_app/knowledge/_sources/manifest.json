@@ -124,5 +124,50 @@
     "bytes": 19028452,
     "sha256": "aa3824ce44c797539ec61cbb24a900a348363dc609a3ae717df5c92315557482",
     "retrieved": "2026-09-08T17:01:08"
+  },
+  "OWASP.A01.2025": {
+    "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
+    "landing": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
+    "citation": "Open Worldwide Application Security Project, \"A01:2025 \u2014 Broken access control,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "file": "OWASP.A01.2025.html",
+    "bytes": 36881,
+    "sha256": "da315070df0ad805417c9b6d5a8715b6211513afc5d70d3cf780d52bb56c5a39",
+    "retrieved": "2026-09-08T19:55:51"
+  },
+  "OWASP.A05.2025": {
+    "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
+    "landing": "https://owasp.org/Top10/2025/A05_2025-Injection/",
+    "citation": "Open Worldwide Application Security Project, \"A05:2025 \u2014 Injection,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "file": "OWASP.A05.2025.html",
+    "bytes": 38472,
+    "sha256": "df8f178b38dc4be8099690aee02701d07ad7d2b0dabc0363ea4309265518d6a3",
+    "retrieved": "2026-09-08T19:55:51"
+  },
+  "OWASP.A07.2025": {
+    "url": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
+    "landing": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
+    "citation": "Open Worldwide Application Security Project, \"A07:2025 \u2014 Authentication failures,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "file": "OWASP.A07.2025.html",
+    "bytes": 37855,
+    "sha256": "e5e4c51698ed4c966e5a767fd09db489edc11544cb24da09c76265a9015f8092",
+    "retrieved": "2026-09-08T19:55:52"
+  },
+  "NIST.SP.800-86": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-86.pdf",
+    "landing": "https://csrc.nist.gov/pubs/sp/800/86/final",
+    "citation": "K. Kent, S. Chevalier, T. Grance and H. Dang, \"Guide to integrating forensic techniques into incident response,\" NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86.",
+    "file": "NIST.SP.800-86.pdf",
+    "bytes": 2818618,
+    "sha256": "ea7eb645bcd3feaf3ab9ea7dfc3c8987a08bf260c40682df1e5e8292bf9fe9b4",
+    "retrieved": "2026-09-08T20:20:26"
+  },
+  "Chen.xgboost": {
+    "url": "https://arxiv.org/pdf/1603.02754",
+    "landing": "https://arxiv.org/abs/1603.02754",
+    "citation": "T. Chen and C. Guestrin, \"XGBoost: A scalable tree boosting system,\" in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785.",
+    "file": "Chen.xgboost.pdf",
+    "bytes": 944793,
+    "sha256": "52bc282c922a239134ee4d6f4367c58bf920a9bdd53acbb3b2aa3342e2bb7214",
+    "retrieved": "2026-09-08T20:20:30"
   }
 }

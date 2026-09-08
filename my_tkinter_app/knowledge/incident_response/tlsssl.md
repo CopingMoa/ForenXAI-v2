@@ -17,10 +17,10 @@
 The class covers two different situations that a flow record cannot
 separate:
 
-  - **exploitation of a TLS implementation flaw** — Heartbleed reads memory
+  -**exploitation of a TLS implementation flaw** — Heartbleed reads memory
     from the server; POODLE and BEAST recover plaintext by manipulating the
     session
-  - **a weak or anomalous configuration** — a deprecated protocol version,
+  -**a weak or anomalous configuration** — a deprecated protocol version,
     a weak cipher suite, or a certificate that fails validation
 
 The first is an attack in progress. The second is an exposure that may

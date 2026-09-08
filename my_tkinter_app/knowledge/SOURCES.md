@@ -232,3 +232,27 @@ project's own model are right — 0.9337 accuracy, 0.9287 macro F1, DoS F1
 additivity error. Those come from the pipeline's own artifacts, and each
 document says so explicitly rather than implying the cited works support
 them.
+
+---
+
+# Added for the class playbooks and the model description
+
+| # | Source | Used for | Verify by |
+|---|---|---|---|
+| 9 | K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide to integrating forensic techniques into incident response," NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86. | Data acquisition procedure, quoted in the classes where containment destroys evidence — Exploitation, BufferOverflow, Exfiltration | nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-86.pdf, §4 |
+| 10 | T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785. | The model itself, so "gradient-boosted trees" is not left unsourced | arXiv:1603.02754 |
+| 11 | OWASP, "A01:2025 — Broken access control," in OWASP Top 10:2025. | API, WebBased — access control and rate limiting | owasp.org/Top10/2025/A01_2025-Broken_Access_Control/ |
+| 12 | OWASP, "A05:2025 — Injection," in OWASP Top 10:2025. | WebBased, Exploitation — parameterised queries | owasp.org/Top10/2025/A05_2025-Injection/ |
+| 13 | OWASP, "A07:2025 — Authentication failures," in OWASP Top 10:2025. | Bruteforce — failed-login handling, MFA | owasp.org/Top10/2025/A07_2025-Authentication_Failures/ |
+
+**Why the per-category OWASP pages and not the index.** `OWASP.Top10.2025`
+points at the 2025 index. Its text layer is a list of category names with no
+prose, so every draft that quoted it produced headings and nothing
+actionable. The per-category pages carry the real "How to prevent" guidance.
+
+**Files in `_sources/` that are NOT registered cannot be quoted.** Several
+PDFs sit there unregistered — the RMF FAQ set, FIPS 200, SP 800-18r2, the
+Privacy Framework, and a Springer volume. Nothing cites them, and nothing
+may until they are added to `SOURCES` in `fetch_knowledge.py` with a
+citation checked against their own title page. An unregistered file is a
+file `--verify` cannot check.

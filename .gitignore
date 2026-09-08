@@ -8,3 +8,5 @@ my_tkinter_app/sample_data/sample_flows_full.csv
 my_tkinter_app/knowledge/_sources/*.pdf
 my_tkinter_app/knowledge/_sources/*.txt
 my_tkinter_app/knowledge/_sources/*.html
+my_tkinter_app/knowledge/_sources/*.json
+!my_tkinter_app/knowledge/_sources/manifest.json

@@ -1,49 +1,80 @@
 # Credential brute force — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
+> Source: Open Worldwide Application Security Project, "A07:2025 — Authentication failures," in OWASP Top 10:2025, OWASP Foundation, 2025.
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control AC-7, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
-> Covers: Bruteforce
->
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
-> Source: Open Worldwide Application Security Project, "OWASP Top 10:2025 — web application security risks," OWASP Foundation, 2025.
->   retrieved 2026-09-08, sha256 37db8253029a5a6a
-> Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
->
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
+
+Repeated authentication attempts against a service — password guessing,
+credential stuffing, or spraying one password across many accounts.
+
+**The flow record shows the attempts, not the outcome.** Whether any
+succeeded is the only question that matters here, and it is answered from
+the authentication log, not from this tool.
+
+## 2. Detection and analysis
+
+Record the source address, the target service and port, the attempt rate and
+the capture window. Then, from the authentication log for that window:
+
+- **Did any attempt succeed?** A success after a run of failures converts
+  this from an attempt into an intrusion, and everything downstream changes.
+- **How many accounts?** Many attempts against one account is guessing; one
+  or two attempts against many accounts is spraying, and spraying evades
+  per-account lockout by design.
+- **What happened after a success?** The session that followed is the
+  incident.
+
+## From OWASP.A07.2025
+
+> Limit or increasingly delay failed login attempts but be careful not to
+> create a denial of service scenario. Log all failures and alert
+> administrators when credential stuffing, brute force, or other attacks are
+> detected or suspected.
+
+The warning in that sentence is not decoration. Aggressive lockout turns an
+authentication attack into an availability outage, which is sometimes the
+attacker's actual goal.
+
+## 3. Containment
+
+**If any attempt succeeded**, this is not a brute-force response any more.
+Preserve the session, reset the credential, and treat the account as
+compromised.
+
+**If none succeeded**, take the reversible steps:
+
+**Rate-limit the source**, and delay rather than block outright.
+
+SP 800-53r5 AC-7 states the lockout control:
 
 ## From NIST.SP.800-53r5
 
-FUNCTIONS S AC-7 Unsuccessful Logon Attempts S AC-7(1) AUTOMATIC ACCOUNT LOCK W: Incorporated into AC-7. AC-7(2) PURGE OR WIPE MOBILE DEVICE S AC-7(3) BIOMETRIC ATTEMPT LIMITING O
+> a. Enforce a limit of [Assignment: organization-defined number]
+> consecutive invalid logon attempts by a user during a [Assignment:
+> organization-defined time period]; and
 
-AC-6(8) PRIVILEGE LEVELS FOR CODE EXECUTION S AC-6(9) LOG USE OF PRIVILEGED FUNCTIONS S AC-6(10) PROHIBIT NON-PRIVILEGED USERS FROM EXECUTING PRIVILEGED FUNCTIONS S AC-7 Unsuccessful Logon Attempts S
+The number and the period are yours to set. Setting them too tight is how
+lockout becomes the outage OWASP warns about.
 
-IA-6 Authentication Feedback S IA-7 Cryptographic Module Authentication S IA-8 Identification and Authentication (Non-Organizational Users) S IA-8(1) ACCEPTANCE OF PIV CREDENTIALS FROM OTHER AGENCIES S
+**Enable MFA on the targeted accounts.** It defeats stuffing and reuse
+outright, and is the only step here that removes the technique rather than
+slowing it.
 
-prevention mechanisms or malicious code protection mechanisms. Preventing non- privileged users from executing privileged functions is enforced by AC-3. Related Controls: None. References: None. AC-7 UNSUCCESSFUL LOGON ATTEMPTS Control:
+## 4. What would make this a false positive
 
-AC-7(4) USE OF ALTERNATE AUTHENTICATION FACTOR O/S AC-8 System Use Notification O/S AC-9 Previous Logon Notification S AC-9(1) UNSUCCESSFUL LOGONS S  NIST SP 800-53, REV. 5 SECURITY AND PRIVACY CONTROLS FOR INFORMATION SYSTEMS AND ORGANIZATIONS
+An expired credential in a scheduled job or a service account retries
+forever and produces exactly this pattern. So does a user with a saved wrong
+password on a mobile client, and a misconfigured SSO integration.
 
-the user’s last access. Related Controls: AC-7, PL-4. Control Enhancements: (1) PREVIOUS LOGON NOTIFICATION | UNSUCCESSFUL LOGONS Notify the user, upon successful logon, of the number of unsuccessful logon attempts since the last successful logon.
+The tell is the account: automation hammers one account from one address on
+a regular interval.
 
-## From OWASP.Top10.2025
+## 5. Not covered by these sources
 
-A03:2025 - Software Supply Chain Failures A04:2025 - Cryptographic Failures A05:2025 - Injection A06:2025 - Insecure Design A07:2025 - Authentication Failures A08:2025 - Software or Data Integrity Failures
-
-A06:2025 - Insecure Design A07:2025 - Authentication Failures A08:2025 - Software or Data Integrity Failures A09:2025 - Security Logging and Alerting Failures A10:2025 - Mishandling of Exceptional Conditions
-
-## From NIST.SP.800-61r3
-
-unauthorized access Medium N1: See the notes for PR. PR.AA-01 Identities and credentials for authorized users, services, and hardware are managed by the organization
-
-authorized users, services, and hardware are managed by the organization Medium N1: See the notes for PR. PR.AA-02 Identities are proofed and bound to credentials based on
-
-users, services, and hardware and managed commensurate with the assessed risk of unauthorized access Medium N1: See the notes for PR. PR.AA-01 Identities and credentials for
-
-identify attacks against credentials and unauthorized credential use. R3: Monitor software and hardware configurations for deviations from security baselines. R4: Monitor hardware and software,
-
-data leaks, exfiltration, and other adverse events. R2: Monitor authentication attempts to identify attacks against credentials and unauthorized credential use. R3: Monitor software and hardware
-
-Medium N1: See the notes for PR. PR.AA-02 Identities are proofed and bound to credentials based on the context of interactions Medium N1: See the notes for PR. PR.AA-03 Users, services, and hardware
+Neither states an attempt rate that constitutes an attack, nor a lockout
+threshold — AC-7 leaves both as organisational assignments. Neither
+addresses attribution when attempts come through a proxy.

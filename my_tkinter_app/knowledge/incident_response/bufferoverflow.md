@@ -1,57 +1,82 @@
-# Memory-corruption exploitation — response
+# Buffer overflow against a listening service — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: BufferOverflow
->
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SI-2, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide to integrating forensic techniques into incident response," NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86.
 > Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
->   retrieved 2026-09-08, sha256 2277247542d844d2
-> Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
+
+Oversized or malformed input to a listening network service, intended to
+corrupt memory and run attacker-supplied code.
+
+TRUSTLab's BufferOverflow is against a **network service**, not a client
+application. It overlaps with Exploitation, and the model confuses the two;
+where both appear, report the pair.
+
+**Treat as attempted code execution.** This is the highest-urgency class in
+the set.
+
+## 2. Detection and analysis
+
+Record the source, the target host, service and port, and the capture
+window. The flow-level signal is unusual packet sizes to a service that
+normally receives small, regular requests.
+
+The confirmation is on the host, not in the capture:
+
+- **Did the service crash, restart, or log a fault?** A restart at the
+  timestamp is the strongest corroboration available.
+- **Packet payloads** — long runs of repeated bytes, NOP-like padding, or
+  input far exceeding the protocol's normal field lengths.
+- **New processes, listeners or child processes** spawned by the service
+  account after the window.
+
+## 3. Containment
+
+**Capture memory before anything else.** Isolating or rebooting the host
+destroys the only place a live exploit is visible.
+
+## From NIST.SP.800-86
+
+> Data acquisition should be performed using a three-step process:
+> developing a plan to acquire the data, acquiring the data, and verifying
+> the integrity of the acquired data.
+
+Then:
 
 ## From CISA.playbooks
 
-vulnerability, initiate the Vulnerability Response Playbook below to address the vulnerability during eradication activities. Eradication Activities • Remediating all infected IT environments (e.g., cloud, OT, hybrid, host, and network
+> Isolate threat actor activity and prevent additional damage from the
+> activity or pivoting into other systems. Key containment activities
+> include:
 
-stringent enough. Therefore, eradication plans should be well formulated and coordinated before execution. If the adversary exploited a specific vulnerability, initiate the Vulnerability Response Playbook below to address the vulnerability during eradication activities.
-
-Reporting and Notification Sharing information about how vulnerabilities are being exploited by adversaries can help defenders across the federal government understand which vulnerabilities are most critical to patch. CISA, in partnership with other federal agencies, is responsible for the overall security posture of the FCEB. As such, CISA needs to maintain awareness of the status of vulnerability response for actively exploited
-
-most critical to patch. CISA, in partnership with other federal agencies, is responsible for the overall security posture of the FCEB. As such, CISA needs to maintain awareness of the status of vulnerability response for actively exploited vulnerabilities. This awareness enables CISA to help other agencies understand the impact of vulnerabilities and to narrow the time between disclosure and vulnerability exploitation. Agencies must report to CISA in accordance with Federal Incident Notification Guidelines, Binding Operational
-
-Eradication & Recovery.................................................................................................................... 15 Post-Incident Activities ..................................................................................................................... 16 Coordination..................................................................................................................................... 17 Vulnerability Response Playbook......................................................................................................... 21 Preparation....................................................................................................................................... 21 Vulnerability Response Process....................................................................................................... 22
-
-scratch. • Rebuilding hardware (required when the incident involves rootkits). • Replacing compromised files with clean versions. • Installing patches.
-
-## From NIST.SP.800-61r3
-
-select and perform eradication actions instead of or in addition to automated eradication measures. RC (Recover) Assets and operations affected by a cybersecurity incident are restored
-
-an emergency workaround that must be removed within hours, a temporary workaround to be removed within two weeks, or a permanent solution). The eradication measure’s duration could be similarly evaluated.
-
-R5: Monitor endpoints for cyber health issues (e.g., missing patches, malware infections, or unauthorized software), and redirect endpoints with issues to a remediation environment before access is authorized.
-
-C1: Consider configuring cybersecurity technologies and the cybersecurity features of other technologies (e.g., operating systems, network infrastructure devices) to automatically perform some eradication actions.
-
-including cybersecurity protection mechanisms, for signs of tampering, failure, or compromise. R5: Monitor endpoints for cyber health issues (e.g., missing patches, malware infections, or unauthorized software), and
-
-weeks, or a permanent solution). The eradication measure’s duration could be similarly evaluated. R1: In some instances, organizations redirect an attacker to a sandbox so that they can monitor the attacker’s activity,
+**Patch, do not just block.** The address is disposable; the flaw is not:
 
 ## From NIST.SP.800-53r5
 
-SI-2(2) AUTOMATED FLAW REMEDIATION STATUS O SI-2(3) TIME TO REMEDIATE FLAWS AND BENCHMARKS FOR CORRECTIVE ACTIONS O SI-2(4) AUTOMATED PATCH MANAGEMENT TOOLS O/S SI-2(5) AUTOMATIC SOFTWARE AND FIRMWARE UPDATES O/S
+> a. Identify, report, and correct system flaws; b. Test software and
+> firmware updates related to flaw remediation for effectiveness and
+> potential side effects before installation;
 
-SI-14 Non-Persistence O √ SI-14(1) REFRESH FROM TRUSTED SOURCES O √ SI-14(2) NON-PERSISTENT INFORMATION O √ SI-14(3) NON-PERSISTENT CONNECTIVITY O √ SI-15 Information Output Filtering S √ SI-16 Memory Protection S √
+**Rebuild rather than clean** if code execution is confirmed. A service
+compromised at memory level cannot be reliably repaired in place.
 
-SI-14(3) NON-PERSISTENT CONNECTIVITY O √ SI-15 Information Output Filtering S √ SI-16 Memory Protection S √ SI-17 Fail-Safe Procedures S √ SI-18 Personally Identifiable Information Quality Operations O/S SI-18(1) AUTOMATION SUPPORT O/S
+## 4. What would make this a false positive
 
-O SI-2(4) AUTOMATED PATCH MANAGEMENT TOOLS O/S SI-2(5) AUTOMATIC SOFTWARE AND FIRMWARE UPDATES O/S SI-2(6) REMOVAL OF PREVIOUS VERSIONS OF SOFTWARE AND FIRMWARE O/S SI-3 Malicious Code Protection O/S SI-3(1) CENTRAL MANAGEMENT W: Incorporated into PL-9.
+Legitimate large transfers to a service that usually receives small requests
+— a file upload, a bulk API call, a database import — look identical at flow
+level.
 
-Related Controls: SI-3, SI-4, SI-11. Control Enhancements: None. References: None. SI-16 MEMORY PROTECTION Control: Implement the following controls to protect the system memory from unauthorized code execution: [Assignment: organization-defined controls].
+Protocol negotiation with unusual field lengths, and traffic from a broken
+client sending malformed frames, both produce the same shape.
 
-SI-16 MEMORY PROTECTION Control: Implement the following controls to protect the system memory from unauthorized code execution: [Assignment: organization-defined controls]. Discussion: Some adversaries launch attacks with the intent of executing code in non-executable regions of memory or in memory locations that are prohibited. Controls employed to protect memory include data execution prevention and address space layout randomization. Data
+Without a crash, a log entry or a host artefact, this is an anomaly, not a
+finding.
+
+## 5. Not covered by these sources
+
+None describes overflow techniques or how to recognise a specific exploit in
+a payload. SI-2 states no patch window. Nothing here establishes whether
+code actually executed — only host examination can.

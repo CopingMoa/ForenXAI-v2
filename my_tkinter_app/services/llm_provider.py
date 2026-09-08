@@ -348,7 +348,15 @@ class AnthropicProvider:
 
 def get_provider(name="ollama", **kw):
     """ollama for development, llamacpp for a packaged build, anthropic to
-    deliberately send derived data off the machine."""
+    deliberately send derived data off the machine.
+
+    An object that already has .complete() is returned unchanged. That lets
+    a caller inject their own model without registering it here, and lets a
+    test drive the narration path with no model installed at all.
+    """
+    if hasattr(name, "complete"):
+        return name
+
     if name == "ollama":
         return OllamaProvider(**kw)
     if name == "llamacpp":

@@ -200,6 +200,32 @@ SOURCES = {
     # publisher's landing page -- the rule that caught the CISA date being
     # three years wrong.
 
+    # Forensic procedure. The only source here that speaks to evidence
+    # handling and order of volatility, which is what analyst/ needs.
+    "NIST.SP.800-86": {
+        "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/"
+               "nistspecialpublication800-86.pdf",
+        "kind": "pdf",
+        "citation": 'K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide '
+                    'to integrating forensic techniques into incident '
+                    'response," NIST SP 800-86, Aug. 2006, doi: '
+                    '10.6028/NIST.SP.800-86.',
+        "landing": "https://csrc.nist.gov/pubs/sp/800/86/final",
+    },
+
+    # The model itself. Cited where the panels describe what the classifier
+    # is, rather than leaving "gradient-boosted trees" unsourced.
+    "Chen.xgboost": {
+        "url": "https://arxiv.org/pdf/1603.02754",
+        "kind": "pdf",
+        "citation": 'T. Chen and C. Guestrin, "XGBoost: A scalable tree '
+                    'boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. '
+                    'Knowledge Discovery and Data Mining, San Francisco, CA, '
+                    'USA, Aug. 2016, pp. 785-794, doi: '
+                    '10.1145/2939672.2939785.',
+        "landing": "https://arxiv.org/abs/1603.02754",
+    },
+
     "NIST.AI.100-1": {
         "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
         "kind": "pdf",
@@ -647,6 +673,10 @@ CITATION_CLAIMS = {
     # comes out as "Uni<fi>ed" and "Don'ts" as "Don<rsquo>ts", so a claim
     # containing either would fail against a document that is in fact
     # correct. _norm() collapses whitespace but does not fold those.
+    "NIST.SP.800-86": ["Guide to Integrating Forensic",
+                       "800-86"],
+    "Chen.xgboost": ["XGBoost: A Scalable Tree Boosting System",
+                     "Carlos Guestrin"],
     "NIST.AI.100-1": ["Artificial Intelligence Risk Management",
                       "NIST AI 100-1"],
     "USENIX.dosdonts": ["Machine Learning in Computer Security",

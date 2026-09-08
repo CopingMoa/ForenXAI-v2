@@ -1,57 +1,75 @@
 # Port scanning and reconnaissance — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: PortScan
->
 > Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SI-4, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
 > Source: K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, "Indicators of compromise (IoCs) and their role in attack defence," RFC 9424, Aug. 2023, doi: 10.17487/RFC9424.
->   retrieved 2026-09-08, sha256 c11e9ebbcf4c5df5
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
 
-## From NIST.SP.800-61r3
+One source contacting many ports or many hosts in a short window, mapping
+what is reachable and what responds.
 
-commensurate with risk Medium N1: See the notes for PR. PR.PS-04 Log records are generated and made available for continuous monitoring Medium N1: Logs are particularly important for
+**Reconnaissance, not compromise.** A scan on its own establishes that
+somebody looked. The finding that matters is what the same source did
+afterwards.
 
-made available for continuous monitoring Medium N1: Logs are particularly important for recording and preserving information that is vital to incident detection, response, and recovery activities.
+## 2. Detection and analysis
 
-controls. DE.CM-03 Personnel activity and technology usage are monitored to find potentially adverse events High R1: Monitoring personnel activity and
+Record the source address, the ports contacted, the order, and which ones
+**responded**. The responses are the part that matters: they tell you what
+the scanner learned.
 
-are protected Medium N1: See the notes for PR. PR.DS-11 Backups of data are created, protected, maintained, and tested High N1: Backups can be particularly important
+Then, and this is the step that is usually skipped:
 
-• Moved most hyperlinks to a new SP 800-61 project website to facilitate their maintenance • Reformatted all content to follow the latest NIST technical report template
+**Search the rest of the capture for the same source after the scan.** A
+scan followed by a connection to one of the open ports is a different
+incident from a scan alone.
 
-incident response activities. GV.RM-07 Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions
+SP 800-53r5 SI-4 covers this monitoring obligation:
 
 ## From NIST.SP.800-53r5
 
-Related Controls: CA-2, CA-7, CA-8, CM-2, CM-4, CM-6, CM-8, RA-2, RA-3, SA-11, SA-15, SC-38, SI-2, SI-3, SI-4, SI-7, SR-11. Control Enhancements: (1) VULNERABILITY MONITORING AND SCANNING | UPDATE TOOL CAPABILITY [Withdrawn: Incorporated into RA-5.] (2) VULNERABILITY MONITORING AND SCANNING | UPDATE VULNERABILITIES TO BE SCANNED
+> a. Monitor the system to detect: 1. Attacks and indicators of potential
+> attacks in accordance with the following monitoring objectives:
+> [Assignment: organization-defined monitoring objectives]; and 2.
+> Unauthorized local, network, and remote connections;
 
-create opportunities for adversary exploitation. Related Controls: None. (11) VULNERABILITY MONITORING AND SCANNING | PUBLIC DISCLOSURE PROGRAM Establish a public reporting channel for receiving reports of vulnerabilities in organizational systems and system components. Discussion: The reporting channel is publicly discoverable and contains clear language
+Record the source as an indicator, but note what RFC 9424 says a
+non-matching indicator does and does not prove — absence of a later match is
+not absence of activity.
 
-administrator reports. IR-4 provides information on the types of incidents that are appropriate for monitoring. Related Controls: AU-6, AU-7, IR-4, IR-6, IR-8, PE-6, PM-5, SC-5, SC-7, SI-3, SI-4, SI-7. Control Enhancements: (1) INCIDENT MONITORING | AUTOMATED TRACKING, DATA COLLECTION, AND ANALYSIS Track incidents and collect and analyze incident information using [Assignment:
+## 3. Containment
 
-(1) VULNERABILITY MONITORING AND SCANNING | UPDATE TOOL CAPABILITY [Withdrawn: Incorporated into RA-5.] (2) VULNERABILITY MONITORING AND SCANNING | UPDATE VULNERABILITIES TO BE SCANNED Update the system vulnerabilities to be scanned [Selection (one or more): [Assignment: organization-defined frequency]; prior to a new scan; when new vulnerabilities are identified and reported].
+**Confirm it is not an authorised scanner first.** Vulnerability scanners,
+asset inventory tools and monitoring systems all port-scan by design, on a
+schedule, from a known internal address. Blocking one breaks your own
+security tooling.
 
-analyzers. Vulnerability monitoring includes scanning for patch levels; scanning for functions, ports, protocols, and services that should not be accessible to users or devices; and scanning for flow control mechanisms that are improperly configured or operating incorrectly. Vulnerability  NIST SP 800-53, REV. 5 SECURITY AND PRIVACY CONTROLS FOR INFORMATION SYSTEMS AND ORGANIZATIONS
+Once confirmed hostile:
 
-security officers, or privacy officers. In contrast to alerts generated by the system, alerts generated by organizations in SI-4(12) focus on information sources external to the system, such as suspicious activity reports and reports on potential insider threats. Related Controls: AU-4, AU-5, PE-6. (6) SYSTEM MONITORING | RESTRICT NON-PRIVILEGED USERS [Withdrawn: Incorporated into AC-6(10).]
+**Block the source at the perimeter** — reversible, and appropriate here
+because a scanner has no legitimate traffic to lose.
 
-## From RFC9424
+**Close what should not have answered.** The scan's value to the attacker is
+the list of open ports. Reducing that list is the durable fix; blocking one
+address is not.
 
-consuming.  A third important consideration when performing manual processing is the longer phase monitoring and adjustment necessary to effectively age out IoCs as they become irrelevant or, more crucially, inaccurate. Manual implementations must often simply include or
+**Raise logging on the hosts that responded.** If the scan was preparation,
+the next step targets those.
 
-the longer phase monitoring and adjustment necessary to effectively age out IoCs as they become irrelevant or, more crucially, inaccurate. Manual implementations must often simply include or exclude an IoC, as anything more granular is time-consuming and complicated to manage. In contrast, automations can support a gradual reduction in confidence scoring, enabling IoCs to contribute
+## 4. What would make this a false positive
 
-10. Informative References  [ACD2021] UK NCSC, "Active Cyber Defence - The Fifth Year", May 2022, <https://www.ncsc.gov.uk/files/ACD-The-Fifth-Year- full-report.pdf>.
+An authorised vulnerability scan is the common case, and looks identical.
+So does asset discovery, a monitoring system health-checking services, and a
+misconfigured client retrying across ports.
 
-3.2.6. Reaction 3.2.7. End of Life 4. Using IoCs Effectively 4.1. Opportunities 4.1.1. IoCs underpin and enable multiple layers of the modern defence-in-depth strategy.
+A NAT gateway or proxy can also make many hosts appear as one source
+contacting many ports.
 
-For reasons like these, context is very important when sharing and using IoCs.  5.2.3. Changing Use  In the case of IP addresses, the growing adoption of cloud services,
+## 5. Not covered by these sources
 
-by non-support staff, particularly if observed outside of that employee's usual working hours.  For reasons like these, context is very important when sharing and using IoCs.
+Neither states how many ports in what interval constitutes a scan, nor when
+reconnaissance should be escalated. Both are site policy. Neither addresses
+attribution behind NAT.

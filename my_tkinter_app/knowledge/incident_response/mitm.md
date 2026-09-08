@@ -1,33 +1,88 @@
-# Adversary in the middle — response
+# Machine-in-the-middle — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: MITM
->
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
 > Source: K. McKay and D. Cooper, "Guidelines for the selection, configuration, and use of Transport Layer Security (TLS) implementations," NIST SP 800-52r2, Aug. 2019, doi: 10.6028/NIST.SP.800-52r2.
->   retrieved 2026-09-08, sha256 f9a4dbb9cc6ac677
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-8, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
 
-## From NIST.SP.800-53r5
+An attacker positioned between two parties, able to read and potentially
+alter traffic: ARP spoofing, rogue gateway, DNS redirection, or TLS
+interception with a substituted certificate.
 
-S SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for Name/Address Resolution Service S SC-23 Session Authenticity S
+**The scope is the segment, not the host.** If this is real, everything
+observed on that segment during the window may have been read or modified —
+including traffic belonging to other findings in the same capture.
 
-SC-8(5) PROTECTED DISTRIBUTION SYSTEM S SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S SC-11 Trusted Path S √ SC-11(1) IRREFUTABLE COMMUNICATIONS PATH S √ SC-12 Cryptographic Key Establishment and Management O/S
+## 2. Detection and analysis
 
-Name/Address Resolution Service S SC-23 Session Authenticity S SC-23(1) INVALIDATE SESSION IDENTIFIERS AT LOGOUT S SC-23(2) USER-INITIATED LOGOUTS AND MESSAGE DISPLAYS W: Incorporated into AC-12(1). SC-23(3) UNIQUE SYSTEM-GENERATED SESSION IDENTIFIERS S
+Record the addresses involved, the segment, and the capture window.
 
-Internet). Organizations specify clients that can access authoritative DNS servers in certain roles (e.g., by address ranges and explicit lists). Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2]. SC-23 SESSION AUTHENTICITY
+- **ARP tables.** Two MAC addresses claiming one IP, or the gateway's IP
+  mapped to an unexpected MAC, is the classic signature.
+- **Gateway MAC over time.** A change mid-capture is the event.
+- **Certificate chains presented.** A certificate not signed by the expected
+  authority means interception.
+- **TLS version and cipher downgrade.** Forcing a weaker negotiation is how
+  interception is made possible.
 
-SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S SC-8(5) PROTECTED DISTRIBUTION SYSTEM S SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S
-
-SC-7(29) SEPARATE SUBNETS TO ISOLATE FUNCTIONS S SC-8 Transmission Confidentiality and Integrity S SC-8(1) CRYPTOGRAPHIC PROTECTION S SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S
+SP 800-52r2 states the version floor a downgrade would be pushing below:
 
 ## From NIST.SP.800-52r2
 
-is defined to prevent such a session splicing or session interception. The extension uses the concept of cryptographically binding the initial session negotiation and session renegotiation. Server implementations shall perform initial and subsequent renegotiations in accordance with RFC 5746 [59] and RFC 8446 [57]. 3.4.1.2 Server Name Indication Applies to TLS versions: 1.0, 1.1, 1.2, 1.3
+> These servers shall not allow the use of SSL 2.0 or SSL 3.0. Agencies
+> shall support TLS 1.3 by January 1, 2024. After this date, servers shall
+> support TLS 1.3 for both government-only and citizen or business-facing
+> applications.
 
-new TLS connection from a legitimate client. The server treats the legitimate client’s initial TLS handshake as a renegotiation of the attacker’s negotiated session and thus believes that the initial data transmitted by the attacker is from the legitimate client. The session renegotiation extension is defined to prevent such a session splicing or session interception. The extension uses the concept of cryptographically binding the initial session negotiation and session renegotiation. Server implementations shall perform initial and subsequent renegotiations in accordance with
+SP 800-53r5 SC-8 is the control this defeats:
+
+## From NIST.SP.800-53r5
+
+> Protecting the confidentiality and integrity of transmitted information
+> applies to internal and external networks as well as any system
+> components that can transmit information, including servers,
+
+## 3. Containment
+
+**Identify the attacking host from the ARP evidence first.** Everything else
+depends on knowing which port it is on.
+
+**Disable the switch port**, rather than blocking at the perimeter. The
+attacker is on the local segment; a perimeter rule does not reach it.
+
+**Then, for the segment:**
+
+## From CISA.playbooks
+
+> Isolate threat actor activity and prevent additional damage from the
+> activity or pivoting into other systems. Key containment activities
+> include:
+
+**Rotate credentials that crossed the segment during the window.** Anything
+transmitted may have been captured, including inside intercepted TLS.
+
+**Enable dynamic ARP inspection and DHCP snooping** on the switch. This is
+the durable fix.
+
+## 4. What would make this a false positive
+
+**Corporate TLS inspection.** A sanctioned proxy substitutes certificates by
+design and looks exactly like interception. Check whether the certificate
+authority is your own before escalating.
+
+**HA failover.** A gateway pair moving a virtual IP between them changes the
+MAC legitimately.
+
+**Load balancers, NAT and captive portals** all rewrite traffic.
+
+Confirm the substituting device is not one of yours before treating this as
+an intrusion.
+
+## 5. Not covered by these sources
+
+Neither addresses ARP spoofing detection or switch configuration. SP 800-52r2
+covers TLS configuration, not interception response. Neither states what
+must be rotated after a confirmed interception.

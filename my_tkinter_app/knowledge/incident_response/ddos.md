@@ -1,39 +1,69 @@
 # Distributed denial of service — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: DDoS
->
 > Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
 
-## From NIST.SP.800-61r3
+Many sources exhausting one target. The defining feature in the flow record
+is source diversity: a large number of distinct addresses converging on one
+destination in a short window.
 
-ransomware, account takeover, denial of service).  NIST SP 800-61r3 Incident Response Recommendations and April 2025 Considerations for Cyber Risk Management
+## 2. Detection and analysis
 
-High R1: Perform a more detailed review of incidents to help categorize them by incident type (e.g., data breach, ransomware, account takeover, denial of service).
-
-PR.IR-03 Mechanisms are implemented to achieve resilience requirements in normal and adverse situations Medium N1: See the notes for PR. PR.IR-04 Adequate resource capacity to
-
-adverse situations Medium N1: See the notes for PR. PR.IR-04 Adequate resource capacity to ensure availability is maintained Medium N1: See the notes for PR. 3.2. Incident Response
-
-Any circumstance or event with the potential to adversely impact organizational operations (including mission, functions, image, or reputation), organizational assets, individuals, other organizations, or the Nation through an information system via unauthorized access, destruction, disclosure, or modification of information, and/or denial of service. [SP800-30r1] vulnerability A weakness in a system, system security procedures, internal controls, or implementation by which an actor or
+Record the source address distribution, the target service and port, the
+aggregate rate, and the capture window. **The source count is the finding.**
+A handful of addresses is a flood; thousands is a distributed one, and the
+response differs.
 
 ## From NIST.SP.800-53r5
 
-SC-5 Denial-of-Service Protection S SC-5(1) RESTRICT ABILITY TO ATTACK OTHER SYSTEMS S SC-5(2) CAPACITY, BANDWIDTH, AND REDUNDANCY S SC-5(3) DETECTION AND MONITORING S SC-6 Resource Availability S √ SC-7 Boundary Protection S
+> Denial-of-service events may occur due to a variety of internal and
+> external causes, such as an attack by an adversary or a lack of planning
+> to support organizational needs with respect to capacity and bandwidth.
+> Such attacks can occur across a wide range of network protocols (e.g.,
+> IPv4, IPv6).
 
-SC-4 Information in Shared System Resources S SC-4(1) SECURITY LEVELS W: Incorporated into SC-4. SC-4(2) MULTILEVEL OR PERIODS PROCESSING S SC-5 Denial-of-Service Protection S SC-5(1) RESTRICT ABILITY TO ATTACK OTHER SYSTEMS S SC-5(2) CAPACITY, BANDWIDTH, AND REDUNDANCY S
+Confirm the service actually degraded. A capture full of inbound traffic is
+not an incident if the service served it.
 
-individuals having the ability to launch denial-of-service attacks may be implemented on specific systems or boundary devices that prohibit egress to potential target systems. Related Controls: None. (2) DENIAL-OF-SERVICE PROTECTION | CAPACITY, BANDWIDTH, AND REDUNDANCY Manage capacity, bandwidth, or other redundancy to limit the effects of information flooding denial-of-service attacks.
+Check whether sources are spoofed. Reflection and amplification produce
+apparent sources that were never involved, and blocking them accomplishes
+nothing.
 
-(2) DENIAL-OF-SERVICE PROTECTION | CAPACITY, BANDWIDTH, AND REDUNDANCY Manage capacity, bandwidth, or other redundancy to limit the effects of information flooding denial-of-service attacks. Discussion: Managing capacity ensures that sufficient capacity is available to counter flooding attacks. Managing capacity includes establishing selected usage priorities, quotas, partitioning, or load balancing.
+## 3. Containment
 
-directly affected by or the source of denial-of-service attacks. Employing increased network capacity and bandwidth combined with service redundancy also reduces the susceptibility to denial-of-service events. Related Controls: CP-2, IR-4, SC-6, SC-7, SC-40. Control Enhancements: (1) DENIAL-OF-SERVICE PROTECTION | RESTRICT ABILITY TO ATTACK OTHER SYSTEMS
+**Host-level blocking does not work here.** By the time traffic reaches your
+firewall it has already consumed the link. Filtering must happen upstream.
 
-Discussion: Managing capacity ensures that sufficient capacity is available to counter flooding attacks. Managing capacity includes establishing selected usage priorities, quotas, partitioning, or load balancing. Related Controls: None. (3) DENIAL-OF-SERVICE PROTECTION | DETECTION AND MONITORING (a) Employ the following monitoring tools to detect indicators of denial-of-service attacks
+**Contact the upstream provider or scrubbing service first.** This is the
+step that changes the outcome, and it takes the longest to arrange.
+
+**Then rate-limit and filter locally** to protect what capacity remains.
+
+**Preserve the source list before filtering.** It is the evidence, and once
+the flood stops it is not recoverable.
+
+## From CISA.playbooks
+
+> Isolate threat actor activity and prevent additional damage from the
+> activity or pivoting into other systems. Key containment activities
+> include:
+
+## 4. What would make this a false positive
+
+A traffic spike from a legitimate event — a product launch, a news mention,
+a misbehaving CDN — has many sources and degrades service. The tell is
+whether requests are well-formed and whether sources have prior history.
+
+A distributed load test, or a scanner run by your own team, produces the
+same shape.
+
+## 5. Not covered by these sources
+
+Neither prescribes when to engage an upstream provider, nor how to
+distinguish a flood from legitimate demand at flow level. Neither addresses
+spoofed-source attribution.

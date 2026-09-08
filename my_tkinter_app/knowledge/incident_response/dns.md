@@ -1,49 +1,81 @@
-# DNS abuse — response
+# DNS abuse and tunnelling — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: DNS
->
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-20, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
 > Source: K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, "Indicators of compromise (IoCs) and their role in attack defence," RFC 9424, Aug. 2023, doi: 10.17487/RFC9424.
->   retrieved 2026-09-08, sha256 c11e9ebbcf4c5df5
-> Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
+
+DNS used as something other than name resolution: tunnelling data inside
+queries and responses, or resolving attacker-controlled domains as part of
+command and control.
+
+DNS is allowed outbound almost everywhere, which is exactly why it is used
+this way. **Blocking DNS outright breaks the network**, so containment here
+is different from every other class.
+
+## 2. Detection and analysis
+
+Record the internal source, the resolver used, the query names, record types
+and response sizes.
+
+The tunnelling signals:
+
+- **Query volume** far above normal for that host.
+- **Name length and entropy.** Encoded data appears as long, random-looking
+  labels under one parent domain.
+- **Record types.** Disproportionate TXT, NULL or CNAME volume.
+- **One parent domain** receiving nearly all queries. That domain is the
+  finding.
+- **Response sizes** consistently near the maximum.
+
+Check the parent domain as an indicator; RFC 9424 covers what a match does
+and does not establish.
+
+SP 800-53r5 SC-20 concerns the integrity of resolution itself:
 
 ## From NIST.SP.800-53r5
 
-(BGP) routing, Domain Name System (DNS), and management protocols. See [SP 800-189] for additional information on the use of the resource public key infrastructure (RPKI) to protect BGP routes and detect unauthorized BGP announcements. Related Controls: AC-3, SC-8, SC-20, SC-21, SC-22. (5) BOUNDARY PROTECTION | DENY BY DEFAULT — ALLOW BY EXCEPTION Deny network communications traffic by default and allow network communications
+> a. Provide additional data origin authentication and integrity
+> verification artifacts along with the authoritative name resolution data
+> the system returns in response to external name/address resolution
+> queries; and
 
-(Authoritative Source) S SC-20(1) CHILD SUBSPACES W: Incorporated into SC-20. SC-20(2) DATA ORIGIN AND INTEGRITY S SC-21 Secure Name/Address Resolution Service (Recursive or Caching Resolver)
+## 3. Containment
 
-SC-20(2) DATA ORIGIN AND INTEGRITY S SC-21 Secure Name/Address Resolution Service (Recursive or Caching Resolver) S SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for
+**Do not block port 53.** Point the host at a controlled resolver instead —
+reversible, keeps the network working, and gives you a full query log.
 
-Related Controls: SC-20, SC-22. Control Enhancements: None. (1) SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) | DATA ORIGIN AND INTEGRITY [Withdrawn: Incorporated into SC-21.] References: [SP 800-81-2].
+**Sinkhole the specific domain**, not the protocol.
 
-Internet). Organizations specify clients that can access authoritative DNS servers in certain roles (e.g., by address ranges and explicit lists). Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2]. SC-23 SESSION AUTHENTICITY
+**Block direct outbound DNS** so hosts must use the internal resolver. This
+is the durable fix: tunnelling depends on reaching an external resolver.
 
-that use technologies other than the DNS to map between host and service names and network addresses provide some other means to enable clients to verify the authenticity and integrity of response data. Related Controls: SC-20, SC-22. Control Enhancements: None. (1) SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) | DATA ORIGIN
+**Then treat the source host as compromised.** DNS tunnelling is a symptom;
+something on that host is doing it.
 
-## From RFC9424
+## From CISA.playbooks
 
-* IPv4 and IPv6 addresses in network traffic  * Fully Qualified Domain Names (FQDNs) in network traffic, DNS resolver caches, or logs  * TLS Server Name Indication values in network traffic
+> Isolate threat actor activity and prevent additional damage from the
+> activity or pivoting into other systems. Key containment activities
+> include:
 
-https://www.ncsc.gov.uk/report/weekly-threat-report-8th- june-2018>.  [PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>.
+## 4. What would make this a false positive
 
-When associated with malicious activity, the following are some examples of protocol-related IoCs:  * IPv4 and IPv6 addresses in network traffic  * Fully Qualified Domain Names (FQDNs) in network traffic, DNS
+Some security and CDN products legitimately encode data in DNS. Anti-virus
+reputation lookups, some cloud agents and certain content-delivery
+mechanisms produce high-volume queries with long encoded labels under one
+parent domain — the exact signature.
 
-automated manner. This could also be achieved within an enterprise by ensuring those control points with the widest aperture (for example, enterprise-wide DNS resolvers) are able to act automatically based on IoC feeds.  3.2.5. Detection
+A misconfigured resolver, or a host that lost its cache, produces query
+floods too.
 
-[PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>.  [PoP] Bianco, D., "The Pyramid of Pain", March 2013, <https://detect-respond.blogspot.com/2013/03/the-pyramid- of-pain.html>.
+Check the parent domain against the vendor's documentation before acting.
 
-adding support for the distribution and consumption of IoCs directly to their products, without each user having to do it, thus addressing the threat for the whole user base at once in a machine-scalable and automated manner. This could also be achieved within an enterprise by ensuring those control points with the widest aperture (for example, enterprise-wide DNS resolvers) are able to act automatically
+## 5. Not covered by these sources
 
-## From NIST.SP.800-61r3
-
-services (e.g., DNS and BGP), and the presence of unauthorized or rogue networks within facilities. DE.CM-02 The physical environment is monitored to find potentially adverse events
-
-High R1: Monitoring should include wired and wireless networks, network communications and flows, network services (e.g., DNS and BGP), and the presence of unauthorized or rogue networks within facilities.
+Neither defines a query rate or name length that indicates tunnelling.
+SC-20 is about DNSSEC and authoritative resolution, not tunnelling
+detection. Neither states when DNS abuse warrants escalation.

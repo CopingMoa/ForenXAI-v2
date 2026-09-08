@@ -1,41 +1,74 @@
-# Denial of service (single source) — response
+# Denial of service, single source — response
 
-> **REVIEW REQUIRED.** These paragraphs were selected by keyword, not by judgement. Read them, keep what actually prescribes an action, delete the rest, then remove this marker. `--verify` fails while it is present.
->
-> Covers: DoS
->
 > Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
->   retrieved 2026-09-08, sha256 e5593d6bb85daece
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
->   retrieved 2026-09-08, sha256 fc63bcd61715d018
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-5, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
-> Keep this file under about 1,500 words: the model's context is 8,192 tokens.
+> Retrieved: 2026-09-08
 
+## 1. What this class means here
 
-## From NIST.SP.800-61r3
+One source exhausting a service: connection floods, request floods, or
+resource consumption from a single address. Distinguished from DDoS by
+source count, not by technique.
 
-for recovery purposes when data integrity or availability is affected. N1: See the notes for PR. PR.PS (Platform Security) The hardware, software (e.g.,
+**This is one of the two weakest classes in the model** (F1 0.6703). It is
+confused with Slowloris, which is the same goal by a different mechanism.
+Confirm before reporting, and see the reliability guidance in the panel.
 
-RS.MI (Incident Mitigation) Activities are performed to prevent expansion of an event and mitigate its effects High N1: Manually selecting containment and
+## 2. Detection and analysis
 
-ransomware, account takeover, denial of service).  NIST SP 800-61r3 Incident Response Recommendations and April 2025 Considerations for Cyber Risk Management
+Record the source address, the target service and port, the request rate,
+and the capture window.
 
-High R1: Perform a more detailed review of incidents to help categorize them by incident type (e.g., data breach, ransomware, account takeover, denial of service).
-
-integrity, and availability Medium N1: See the notes for PR. PR.PS-01 Configuration management practices are established and applied Medium N1: See the notes for PR.
-
-Security architectures are managed with the organization’s risk strategy to protect asset confidentiality, integrity, and availability, and organizational resilience
+SP 800-53r5 SC-5 places this among events with several possible causes, not
+all hostile:
 
 ## From NIST.SP.800-53r5
 
-SC-5 Denial-of-Service Protection S SC-5(1) RESTRICT ABILITY TO ATTACK OTHER SYSTEMS S SC-5(2) CAPACITY, BANDWIDTH, AND REDUNDANCY S SC-5(3) DETECTION AND MONITORING S SC-6 Resource Availability S √ SC-7 Boundary Protection S
+> Denial-of-service events may occur due to a variety of internal and
+> external causes, such as an attack by an adversary or a lack of planning
+> to support organizational needs with respect to capacity and bandwidth.
 
-SC-5(3) DETECTION AND MONITORING S SC-6 Resource Availability S √ SC-7 Boundary Protection S SC-7(1) PHYSICALLY SEPARATED SUBNETWORKS W: Incorporated into SC-7. SC-7(2) PUBLIC ACCESS W: Incorporated into SC-7. SC-7(3) ACCESS POINTS S
+That distinction is the whole analysis. Before treating this as an attack,
+establish that the service actually degraded, and that capacity was not
+simply exceeded by legitimate demand.
 
-assets, individuals, other organizations, and the Nation. availability [FISMA] Ensuring timely and reliable access to and use of information. baseline See control baseline. baseline configuration
+From the target host: request rate over time, error rates, CPU and memory,
+and worker or connection-pool saturation.
 
-SC-50 Software-Enforced Separation and Policy Enforcement O/S √ SC-51 Hardware-Based Protection O/S √    NIST SP 800-53, REV. 5 SECURITY AND PRIVACY CONTROLS FOR INFORMATION SYSTEMS AND ORGANIZATIONS
+## 3. Containment
 
-integrity, and availability protections through the application of cost-effective security controls. advanced persistent threat [SP 800-39] An adversary that possesses sophisticated levels of expertise and
+Reversible first. A single source is often a misconfigured client.
 
-via unauthorized access, destruction, disclosure, modification of information, and/or denial of service. threat assessment [CNSSI 4009] Formal description and evaluation of threat to an information system.
+**Rate-limit the source** at the perimeter. This is reversible and does not
+break the client if it turns out to be legitimate.
+
+**Then filter.** SC-5 requires the effects of such events be limited or
+prevented, with the specific controls chosen by the organisation. A drop
+rule for the source belongs here, not before rate limiting.
+
+CISA describes the wider containment step:
+
+## From CISA.playbooks
+
+> Isolate threat actor activity and prevent additional damage from the
+> activity or pivoting into other systems. Key containment activities
+> include:
+
+Isolation is disproportionate for a single-source flood unless the source is
+internal, in which case the source host is the incident.
+
+## 4. What would make this a false positive
+
+A backup job, a monitoring poller, a load test, or a retry storm from a
+broken client all produce sustained single-source load. Check whether the
+source is a known internal system and whether the timing matches a schedule.
+
+Capacity exhaustion without an attacker is the case SC-5 names explicitly.
+If the service degraded under ordinary demand, this is a capacity finding.
+
+## 5. Not covered by these sources
+
+None states a request rate above which traffic is an attack, or how long a
+degradation must last to be an incident. Both are site policy.

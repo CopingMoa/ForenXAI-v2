@@ -11,8 +11,14 @@ knowledge/
 │
 ├── _sources/                 * ORIGINALS ONLY. Never edit by hand.
 │   ├── *.pdf  *.txt  *.html    Downloaded by fetch_knowledge.py --download.
-│   └── manifest.json           URL + SHA-256 + retrieval date per source.
-│                               PDFs are gitignored; the manifest is not.
+│   ├── manifest.json           URL + SHA-256 + retrieval date per source.
+│   │                           PDFs are gitignored; the manifest is not.
+│   └── OWASP_Top10_2025_FULL/  Reference copy of the OWASP guide. Lives
+│                               here, NOT in incident_response/, which holds
+│                               one file per model class and nothing else.
+│                             * A file here that is not registered in
+│                               SOURCES in fetch_knowledge.py cannot be
+│                               quoted -- --verify has no way to check it.
 │
 ├── incident_response/        * ONE ATTACK CLASS PER FILE. 16 files, one per
 │   ├── api.md                  model class including benign.md.
@@ -105,6 +111,15 @@ files; a clean finding on a strong class pulls 4.
 - A class with no `KNOWLEDGE_MAP` entry raises rather than falling back to a
   similar class.
 - A draft carrying `REVIEW REQUIRED` fails `--verify`.
+- **Every citation must name a source registered in `SOURCES`.** Citing a
+  document that is not in `_sources/` means nothing checks it, which is how
+  a plausible-looking reference to a book nobody owns reaches a report.
+
+## Status
+
+All 16 class files are reviewed. `--verify` reports 0 problems and 0
+warnings: 35 quoted passages traced across the corpus, every file carrying
+an IEEE citation.
 
 ## Keep files short
 
