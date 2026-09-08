@@ -1,7 +1,7 @@
 # When two classes are indistinguishable
 
 > Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
-> Source: R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25.
+> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 >
 > Retrieved: 2026-09-08
 
@@ -49,18 +49,25 @@ model behaving correctly about a real limit.
 
 ## 4. The deeper reason to expect this in network data
 
-## From SommerPaxson.closedworld
+The model separates *statistical patterns in flow records*. The class names
+are labels a human attached to those patterns. Where two attack techniques
+produce one pattern, the label is a distinction the data does not carry.
 
-> a semantic gap between detection results and their operational
-> interpretation; (iv) the enormous variability of benign traffic, making
-> it difficult to find stable notions of normality; (v) significant
-> challenges with performing sound evaluation; and (vi) the need to
-> operate in an adversarial setting.
+Rarity makes it worse. A class the model saw little of is the one it
+separates worst:
 
-The semantic gap is the point here. The model separates *statistical
-patterns in flow records*. The class names are labels a human attached to
-those patterns. Where two attack techniques produce one pattern, the label
-is a human distinction the data does not carry.
+## From Arslan.mits
+
+> Class imbalance is a critical issue in network intrusion detection.
+> Normal traffic is much higher than attack traffic; rare types of attacks
+> are even less represented [17]. This limitation has also been discussed
+> in the literature [73]. This imbalance causes standard machine learning
+> algorithms to gravitate towards the majority class; resulting in low
+> sensitivity for minority classes.
+
+Low sensitivity for a minority class is exactly what an ambiguous pair
+looks like from the analyst's seat: the weaker of the two loses, and it
+loses consistently.
 
 ## 5. What to do
 

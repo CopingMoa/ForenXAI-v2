@@ -189,7 +189,6 @@ the document's **own title page**, not from a publisher's landing page.
 | # | Source | Used for | Verify by |
 |---|---|---|---|
 | 1 | D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988. | Base rate fallacy (P8), inappropriate performance measures (P7), spurious correlations (P4), sampling bias | Open access at usenix.org/conference/usenixsecurity22/presentation/arp. Check §3 pitfall descriptions |
-| 2 | R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25. | High cost of errors, semantic gap, variability of benign traffic | PDF at icir.org/robin/papers/oakland10-ml.pdf; record at ieeexplore.ieee.org/document/5504793 |
 | 5 | National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1. | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
 
 
@@ -231,7 +230,6 @@ them.
 | # | Source | Used for | Verify by |
 |---|---|---|---|
 | 9 | K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide to integrating forensic techniques into incident response," NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86. | Data acquisition procedure, quoted in the classes where containment destroys evidence — Exploitation, BufferOverflow, Exfiltration | nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-86.pdf, §4 |
-| 10 | T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785. | The model itself, so "gradient-boosted trees" is not left unsourced | arXiv:1603.02754 |
 | 11 | OWASP, "A01:2025 — Broken access control," in OWASP Top 10:2025. | API, WebBased — access control and rate limiting | owasp.org/Top10/2025/A01_2025-Broken_Access_Control/ |
 | 12 | OWASP, "A05:2025 — Injection," in OWASP Top 10:2025. | WebBased, Exploitation — parameterised queries | owasp.org/Top10/2025/A05_2025-Injection/ |
 | 13 | OWASP, "A07:2025 — Authentication failures," in OWASP Top 10:2025. | Bruteforce — failed-login handling, MFA | owasp.org/Top10/2025/A07_2025-Authentication_Failures/ |
@@ -285,3 +283,49 @@ derive it. For the derivation, the NeurIPS and Nature Machine Intelligence
 papers remain the references to read — they are simply no longer quoted
 here, because the reviewed versions are not the files this repository
 holds.
+
+
+---
+
+# Withdrawn: every preprint and author-hosted copy
+
+Four sources were removed on one rule: **cite the artefact that was
+actually checked.** Quotes here are verified against the file on disk, so a
+file that is not the published version cannot back a citation that claims
+to be.
+
+| Removed | The work | What was on disk |
+|---|---|---|
+| `Lundberg.shap` | NeurIPS 2017 | arXiv preprint |
+| `Lundberg.treeshap` | Nature Machine Intelligence 2020 | arXiv preprint |
+| `Chen.xgboost` | ACM SIGKDD 2016 | arXiv preprint |
+| `SommerPaxson.closedworld` | IEEE S&P 2010, doi 10.1109/SP.2010.25 | Author's copy from icir.org, no publisher front matter |
+
+All four are real, peer-reviewed papers. None of the files was the
+peer-reviewed artefact. `Chen.xgboost` was registered but never quoted, so
+removing it changed no document.
+
+**How to tell before you add one.** Open the PDF and look for publisher
+front matter on the page itself — a proceedings statement, an ISBN, a DOI.
+`USENIX.dosdonts` carries "This paper is included in the Proceedings of the
+31st USENIX Security Symposium … 978-1-939133-31-1". The Sommer and Paxson
+copy carried none; it opens straight into the title and abstract.
+
+**What replaced them.** `Arslan.mits` (peer-reviewed, 2026, intrusion
+detection) now carries the SHAP and TreeSHAP claims, the class-imbalance
+point, and the SOC-explainability point. What it does not do is derive
+SHAP — for the derivation the NeurIPS and Nature Machine Intelligence
+papers remain the references to read, they are simply no longer quoted
+here.
+
+**Standards bodies are treated differently and stay.** NIST, CISA, IETF and
+OWASP publish through their own review processes and their PDFs ARE the
+authoritative artefact.
+
+## Registered sources after this change: 16
+
+NIST SP 800-61r3, 800-53r5, 800-52r2, 800-86 · NIST CSWP 29 ·
+NIST AI 100-1 · CISA playbooks · RFC 9424, 1858, 3128 ·
+OWASP Top 10:2025 index + A01, A05, A07 · USENIX Security 2022
+(Arp et al.) · Mechatronics and Intelligent Transportation Systems 2026
+(Arslan et al.)

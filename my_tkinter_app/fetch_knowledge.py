@@ -62,6 +62,26 @@ REVIEW_MARKER = "REVIEW REQUIRED"
 # ============================================================
 
 SOURCES = {
+    # PEER-REVIEWED, PUBLISHED ARTEFACTS ONLY.
+    #
+    # Two rules, both learned the hard way:
+    #
+    #   1. No preprints. arXiv and author-hosted copies are removed even
+    #      when the underlying work IS peer-reviewed, because a citation
+    #      should name the artefact that was actually checked, and quotes
+    #      here are checked against the file on disk. Removed on this
+    #      basis: Lundberg.shap (NeurIPS 2017), Lundberg.treeshap (Nature
+    #      Machine Intelligence 2020), Chen.xgboost (KDD 2016), and
+    #      SommerPaxson.closedworld (IEEE S&P 2010) -- every one a real
+    #      paper, none of them the published PDF.
+    #
+    #   2. Standards bodies count. NIST, CISA, IETF and OWASP publish
+    #      through their own review processes and their PDFs ARE the
+    #      authoritative artefact, so they stay.
+    #
+    # Before adding a source, open the PDF and look for publisher front
+    # matter -- proceedings statement, ISBN, DOI on the page itself. The
+    # USENIX paper has it; the Sommer and Paxson copy did not.
     "NIST.SP.800-61r3": {
         "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/"
                "NIST.SP.800-61r3.pdf",
@@ -213,18 +233,6 @@ SOURCES = {
         "landing": "https://csrc.nist.gov/pubs/sp/800/86/final",
     },
 
-    # The model itself. Cited where the panels describe what the classifier
-    # is, rather than leaving "gradient-boosted trees" unsourced.
-    "Chen.xgboost": {
-        "url": "https://arxiv.org/pdf/1603.02754",
-        "kind": "pdf",
-        "citation": 'T. Chen and C. Guestrin, "XGBoost: A scalable tree '
-                    'boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. '
-                    'Knowledge Discovery and Data Mining, San Francisco, CA, '
-                    'USA, Aug. 2016, pp. 785-794, doi: '
-                    '10.1145/2939672.2939785.',
-        "landing": "https://arxiv.org/abs/1603.02754",
-    },
 
     # Peer-reviewed replacement for the two Lundberg preprints.
     #
@@ -271,16 +279,6 @@ SOURCES = {
                    "presentation/arp",
     },
 
-    "SommerPaxson.closedworld": {
-        "url": "https://www.icir.org/robin/papers/oakland10-ml.pdf",
-        "kind": "pdf",
-        "citation": 'R. Sommer and V. Paxson, "Outside the closed world: On '
-                    'using machine learning for network intrusion '
-                    'detection," in Proc. IEEE Symp. Security and Privacy, '
-                    'Oakland, CA, USA, May 2010, pp. 305-316, doi: '
-                    '10.1109/SP.2010.25.',
-        "landing": "https://ieeexplore.ieee.org/document/5504793",
-    },
 
 
 }
@@ -701,16 +699,12 @@ CITATION_CLAIMS = {
     # correct. _norm() collapses whitespace but does not fold those.
     "NIST.SP.800-86": ["Guide to Integrating Forensic",
                        "800-86"],
-    "Chen.xgboost": ["XGBoost: A Scalable Tree Boosting System",
-                     "Carlos Guestrin"],
     "Arslan.mits": ["Cybersecurity in Intelligent Transportation Systems",
                     "10.56578/mits050102"],
     "NIST.AI.100-1": ["Artificial Intelligence Risk Management",
                       "NIST AI 100-1"],
     "USENIX.dosdonts": ["Machine Learning in Computer Security",
                         "31st USENIX Security Symposium"],
-    "SommerPaxson.closedworld": ["Outside the Closed World",
-                                 "Network Intrusion Detection"],
 }
 
 

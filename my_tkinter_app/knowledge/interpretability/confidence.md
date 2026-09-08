@@ -1,7 +1,7 @@
 # Reading the confidence number
 
 > Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
-> Source: R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25.
+> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 >
 > Retrieved: 2026-09-08
 
@@ -31,10 +31,18 @@ much evidence the flow contained.
 
 ## 2. Why a low-confidence flow matters more here than elsewhere
 
-Sommer and Paxson list the characteristics that make intrusion detection a
-poor fit for machine learning, and put the cost of errors first: a false
-positive spends analyst time on traffic that turns out to be ordinary, and
-a false negative misses an intrusion. Neither is cheap.
+A false positive spends analyst time on traffic that turns out to be
+ordinary; a false negative misses an intrusion. Neither is cheap, and
+Arslan et al. put reducing the first among the reasons explanation matters
+operationally:
+
+## From Arslan.mits
+
+> In security-centric operations (in SOCs), the explainability of machine
+> learning models is an important requirement in terms of prioritizing
+> generated alarms more accurately and quickly (alarm triage),
+> investigating possible proactive attacks (threat hunting), and meeting
+> legal/regulatory requirements [33-35].
 
 That asymmetry is why the Flow Summary panel counts flows below 0.60
 separately rather than folding them into an average. The average hides
