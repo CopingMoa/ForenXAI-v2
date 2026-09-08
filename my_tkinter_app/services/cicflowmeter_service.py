@@ -1,6 +1,9 @@
 import os
 import glob
+import json
+import shutil
 import subprocess
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -10,7 +13,9 @@ from services.config import (
     CICFLOWMETER_JAVA,
     CICFLOWMETER_NATIVE_DIR,
     CICFLOWMETER_EXECUTABLE,
+    FLOW_ENGINE,
 )
+from services import pyflow_extractor
 
 
 # ============================================================
@@ -730,6 +735,160 @@ def clean_features(df):
 
 
 # ============================================================
+# ENGINE SELECTION
+# ============================================================
+
+def java_engine_status():
+    """
+    Report whether CICFlowMeter v4 can actually be run.
+
+    Returns a dict rather than a bare bool because when the answer is "no"
+    the investigator needs to know which piece is missing, not just that
+    something is.
+    """
+
+    paths = {
+        "executable": CICFLOWMETER_EXECUTABLE,
+        "jar": CICFLOWMETER_JAR,
+        "native_dir": CICFLOWMETER_NATIVE_DIR,
+    }
+
+    found = {}
+    for name, value in paths.items():
+        if not value:
+            found[name] = None
+            continue
+        resolved = os.path.abspath(
+            os.path.expandvars(os.path.expanduser(value))
+        )
+        found[name] = resolved if os.path.exists(resolved) else None
+
+    java = shutil.which(CICFLOWMETER_JAVA) if CICFLOWMETER_JAVA else None
+
+    # The launcher alone is enough; the jar route additionally needs the
+    # jnetpcap natives and a java on PATH.
+    can_run = bool(
+        found["executable"]
+        or (found["jar"] and found["native_dir"] and java)
+    )
+
+    missing = [name for name, value in found.items() if value is None]
+    if not java:
+        missing.append("java (not on PATH)")
+
+    return {
+        "available": can_run,
+        "found": found,
+        "java": java,
+        "missing": missing,
+    }
+
+
+def select_engine(log_fn=None):
+    """
+    Decide which flow extractor to use, and say so.
+
+    Honours config.FLOW_ENGINE. In "auto" the Java tool wins when present,
+    because it is the reference implementation the model was trained
+    against; the Python extractor is the fallback that keeps the tool
+    usable when it is not.
+    """
+
+    status = java_engine_status()
+
+    if FLOW_ENGINE == "java":
+        if not status["available"]:
+            raise RuntimeError(
+                "FLOW_ENGINE is set to 'java' but CICFlowMeter v4 is not "
+                "usable.\n\n"
+                "Missing: " + ", ".join(status["missing"]) + "\n\n"
+                "Either install CICFlowMeter v4 at the path in "
+                "services/config.py, or set FLOW_ENGINE to 'auto'."
+            )
+        return "java"
+
+    if FLOW_ENGINE == "python":
+        return "python"
+
+    # auto
+    if status["available"]:
+        return "java"
+
+    if not pyflow_extractor.AVAILABLE:
+        raise RuntimeError(
+            "No flow extraction engine is available.\n\n"
+            "CICFlowMeter v4 is missing: "
+            + ", ".join(status["missing"]) + "\n\n"
+            "The Python fallback is also unavailable: "
+            f"{pyflow_extractor.IMPORT_ERROR}\n\n"
+            "Install the fallback with:\n"
+            "    pip install cicflowmeter scapy"
+        )
+
+    if log_fn:
+        log_fn(
+            "[!] CICFlowMeter v4 was not found ("
+            + ", ".join(status["missing"])
+            + ").",
+            "warning",
+        )
+        log_fn(
+            "[!] Falling back to the Python flow extractor. It produces "
+            "the same 74 features, but activity, bulk and subflow columns "
+            "differ slightly from CICFlowMeter v4; the engine used is "
+            "recorded with the case.",
+            "warning",
+        )
+
+    return "python"
+
+
+# ============================================================
+# PROVENANCE RECORD
+# ============================================================
+
+def _write_extraction_record(case_dir, pcap_path, csv_path, engine, rows):
+    """
+    Write flow_extraction.json beside the flow CSV.
+
+    Which engine produced a flow table is part of the evidence chain: two
+    engines segment flows differently, so a feature value is only
+    interpretable against the engine that computed it.
+    """
+
+    record = {
+        "capture": os.path.abspath(pcap_path),
+        "capture_bytes": os.path.getsize(pcap_path),
+        "flow_csv": os.path.abspath(csv_path),
+        "flows": rows,
+        "engine": engine,
+        "engine_detail": (
+            "CICFlowMeter v4 (Java)"
+            if engine == "java"
+            else "Python fallback (scapy + cicflowmeter port)"
+        ),
+        "flow_timeout_seconds": (
+            120 if engine == "java"
+            else pyflow_extractor.FLOW_TIMEOUT_SECONDS
+        ),
+        "extracted_utc": datetime.now(timezone.utc).isoformat(
+            timespec="seconds"
+        ),
+    }
+
+    path = os.path.join(case_dir, "flow_extraction.json")
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(record, fh, indent=2)
+    except OSError:
+        # A missing provenance file must not lose the analysis; the same
+        # facts still travel on df.attrs.
+        pass
+
+    return record
+
+
+# ============================================================
 # COMPLETE EXTRACTION
 # ============================================================
 
@@ -739,29 +898,55 @@ def extract_flows_from_pcap(
     log_fn=None
 ):
     """
-    Complete PCAP -> CICFlowMeter -> DataFrame operation.
+    Complete PCAP -> flow CSV -> DataFrame operation.
+
+    Uses CICFlowMeter v4 when it is installed, and the pure-Python
+    extractor when it is not. See services/config.py FLOW_ENGINE.
 
     Returns:
 
         df,
         generated_csv_path
+
+    The engine that produced the table is on df.attrs["flow_engine"] and in
+    flow_extraction.json inside case_dir.
     """
 
-    csv_path = run_cicflowmeter(
-        pcap_path=pcap_path,
-        output_dir=case_dir,
-        log_fn=log_fn,
-    )
+    validate_pcap_file(pcap_path)
 
-    df = load_cicflowmeter_csv(
-        csv_path
-    )
+    os.makedirs(case_dir, exist_ok=True)
+
+    engine = select_engine(log_fn=log_fn)
+
+    if engine == "java":
+        csv_path = run_cicflowmeter(
+            pcap_path=pcap_path,
+            output_dir=case_dir,
+            log_fn=log_fn,
+        )
+    else:
+        base = os.path.splitext(os.path.basename(pcap_path))[0]
+        csv_path = os.path.join(case_dir, base + "_Flow.csv")
+        pyflow_extractor.extract(
+            pcap_path=pcap_path,
+            output_csv=csv_path,
+            log_fn=log_fn,
+        )
+
+    df = load_cicflowmeter_csv(csv_path)
 
     if df.empty:
         raise ValueError(
-            "CICFlowMeter generated an empty flow CSV. "
+            "Flow extraction produced an empty CSV. "
             "No network flows were extracted from the "
             "supplied PCAP."
         )
+
+    record = _write_extraction_record(
+        case_dir, pcap_path, csv_path, engine, len(df)
+    )
+
+    df.attrs["flow_engine"] = engine
+    df.attrs["flow_extraction"] = record
 
     return df, csv_path

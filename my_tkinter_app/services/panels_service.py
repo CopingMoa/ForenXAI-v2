@@ -388,8 +388,19 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
             # feature. Training flows cap at 120 s; TRUSTLab runs to
             # 15,717 s. A capture extracted with the default timeout is
             # not comparable, so this is surfaced rather than buried.
+            #
+            # Both engines are tested because they cap at different values:
+            # CICFlowMeter v4 at 120 s, the Python fallback at 240 s.
+            # Checking only one would miss the other.
+            longest = float(d.max())
             facts["flow_timeout_warning"] = bool(
-                abs(float(d.max()) - 120_000_000) < 1_000_000
+                abs(longest - 120_000_000) < 1_000_000
+                or abs(longest - 240_000_000) < 1_000_000
+            )
+            facts["flow_timeout_seconds"] = (
+                120 if abs(longest - 120_000_000) < 1_000_000
+                else 240 if abs(longest - 240_000_000) < 1_000_000
+                else None
             )
 
     lines = [
@@ -418,13 +429,15 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
             f"{t['address']} ({t['flows']:,})" for t in e["sources"][:3]))
 
     if facts.get("flow_timeout_warning"):
+        cap = facts.get("flow_timeout_seconds") or 120
         lines.append("")
         lines.append(
-            "WARNING: the longest flow is almost exactly 120 seconds, which "
-            "means these flows were extracted with CICFlowMeter's default "
-            "flow timeout. The model was trained on flows extracted with a "
-            "much longer timeout, so every timing feature is on a different "
-            "scale. Re-extract before trusting these results."
+            f"WARNING: the longest flow is almost exactly {cap} seconds, "
+            f"which means these flows were extracted with the extractor's "
+            f"default flow timeout. The model was trained on flows "
+            f"extracted with a much longer timeout, so every timing feature "
+            f"is on a different scale. Re-extract before trusting these "
+            f"results."
         )
 
     return {
@@ -432,6 +445,71 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
         "facts": facts,
         "lines": lines,
     }
+
+
+# ============================================================
+# EXTRACTION PROVENANCE
+# ============================================================
+
+def read_extraction_record(csv_path):
+    """
+    Load flow_extraction.json from the directory holding the flow CSV.
+
+    Written by cicflowmeter_service when the PCAP was converted. It records
+    which engine ran, because CICFlowMeter v4 and the Python fallback do not
+    segment flows identically -- a timing feature is only interpretable
+    against the engine that produced it.
+
+    Returns None when the CSV was supplied directly rather than extracted
+    here, which is a normal case and not an error.
+    """
+
+    try:
+        folder = os.path.dirname(os.path.abspath(csv_path))
+        path = os.path.join(folder, "flow_extraction.json")
+        if not os.path.isfile(path):
+            return None
+        with open(path, "r", encoding="utf-8") as fh:
+            record = json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+    if not isinstance(record, dict) or "engine" not in record:
+        return None
+
+    # Only trust the record if it describes the CSV actually being read.
+    named = os.path.basename(str(record.get("flow_csv", "")))
+    if named and named != os.path.basename(csv_path):
+        return None
+
+    return record
+
+
+def _engine_lines(extraction):
+    """One line naming the extractor, plus a caveat when it is the fallback."""
+
+    if not extraction:
+        return []
+
+    engine = extraction.get("engine")
+    detail = extraction.get("engine_detail", engine)
+    timeout = extraction.get("flow_timeout_seconds")
+
+    line = f"Flows extracted by: {detail}"
+    if timeout:
+        line += f" (flow timeout {timeout} s)"
+    lines = [line]
+
+    if engine == "python":
+        lines.append(
+            "This is the fallback extractor, used because CICFlowMeter v4 "
+            "was not available. It computes the same 74 features on the "
+            "same 120-second flow timeout, but its activity, bulk and "
+            "subflow boundaries are not identical to v4's, so those columns "
+            "can differ from a CICFlowMeter v4 run on the same capture."
+        )
+
+    return lines
 
 
 # ============================================================
@@ -847,6 +925,15 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
     # Put the intake facts in front of the investigator rather than in a log:
     # a truncated file or a high coercion rate changes what the numbers mean.
     summary["intake"] = {**intake_report, **matrix_report}
+
+    # Which extractor produced these flows. Two engines segment flows
+    # differently, so a timing feature only means something against the one
+    # that computed it -- that belongs on screen, not in a log file.
+    extraction = read_extraction_record(csv_path)
+    if extraction:
+        summary["facts"]["flow_engine"] = extraction.get("engine")
+        summary["extraction"] = extraction
+
     # describe() names the CSV, which is what was read; the investigator
     # uploaded a PCAP and thinks in those terms. Report both, in that order,
     # so the provenance chain PCAP -> CSV -> analysis is visible on screen
@@ -854,6 +941,7 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
     summary["lines"] = (
         [f"Evidence: {source_name}"]
         + describe(intake_report, matrix_report)
+        + _engine_lines(extraction)
         + summary["lines"][1:]
     )
     findings = aggregate(names, proba, k, bundle, flows)

@@ -5,11 +5,18 @@
 # IMPORTANT:
 # This file installs PYTHON dependencies only.
 #
-# ForenXAI also requires two external programs that pip CANNOT
+# ForenXAI prefers two external programs that pip CANNOT
 # install:
 #
 #   1. Java JDK 8
 #   2. CICFlowMeter v4
+#
+# Since the PCAP fallback was added these are no longer required
+# to get a working install. If CICFlowMeter v4 is absent, the
+# pure-Python extractor at the bottom of this file takes over
+# automatically and PCAP upload still works, with the two limits
+# documented there. Install CICFlowMeter v4 when you can: it is
+# the reference implementation the model was trained against.
 #
 # Follow the setup guide below from TOP to BOTTOM after cloning
 # the repository.
@@ -450,3 +457,37 @@ shap==0.52.0
 tkinterdnd2==0.4.3
 xgboost==3.0.5
 catboost==1.2.8
+
+# ------------------------------------------------------------
+# PCAP FALLBACK -- read this before skipping it
+# ------------------------------------------------------------
+#
+# These two let ForenXAI convert a PCAP without CICFlowMeter v4.
+# CICFlowMeter v4 is still preferred and is used automatically
+# when installed: it is the reference implementation the model
+# was trained against, and it has no memory limit.
+#
+# The fallback exists because CICFlowMeter v4 needs jnetpcap
+# native libraries that frequently cannot be installed on
+# Windows, and without it the PCAP upload path does not work at
+# all.
+#
+# Two limits apply when the fallback is what runs:
+#
+#   * It holds a flow's packets until that flow closes, so a
+#     dense capture is refused with instructions rather than
+#     exhausting memory. Around 600,000 packets is the ceiling.
+#   * Activity, bulk and subflow columns sit on slightly
+#     different boundaries than v4 uses.
+#
+# Which engine produced a flow table is recorded in
+# flow_extraction.json beside the CSV, and shown in the Flow
+# Summary panel.
+#
+# scapy is pinned at 2.7 because it renamed the session hook
+# that cicflowmeter 0.2.0 targets; services/pyflow_extractor.py
+# works around that. An older scapy also works. Re-check a newer
+# one against test_panels_suite.py section I.
+
+cicflowmeter==0.2.0
+scapy==2.7.0

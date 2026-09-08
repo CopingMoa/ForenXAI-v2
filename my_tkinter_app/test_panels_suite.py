@@ -20,6 +20,8 @@ Sections:
   F  SCHEMA      the grounding checks catch what they are meant to catch
   G  LLM         narration is additive and its provenance is recorded
   H  UI          the widgets fill and follow the selection
+  I  PCAP        a capture converts to the exact schema the model needs,
+                 and which engine converted it is recorded
 
 No framework. A failure prints what was expected and what happened; the
 exit code is the number of failures.
@@ -481,6 +483,166 @@ def test_ui():
 
 
 # ============================================================
+# I  PCAP -- the capture intake path
+# ============================================================
+
+def _synthetic_pcap(path):
+    """
+    Build a small capture with known contents.
+
+    Deterministic and self-contained, so the check does not depend on a
+    sample capture being present on any particular machine. It carries a TCP
+    conversation with URG set and CWR clear, which is what makes the CWR
+    check below meaningful.
+    """
+    from scapy.all import IP, TCP, UDP, Ether, wrpcap
+
+    pkts = []
+    t = 1_700_000_000.0
+
+    # Explicit MACs: letting scapy fill them makes it try to resolve the
+    # destination on the live network, which it cannot do here.
+    mac_a, mac_b = "02:00:00:00:00:01", "02:00:00:00:00:02"
+
+    # TCP: handshake, data packets with URG, then teardown. The URG packets
+    # sit on EVEN indices so they travel in the forward direction, which is
+    # what the CWR check needs.
+    flags = ["S", "SA", "PAU", "A", "PAU", "A", "FA", "A"]
+    for i, fl in enumerate(flags):
+        forward = i % 2 == 0
+        p = (
+            Ether(src=mac_a if forward else mac_b,
+                  dst=mac_b if forward else mac_a)
+            / IP(src="10.0.0.1" if forward else "10.0.0.2",
+                 dst="10.0.0.2" if forward else "10.0.0.1")
+            / TCP(sport=44_444 if forward else 80,
+                  dport=80 if forward else 44_444,
+                  flags=fl, urgptr=1 if "U" in fl else 0)
+            / (b"x" * 40 if "P" in fl else b"")
+        )
+        p.time = t + i * 0.01
+        pkts.append(p)
+
+    # UDP: a DNS-shaped exchange, so the table is not TCP-only.
+    for i in range(4):
+        forward = i % 2 == 0
+        p = (
+            Ether(src=mac_a if forward else mac_b,
+                  dst=mac_b if forward else mac_a)
+            / IP(src="10.0.0.1" if forward else "10.0.0.53",
+                 dst="10.0.0.53" if forward else "10.0.0.1")
+            / UDP(sport=55_555 if forward else 53,
+                  dport=53 if forward else 55_555)
+            / (b"q" * 30)
+        )
+        p.time = t + 1.0 + i * 0.02
+        pkts.append(p)
+
+    wrpcap(path, pkts)
+    return len(pkts)
+
+
+def test_pcap():
+    section("I  PCAP -- capture intake")
+
+    import joblib
+
+    from services import cicflowmeter_service as cfm
+    from services import pyflow_extractor as pfe
+
+    check("the Python flow extractor imports",
+          pfe.AVAILABLE, pfe.IMPORT_ERROR or "")
+
+    if not pfe.AVAILABLE:
+        return
+
+    features = joblib.load(
+        os.path.join(HERE, "models", "forenxai", "features.pkl"))
+
+    missing, extra = pfe.check_schema(features)
+    check("emits every feature the model requires", not missing,
+          f"missing: {missing}")
+    check("the only extra columns are the forensic identity columns",
+          set(extra) == {"Src IP", "Dst IP", "Src Port", "Timestamp"},
+          f"extra: {extra}")
+
+    tmp = tempfile.mkdtemp(prefix="forenxai_pcap_")
+    pcap = os.path.join(tmp, "synthetic.pcap")
+    out = os.path.join(tmp, "synthetic_Flow.csv")
+
+    written = _synthetic_pcap(pcap)
+    pfe.extract(pcap, out)
+
+    df = pd.read_csv(out)
+    check("a capture with TCP and UDP yields flows", len(df) >= 2,
+          f"{written} packets in, {len(df)} flows out")
+
+    check("column names are the CICFlowMeter v4 names the model expects",
+          not set(features) - set(df.columns),
+          f"absent: {sorted(set(features) - set(df.columns))[:5]}")
+
+    # The upstream cicflowmeter port sets CWR Flag Count to the forward URG
+    # count. This capture sets URG and never sets CWR, so if the correction
+    # were dropped CWR would read nonzero here.
+    urg = df["Fwd URG Flags"].sum()
+    cwr = df["CWR Flag Count"].sum()
+    check("CWR is counted, not copied from Fwd URG",
+          urg > 0 and cwr == 0,
+          f"Fwd URG={urg}, CWR={cwr}")
+
+    # Six columns are emitted by identity. Verified as exact against 300,000
+    # real CICFlowMeter rows and 1,120,000 training rows; asserted here so a
+    # later edit cannot quietly break the relationship.
+    for a, b in [("Subflow Fwd Packets", "Total Fwd Packet"),
+                 ("Subflow Bwd Packets", "Total Bwd packets"),
+                 ("Subflow Fwd Bytes", "Total Length of Fwd Packet"),
+                 ("Subflow Bwd Bytes", "Total Length of Bwd Packet"),
+                 ("Fwd Segment Size Avg", "Fwd Packet Length Mean"),
+                 ("Bwd Segment Size Avg", "Bwd Packet Length Mean")]:
+        check(f"{a} == {b}",
+              bool(np.allclose(df[a], df[b], rtol=1e-6, atol=1e-6)))
+
+    # The whole point: the extracted CSV must survive intake unchanged.
+    from services.flow_intake import read_flows, to_matrix
+    flows, report = read_flows(out, features)
+    X, mreport = to_matrix(flows, features)
+    check("the extracted CSV passes intake", report["rows"] == len(df))
+    check("every value reads as a number",
+          mreport["coerced_to_zero"] == 0,
+          f"{mreport['coerced_to_zero']} cells coerced")
+    check("the matrix is the model's shape", X.shape == (len(df), 74),
+          str(X.shape))
+
+    # Engine selection must be honest about what is installed.
+    status = cfm.java_engine_status()
+    check("java_engine_status reports what is missing",
+          isinstance(status.get("missing"), list)
+          and status["available"] == (not status["missing"]))
+
+    # Full service path, including the provenance record.
+    case = os.path.join(tmp, "case")
+    df2, csv2 = cfm.extract_flows_from_pcap(pcap, case)
+    check("extract_flows_from_pcap returns a populated table", len(df2) > 0)
+    check("the engine is recorded on the table",
+          df2.attrs.get("flow_engine") in ("java", "python"))
+    check("flow_extraction.json is written beside the CSV",
+          os.path.isfile(os.path.join(case, "flow_extraction.json")))
+
+    from services.panels_service import read_extraction_record, _engine_lines
+    rec = read_extraction_record(csv2)
+    check("the provenance record reads back",
+          bool(rec) and rec["engine"] == df2.attrs["flow_engine"])
+    check("the summary names the extractor",
+          any("extracted by" in ln for ln in _engine_lines(rec)))
+
+    # A record describing a different CSV must not be attached to this one.
+    other = os.path.join(case, "unrelated_Flow.csv")
+    df2.head(1).to_csv(other, index=False)
+    check("a provenance record is not applied to a CSV it does not name",
+          read_extraction_record(other) is None)
+
+
+# ============================================================
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--llm", action="store_true",
@@ -501,6 +663,7 @@ def main():
     test_panel2()
     test_panel3()
     test_schema()
+    test_pcap()
 
     if args.llm or args.all:
         test_llm()
