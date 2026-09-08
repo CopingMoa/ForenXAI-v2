@@ -244,8 +244,15 @@ def test_panel3():
         check("a class with a document cites it",
               rec["citations"] == ["incident_response/denial_of_service.md"],
               str(rec["citations"]))
-        check("the document is quoted verbatim",
-              any("PLACEHOLDER" in s["body"] for s in rec["sections"]))
+        # Assert a durable property, not the sample text: the retrieved
+        # document must reach the panel with its own provenance header
+        # intact. Checking for placeholder wording coupled this test to one
+        # file's contents and broke the moment that file was replaced.
+        quoted = [s["body"] for s in rec["sections"] if s.get("source")]
+        check("the document is quoted with its provenance header",
+              quoted and any("Source:" in q or "> Source" in q
+                             for q in quoted),
+              "no source line survived into the panel")
         check("Slowloris reports its ambiguity with DoS",
               rec["ambiguity"] and "DoS" in rec["ambiguity"])
 
