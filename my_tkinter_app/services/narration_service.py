@@ -54,6 +54,56 @@ SYSTEM = "\n".join([
     "as a change in probability.",
 ])
 
+
+# ============================================================
+# WORKED EXAMPLES
+#
+# This is how a 3b model is taught, given that fine-tuning is not on the
+# table. Instructions tell it what not to do; an example shows it what a
+# correct answer LOOKS like, which is the thing a small model actually
+# copies. Two examples cost about 200 tokens of a 32,768-token window.
+#
+# Each pair is chosen to demonstrate one failure this project has actually
+# seen:
+#
+#   flow_summary     stick to the supplied numbers; no invented totals
+#   shap_explanation say "raises the score for X" -- never a percentage,
+#                    never "increases the probability by N%"
+#
+# The BAD line is included on purpose. Showing only the good answer leaves
+# the model to guess what was wrong with its instinct; showing the
+# rejected form next to it is what stops the percentage phrasing coming
+# back, which was the most persistent error.
+# ============================================================
+
+EXAMPLES = {
+    "flow_summary": """
+EXAMPLE OF A GOOD ANSWER
+"The capture holds 6,995 flows over 31 seconds, of which 3,152 were
+classified as attack traffic and 3,843 as benign. Two attack classes are
+present, WebBased and PortScan, and 192.168.50.102 is the source of almost
+every flow. Mean confidence is 0.50, with 4,730 flows below 0.60, so most
+of these classifications are weak and warrant review before use."
+
+REJECTED, and why: "Roughly 7,000 flows were seen, indicating a targeted
+campaign against the network." -- rounds a supplied figure, and speculates
+about intent, which is not in the facts.
+""",
+
+    "shap_explanation": """
+EXAMPLE OF A GOOD ANSWER
+"The strongest signal is the backward bulk rate, contributing +2.56 log-odds
+toward API. The server sent data back in large bursts rather than a steady
+stream, which is what the model associates with this class. The FIN flag
+count adds a further +1.16: connections closed cleanly and quickly, so many
+short complete sessions rather than a few long ones."
+
+REJECTED, and why: "Bwd Bulk Rate Avg increases the probability of API by
+256%." -- expresses a log-odds contribution as a percentage. The values are
+log-odds; they do not convert to a percentage without the softmax.
+""",
+}
+
 # Short enough that a 3b model stays on task; long enough to be useful.
 # Raised after the first run cut panels 2 and 3 mid-sentence. A narration
 # that stops halfway reads as a crash, and an investigator cannot tell a
@@ -225,6 +275,14 @@ def narrate(panel, provider, context=None):
 
     try:
         prompt = build(panel, context or {})
+
+        # In-context learning. A worked example is the only training signal
+        # available without fine-tuning, and for a 3b model it outperforms
+        # more instructions -- the model copies the shape it is shown.
+        example = EXAMPLES.get(name)
+        if example:
+            prompt = prompt + "\n" + example
+
         text, usage = provider.complete(
             system=SYSTEM,
             user=prompt,
@@ -246,6 +304,23 @@ def narrate(panel, provider, context=None):
         panel["narration_findings"] = findings
         panel["narration_stats"] = stats
         panel["narration_verdict"] = summary_line(stats, findings)
+
+        # A high-severity finding means the model asserted something it was
+        # not given: an invented figure, or a citation for a document that
+        # was never supplied.
+        #
+        # Showing that prose under a warning does not work. The paragraph is
+        # the readable part of the panel, so it gets read and the warning
+        # does not. Generation cannot be prevented without fine-tuning, and
+        # fine-tuning would not remove this check anyway -- but DISPLAY can
+        # be prevented, and that is the whole lever. The deterministic panel
+        # underneath is complete on its own, so withholding costs nothing.
+        #
+        # Kept under narration_withheld rather than dropped, so a saved case
+        # can still be audited for what the model actually said.
+        if stats.get("highest_severity") == "high":
+            panel["narration_withheld"] = panel["narrative"]
+            panel["narrative"] = None
 
     except Exception as e:
         panel["narrative"] = None

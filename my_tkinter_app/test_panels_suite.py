@@ -364,6 +364,54 @@ def test_schema():
     check("tolerates a supplied number written with a comma",
           not any(x["check"] == "figures" for x in f), str(f))
 
+    # Prose that fails a HIGH-severity check must be withheld, not shown
+    # under a warning. The paragraph is the readable part of the panel, so
+    # it gets read and the warning does not.
+    import services.narration_service as ns
+
+    class _Liar:
+        """Returns text asserting a figure and a document it was never given."""
+        def complete(self, system, user, **kw):
+            return ("The capture holds 998,877 flows and the response is "
+                    "documented in incident_response/not_supplied.md."), {}
+
+    panel = {"panel": "flow_summary",
+             "facts": {"total_flows": 12, "benign_flows": 10,
+                       "attack_flows": 2},
+             "sections": []}
+    out = ns.narrate(panel, _Liar())
+    check("an ungrounded narration is withheld from display",
+          out["narrative"] is None, repr(out.get("narrative")))
+    check("the withheld text is kept for audit",
+          bool(out.get("narration_withheld")))
+    check("the verdict says why", "UNVERIFIED" in out["narration_verdict"])
+
+    class _Honest:
+        def complete(self, system, user, **kw):
+            return "The capture holds 12 flows, 2 of them attack.", {}
+
+    ok = ns.narrate({"panel": "flow_summary",
+                     "facts": {"total_flows": 12, "benign_flows": 10,
+                               "attack_flows": 2},
+                     "sections": []}, _Honest())
+    check("a grounded narration is still shown",
+          ok["narrative"] is not None and "narration_withheld" not in ok)
+
+    # Few-shot examples must actually reach the model, or they teach nothing.
+    seen = {}
+
+    class _Recorder:
+        def complete(self, system, user, **kw):
+            seen["user"] = user
+            return "ok", {}
+
+    ns.narrate({"panel": "flow_summary", "facts": {"total_flows": 1},
+                "sections": []}, _Recorder())
+    check("the worked example is included in the prompt",
+          "EXAMPLE OF A GOOD ANSWER" in seen.get("user", ""))
+    check("the rejected form is shown alongside it",
+          "REJECTED" in seen.get("user", ""))
+
 
 # ============================================================
 # G -- LLM
@@ -582,6 +630,28 @@ def test_model_guidance():
     bare = ps.recommend(any_finding)
     check("recommend() still works without a summary",
           "scope" in bare["model_guidance"])
+
+    # Per-class analyst actions: every class the model can predict must have
+    # one, and it must be deterministic -- not narrated, not sourced-looking.
+    b_classes = list(b["encoder"].classes_)
+    check("every model class has analyst actions",
+          all(c in ps.ANALYST_ACTIONS for c in b_classes),
+          str(sorted(set(b_classes) - set(ps.ANALYST_ACTIONS))))
+    check("each has all three fields, none empty",
+          all(all(v.get(k) for k in ("evidence", "corroborate", "urgency"))
+              for v in ps.ANALYST_ACTIONS.values()))
+    check("Benign is told to do nothing, not something",
+          "Do not act" in ps.ANALYST_ACTIONS["Benign"]["urgency"])
+    check("the weak classes say so in their corroborate step",
+          all("WEAK CLASS" in ps.ANALYST_ACTIONS[c]["corroborate"]
+              for c in ("DoS", "Slowloris")))
+
+    acted = ps.recommend(any_finding, summary=summary)
+    action_sections = [s for s in acted["sections"]
+                       if s.get("kind") == "actions"]
+    check("the analyst-actions section renders", len(action_sections) == 1)
+    check("it says the actions are not from a cited source",
+          "not claims from a cited source" in action_sections[0]["body"])
 
     # A document is retrieved once even when two rules select it.
     both = dict(any_finding)

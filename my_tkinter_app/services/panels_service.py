@@ -110,6 +110,170 @@ KNOWLEDGE_MAP = {
     "WebBased":       {"doc": "incident_response/webbased.md"},
 }
 
+# ============================================================
+# CLASS -> WHAT THE ANALYST DOES NEXT
+#
+# Deterministic on purpose. This is the shortest, most operational thing on
+# the panel and the most damaging to get wrong, so no language model touches
+# it -- the text below is what renders, verbatim.
+#
+# Why data and not sixteen more .md files:
+#
+#   * incident_response/<class>.md already carries the CONTAINMENT advice,
+#     sourced and citation-checked. Sixteen analyst documents would restate
+#     it in an unsourced voice, and the panel would show both.
+#   * What actually varies per class for the ANALYST is three short fields.
+#     Three fields is a table, not a document.
+#   * Only the matching row renders. A single .md holding all sixteen would
+#     put fifteen irrelevant rows on screen, because the panel quotes whole
+#     files.
+#
+# `evidence`     what to pull from the capture beyond the flow record
+# `corroborate`  the check that decides whether the classification holds
+# `urgency`      when to act, given the reversibility ranking in
+#                analyst/triage.md -- reversible steps first
+#
+# Not sourced, and says so on screen. NIST SP 800-61r3 and the CISA
+# playbooks prescribe the general procedure, not per-class packet checks.
+# ============================================================
+
+ANALYST_ACTIONS = {
+    "API": {
+        "evidence": "Full request URIs, methods, auth headers and response "
+                    "codes for the flagged flows.",
+        "corroborate": "Do the requests hit API paths, and is the "
+                       "4xx/5xx rate abnormal for this endpoint?",
+        "urgency": "Same day. Rate-limit the source first; blocking an API "
+                   "client can break a production integration.",
+    },
+    "Benign": {
+        "evidence": "None beyond retention with the rest of the capture.",
+        "corroborate": "Only where benign was a low-confidence call, or was "
+                       "runner-up on an attack finding.",
+        "urgency": "None. Do not act on a benign classification.",
+    },
+    "Bruteforce": {
+        "evidence": "Authentication logs for the target service over the "
+                    "capture window; success-after-failure sequences.",
+        "corroborate": "Repeated auth attempts from one source, and whether "
+                       "any SUCCEEDED. A successful login changes this from "
+                       "an attempt to an intrusion.",
+        "urgency": "Immediate if any attempt succeeded. Lock the account and "
+                   "preserve the session before blocking the source.",
+    },
+    "BufferOverflow": {
+        "evidence": "Packet payloads for the flagged flows; service logs and "
+                    "crash dumps on the target host.",
+        "corroborate": "Oversized or malformed input to a listening service, "
+                       "and whether the service crashed or restarted.",
+        "urgency": "Immediate. Assume code execution until the host is "
+                   "examined. Image before isolating.",
+    },
+    "C2Beaconing": {
+        "evidence": "Full destination list, JA3/JA3S if TLS, timing of every "
+                    "flow to the destination, DNS that resolved it.",
+        "corroborate": "Regular interval to one external destination that "
+                       "persists across the capture. Check the destination "
+                       "against threat intelligence.",
+        "urgency": "Immediate, but do NOT block first -- blocking tells the "
+                   "operator they were seen. Monitor, scope, then contain.",
+    },
+    "DDoS": {
+        "evidence": "Source address distribution, upstream provider logs, "
+                    "service availability during the window.",
+        "corroborate": "Many distinct sources to one target, and whether the "
+                       "service actually degraded.",
+        "urgency": "Immediate. Upstream filtering, not host-level blocking "
+                   "-- the traffic has already consumed the link.",
+    },
+    "DNS": {
+        "evidence": "Queried names, record types, response sizes, resolver "
+                    "logs.",
+        "corroborate": "Query volume, name length and entropy. Tunnelling "
+                       "shows as long encoded labels or high TXT volume.",
+        "urgency": "Same day. Point the host at a controlled resolver before "
+                   "blocking DNS outright.",
+    },
+    "DoS": {
+        "evidence": "Request rate over time, service logs, resource metrics "
+                    "on the target.",
+        "corroborate": "Single source, sustained rate, measurable service "
+                       "degradation. WEAK CLASS -- see the reliability "
+                       "guidance; confirm before reporting.",
+        "urgency": "Same day. Rate-limit first; the source may be a "
+                   "misconfigured client rather than an attacker.",
+    },
+    "Evasion": {
+        "evidence": "Raw packets with IP fragment offsets and TTL values "
+                    "intact. Do not work from a reassembled view.",
+        "corroborate": "Do fragments actually overlap, or do TTLs vary within "
+                       "one flow? Both occur naturally.",
+        "urgency": "Immediate for the DETECTOR, not the host. If evasion "
+                   "succeeded, every other finding in this capture is less "
+                   "reliable.",
+    },
+    "Exfiltration": {
+        "evidence": "Outbound byte volume per destination, timing, and the "
+                    "identity of the internal source host.",
+        "corroborate": "Outbound volume far above this host's baseline to a "
+                       "destination it does not normally contact.",
+        "urgency": "Immediate. Preserve first -- isolating the host destroys "
+                   "the session state that shows what left.",
+    },
+    "Exploitation": {
+        "evidence": "Packet payloads, target service version, host logs from "
+                    "the exploitation window onward.",
+        "corroborate": "Does the payload match a known exploit for the "
+                       "service, and did behaviour change afterwards?",
+        "urgency": "Immediate. Treat the host as compromised until examined.",
+    },
+    "MITM": {
+        "evidence": "ARP tables, certificate chains presented, gateway MAC "
+                    "over time.",
+        "corroborate": "Two MACs claiming one address, or a certificate not "
+                       "signed by the expected authority.",
+        "urgency": "Immediate. Anything observed on this segment during the "
+                   "window may have been read or altered in transit.",
+    },
+    "PortScan": {
+        "evidence": "Ports contacted, order, and which responded. Source "
+                    "address and whether it is internal.",
+        "corroborate": "One source to many ports in a short window. Confirm "
+                       "it is not an authorised scanner before acting.",
+        "urgency": "Low on its own -- reconnaissance, not compromise. Check "
+                   "what the source did AFTER the scan; that is the finding "
+                   "that matters.",
+    },
+    "Slowloris": {
+        "evidence": "Concurrent connection count on the target, per-connection "
+                    "duration, server worker pool state.",
+        "corroborate": "Many long-lived, low-data connections held open. WEAK "
+                       "CLASS and confusable with DoS -- report the pair, not "
+                       "one name.",
+        "urgency": "Same day. Connection timeouts and per-source limits fix "
+                   "this without blocking anyone.",
+    },
+    "TLSSSL": {
+        "evidence": "Full handshake, cipher suites offered and selected, "
+                    "certificate chain, TLS version.",
+        "corroborate": "Deprecated version or cipher, or a handshake pattern "
+                       "matching a known weakness. Legacy clients look "
+                       "similar and are not attacks.",
+        "urgency": "Same day unless the handshake shows active exploitation, "
+                   "then immediate.",
+    },
+    "WebBased": {
+        "evidence": "Full request URIs and bodies, web server and "
+                    "application logs, response codes.",
+        "corroborate": "Injection or traversal patterns in the requests, and "
+                       "whether the application returned data rather than an "
+                       "error.",
+        "urgency": "Immediate if any request succeeded. A 200 on an injection "
+                   "attempt is a breach, not an attempt.",
+    },
+}
+
+
 # Pairs the model provably cannot separate, with the evidence.
 # Slowloris and DoS have a per-feature SHAP importance correlation of
 # 0.9040 and share six of their top ten features, so a single confident
@@ -949,6 +1113,24 @@ def recommend(finding, detections=None, summary=None):
             "body": confidence_note,
         },
     ]
+
+    # What to do next, for THIS class. Deterministic and never narrated: it
+    # is the shortest and most operational text on the panel, so it is also
+    # the worst thing to let a language model rewrite.
+    actions = ANALYST_ACTIONS.get(cls)
+    if actions:
+        sections.append({
+            "heading": "Analyst actions",
+            "body": (
+                f"Collect: {actions['evidence']}\n\n"
+                f"Corroborate: {actions['corroborate']}\n\n"
+                f"Urgency: {actions['urgency']}\n\n"
+                f"These three are this project's own operating notes, not "
+                f"claims from a cited source. The sourced procedure is in "
+                f"analyst/triage.md below."
+            ),
+            "kind": "actions",
+        })
 
     if ambiguity:
         sections.append({

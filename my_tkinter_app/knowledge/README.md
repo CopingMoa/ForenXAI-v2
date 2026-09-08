@@ -37,10 +37,15 @@ knowledge/
 │   └── glossary.md             Built from config/feature_glossary.py, which
 │                               is checked against features.pkl.
 │
-├── analyst/                  * PROCEDURE, NOT CONTENT. What the analyst
-│   └── triage.md               does with a finding: order of work,
-│                               mitigation by reversibility, evidence
-│                               handling, what not to claim.
+├── analyst/                  * PROCEDURE, NOT CONTENT. Cross-cutting only:
+│   └── triage.md               order of work, mitigation by reversibility,
+│                               evidence handling, what not to claim.
+│                             * PER-CLASS analyst actions are NOT here. They
+│                               live in ANALYST_ACTIONS in panels_service.py
+│                               as three short fields per class, because
+│                               only the matching row should render and
+│                               incident_response/ already carries the
+│                               sourced containment advice.
 │
 ├── SOURCES.md                  Every source, what it is used for, how to
 │                               check it yourself.
