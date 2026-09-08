@@ -5,13 +5,9 @@
 > evasion as one procedure. Every claim traces to a cited section; where the
 > sources do not cover something, this file says so.
 >
-> Sources:
->   G. Ziemba, D. Reed and P. Traina, "Security considerations for IP
->   fragment filtering," RFC 1858, §3–§4, Oct. 1995.
->   I. Miller, "Protection against a variant of the tiny fragment attack,"
->   RFC 3128, Jun. 2001.
->   Joint Task Force, NIST SP 800-53r5, controls SI-4 and SC-7, rel. 5.2.0,
->   Aug. 2025.
+> Source: G. Ziemba, D. Reed and P. Traina, "Security considerations for IP fragment filtering," RFC 1858, §3–§4, Oct. 1995, doi: 10.17487/RFC1858.
+> Source: I. Miller, "Protection against a variant of the tiny fragment attack," RFC 3128, Jun. 2001, doi: 10.17487/RFC3128.
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, controls SI-4 and SC-7, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
 >
 > Retrieved: 2026-09-08
 

@@ -16,34 +16,34 @@
 
 ## From NIST.SP.800-53r5
 
-communications services. Examples of control plane traffic include Border Gateway Protocol (BGP) routing, Domain Name System (DNS), and management protocols. See [SP 800-189] for additional information on the use of the resource public key infrastructure (RPKI) to protect BGP routes and detect unauthorized BGP announcements. Related Controls: AC-3, SC-8, SC-20, SC-21, SC-22. (5) BOUNDARY PROTECTION | DENY BY DEFAULT — ALLOW BY EXCEPTION
+(BGP) routing, Domain Name System (DNS), and management protocols. See [SP 800-189] for additional information on the use of the resource public key infrastructure (RPKI) to protect BGP routes and detect unauthorized BGP announcements. Related Controls: AC-3, SC-8, SC-20, SC-21, SC-22. (5) BOUNDARY PROTECTION | DENY BY DEFAULT — ALLOW BY EXCEPTION Deny network communications traffic by default and allow network communications
 
-response data. Related Controls: SC-20, SC-22. Control Enhancements: None. (1) SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) | DATA ORIGIN AND INTEGRITY [Withdrawn: Incorporated into SC-21.]
+(Authoritative Source) S SC-20(1) CHILD SUBSPACES W: Incorporated into SC-20. SC-20(2) DATA ORIGIN AND INTEGRITY S SC-21 Secure Name/Address Resolution Service (Recursive or Caching Resolver)
 
-SC-20(1) CHILD SUBSPACES W: Incorporated into SC-20. SC-20(2) DATA ORIGIN AND INTEGRITY S SC-21 Secure Name/Address Resolution Service (Recursive or Caching Resolver) SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for
+SC-20(2) DATA ORIGIN AND INTEGRITY S SC-21 Secure Name/Address Resolution Service (Recursive or Caching Resolver) S SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for
 
-requests from clients external to organizations (i.e., on external networks, including the Internet). Organizations specify clients that can access authoritative DNS servers in certain roles (e.g., by address ranges and explicit lists). Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2].
+Related Controls: SC-20, SC-22. Control Enhancements: None. (1) SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) | DATA ORIGIN AND INTEGRITY [Withdrawn: Incorporated into SC-21.] References: [SP 800-81-2].
 
-clients use authenticated channels to recursive resolvers that perform such validations. Systems that use technologies other than the DNS to map between host and service names and network addresses provide some other means to enable clients to verify the authenticity and integrity of response data. Related Controls: SC-20, SC-22. Control Enhancements: None.
+Internet). Organizations specify clients that can access authoritative DNS servers in certain roles (e.g., by address ranges and explicit lists). Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2]. SC-23 SESSION AUTHENTICITY
 
-References: [FIPS 140-3], [FIPS 186-4], [SP 800-81-2]. SC-21 SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) Control: Request and perform data origin authentication and data integrity verification on the name/address resolution responses the system receives from authoritative sources. Discussion: Each client of name resolution services either performs this validation on its own or has authenticated channels to trusted validation providers. Systems that provide name and
+that use technologies other than the DNS to map between host and service names and network addresses provide some other means to enable clients to verify the authenticity and integrity of response data. Related Controls: SC-20, SC-22. Control Enhancements: None. (1) SECURE NAME/ADDRESS RESOLUTION SERVICE (RECURSIVE OR CACHING RESOLVER) | DATA ORIGIN
 
 ## From RFC9424
 
-* Fully Qualified Domain Names (FQDNs) in network traffic, DNS resolver caches, or logs * TLS Server Name Indication values in network traffic * Code-signing certificates in binaries * TLS certificate information (such as SHA256 hashes) in network traffic
+* IPv4 and IPv6 addresses in network traffic  * Fully Qualified Domain Names (FQDNs) in network traffic, DNS resolver caches, or logs  * TLS Server Name Indication values in network traffic
 
-When associated with malicious activity, the following are some examples of protocol-related IoCs: * IPv4 and IPv6 addresses in network traffic * Fully Qualified Domain Names (FQDNs) in network traffic, DNS resolver caches, or logs * TLS Server Name Indication values in network traffic
+https://www.ncsc.gov.uk/report/weekly-threat-report-8th- june-2018>.  [PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>.
 
-june-2018>. [PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>. [PoP] Bianco, D., "The Pyramid of Pain", March 2013, <https://detect-respond.blogspot.com/2013/03/the-pyramid- of-pain.html>.
+When associated with malicious activity, the following are some examples of protocol-related IoCs:  * IPv4 and IPv6 addresses in network traffic  * Fully Qualified Domain Names (FQDNs) in network traffic, DNS
 
-automated manner. This could also be achieved within an enterprise by ensuring those control points with the widest aperture (for example, enterprise-wide DNS resolvers) are able to act automatically based on IoC feeds. 3.2.5. Detection Security controls with deployed IoCs monitor their relevant control
+automated manner. This could also be achieved within an enterprise by ensuring those control points with the widest aperture (for example, enterprise-wide DNS resolvers) are able to act automatically based on IoC feeds.  3.2.5. Detection
 
-[Owari] UK NCSC, "Owari botnet own-goal takeover", 2018, <https:// webarchive.nationalarchives.gov.uk/ukgwa/20220301141030/ https://www.ncsc.gov.uk/report/weekly-threat-report-8th- june-2018>. [PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>.
+[PDNS] UK NCSC, "Protective Domain Name Service (PDNS)", August 2017, <https://www.ncsc.gov.uk/information/pdns>.  [PoP] Bianco, D., "The Pyramid of Pain", March 2013, <https://detect-respond.blogspot.com/2013/03/the-pyramid- of-pain.html>.
 
 adding support for the distribution and consumption of IoCs directly to their products, without each user having to do it, thus addressing the threat for the whole user base at once in a machine-scalable and automated manner. This could also be achieved within an enterprise by ensuring those control points with the widest aperture (for example, enterprise-wide DNS resolvers) are able to act automatically
 
 ## From NIST.SP.800-61r3
 
-adverse events High R1: Monitoring should include wired and wireless networks, network communications and flows, network services (e.g., DNS and BGP), and the presence of unauthorized or rogue
+services (e.g., DNS and BGP), and the presence of unauthorized or rogue networks within facilities. DE.CM-02 The physical environment is monitored to find potentially adverse events
 
-communications and flows, network services (e.g., DNS and BGP), and the presence of unauthorized or rogue networks within facilities. DE.CM-02 The physical environment is monitored to find potentially
+High R1: Monitoring should include wired and wireless networks, network communications and flows, network services (e.g., DNS and BGP), and the presence of unauthorized or rogue networks within facilities.

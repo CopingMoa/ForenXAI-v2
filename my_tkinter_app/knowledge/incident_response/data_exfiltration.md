@@ -16,42 +16,42 @@
 
 ## From NIST.SP.800-61r3
 
-Identify (Improvement Category) Containment, Eradication & Recovery Respond Recover Identify (Improvement Category) Post-Incident Activity Identify (Improvement Category)
+RS.MI (Incident Mitigation) Activities are performed to prevent expansion of an event and mitigate its effects High N1: Manually selecting containment and
 
-are restored, and normal operating status is confirmed High R1: Check restored assets for indicators of compromise, and remediate the root causes of the incident before production use.
+Assets are monitored to find anomalies, indicators of compromise, and other potentially adverse events High R1: Continuous monitoring for unauthorized activity, deviations from
 
-and indicators of compromise. R2: Rapidly acquire and analyze vulnerability disclosures for the organization’s technologies from suppliers, vendors, and third-party security advisories.
+other indicators, such as an unavailable service. Other incident response teams may also report incidents to the organization. RS.MA-03 Incidents are categorized and prioritized
 
-CSF Element CSF Element Description Priority Recommendations, Considerations, Notes DE.AE (Adverse Event Analysis) Anomalies, indicators of compromise, and other potentially adverse events are
+other restoration assets is verified before using them for restoration High R1: Check restoration assets for indicators of compromise, file corruption, and other integrity issues before use.
 
-restoration. RC.RP-05 The integrity of restored assets is verified, systems and services are restored, and normal operating status is confirmed High R1: Check restored assets for indicators of
+data leaks, exfiltration, and other adverse events. R2: Monitor authentication attempts to identify attacks against credentials and unauthorized credential use. R3: Monitor software and hardware
 
-RC.RP-03 The integrity of backups and other restoration assets is verified before using them for restoration High R1: Check restoration assets for indicators of compromise, file corruption, and other
+operating status is confirmed High R1: Check restored assets for indicators of compromise, and remediate the root causes of the incident before production use. R2: Verify the correctness and adequacy of
 
 ## From RFC9424
 
-ISSN: 2070-1721 Binary Firefly J. Sellwood A. Shaw UK National Cyber Security Centre August 2023 Indicators of Compromise (IoCs) and Their Role in Attack Defence
+[Timestomp] MITRE, "Indicator Removal: Timestomp", January 2020, <https://attack.mitre.org/techniques/T1099/>.  [TLP] FIRST, "Traffic Light Protocol (TLP)", <https://www.first.org/tlp/>.
 
-[Timestomp] MITRE, "Indicator Removal: Timestomp", January 2020, <https://attack.mitre.org/techniques/T1099/>. [TLP] FIRST, "Traffic Light Protocol (TLP)", <https://www.first.org/tlp/>. Acknowledgements
+TAXII", <https://oasis-open.github.io/cti- documentation/taxii/intro.html>.  [Timestomp] MITRE, "Indicator Removal: Timestomp", January 2020, <https://attack.mitre.org/techniques/T1099/>.
 
-[TAXII] OASIS Cyber Threat Intelligence (CTI), "Introduction to TAXII", <https://oasis-open.github.io/cti- documentation/taxii/intro.html>. [Timestomp] MITRE, "Indicator Removal: Timestomp", January 2020, <https://attack.mitre.org/techniques/T1099/>.
+encoded in the DNS response [LAZARUS].  5.1.3. Completeness  In many cases, the list of indicators resulting from an activity or discovered in a malware sample is relatively short and so only adds
 
-UK National Cyber Security Centre August 2023 Indicators of Compromise (IoCs) and Their Role in Attack Defence Abstract Cyber defenders frequently rely on Indicators of Compromise (IoCs) to identify, trace, and block malicious activity in networks or on
+Indicators of Compromise (IoCs) and Their Role in Attack Defence  Abstract  Cyber defenders frequently rely on Indicators of Compromise (IoCs) to identify, trace, and block malicious activity in networks or on
 
-of the possible indicator values and theoretical completeness of a list of all possible indicator values. 5.2. Precision 5.2.1. Specificity Alongside pain and fragility, the PoP's levels can also be considered in terms of how precise the defence can be, with the false positive
+detection. In some cases, such sources of indicators can lead to a pragmatic decision being made between obtaining reasonable coverage of the possible indicator values and theoretical completeness of a list of all possible indicator values.  5.2. Precision
 
-which may cause performance degradation, particularly during detection. In some cases, such sources of indicators can lead to a pragmatic decision being made between obtaining reasonable coverage of the possible indicator values and theoretical completeness of a list of all possible indicator values. 5.2. Precision
+IoCs extrapolated from knowledge of past events (such as from identifying attacker infrastructure by monitoring domain name registration patterns).  Crucially, for an IoC to be discovered, the indicator must be extractable from the Internet protocol, tool, or technology it is
 
 ## From NIST.SP.800-53r5
 
 (XML) gateways. The devices verify adherence to protocol formats and specifications at the application layer and identify vulnerabilities that cannot be detected by devices that operate at the network or transport layers. The prevention of exfiltration is similar to data loss prevention or data leakage prevention and is closely associated with cross-domain solutions and system guards that enforce information flow requirements. Related Controls: AC-2, CA-8, SI-3.
 
-AC-4(3) DYNAMIC INFORMATION FLOW CONTROL S AC-4(4) FLOW CONTROL OF ENCRYPTED INFORMATION S AC-4(5) EMBEDDED DATA TYPES S AC-4(6) METADATA S AC-4(7) ONE-WAY FLOW MECHANISMS S AC-4(8) SECURITY AND PRIVACY POLICY FILTERS S
+AC-4(1) OBJECT SECURITY AND PRIVACY ATTRIBUTES S AC-4(2) PROCESSING DOMAINS S AC-4(3) DYNAMIC INFORMATION FLOW CONTROL S AC-4(4) FLOW CONTROL OF ENCRYPTED INFORMATION S AC-4(5) EMBEDDED DATA TYPES S AC-4(6) METADATA S
 
-AC-4(20) APPROVED SOLUTIONS O AC-4(21) PHYSICAL OR LOGICAL SEPARATION OF INFORMATION FLOWS O/S AC-4(22) ACCESS ONLY S AC-4(23) MODIFY NON-RELEASABLE INFORMATION O/S AC-4(24) INTERNAL NORMALIZED FORMAT S AC-4(25) DATA SANITIZATION S
+AC-4(21) PHYSICAL OR LOGICAL SEPARATION OF INFORMATION FLOWS O/S AC-4(22) ACCESS ONLY S AC-4(23) MODIFY NON-RELEASABLE INFORMATION O/S AC-4(24) INTERNAL NORMALIZED FORMAT S AC-4(25) DATA SANITIZATION S AC-4(26) AUDIT FILTERING ACTIONS O/S
 
-AC-4 Information Flow Enforcement S AC-4(1) OBJECT SECURITY AND PRIVACY ATTRIBUTES S AC-4(2) PROCESSING DOMAINS S AC-4(3) DYNAMIC INFORMATION FLOW CONTROL S AC-4(4) FLOW CONTROL OF ENCRYPTED INFORMATION S AC-4(5) EMBEDDED DATA TYPES S
+AC-3(14) INDIVIDUAL ACCESS S AC-3(15) DISCRETIONARY AND MANDATORY ACCESS CONTROL S AC-4 Information Flow Enforcement S AC-4(1) OBJECT SECURITY AND PRIVACY ATTRIBUTES S AC-4(2) PROCESSING DOMAINS S AC-4(3) DYNAMIC INFORMATION FLOW CONTROL S
 
-AC-3(13) ATTRIBUTE-BASED ACCESS CONTROL S AC-3(14) INDIVIDUAL ACCESS S AC-3(15) DISCRETIONARY AND MANDATORY ACCESS CONTROL S AC-4 Information Flow Enforcement S AC-4(1) OBJECT SECURITY AND PRIVACY ATTRIBUTES S AC-4(2) PROCESSING DOMAINS S
+harm the services or systems on the destination network. Related Controls: SI-3. (16) INFORMATION FLOW ENFORCEMENT | INFORMATION TRANSFERS ON INTERCONNECTED SYSTEMS [Withdrawn: Incorporated into AC-4.] (17) INFORMATION FLOW ENFORCEMENT | DOMAIN AUTHENTICATION
 
-AC-4(17) DOMAIN AUTHENTICATION S AC-4(18) SECURITY ATTRIBUTE BINDING W: Incorporated into AC-16. AC-4(19) VALIDATION OF METADATA S AC-4(20) APPROVED SOLUTIONS O AC-4(21) PHYSICAL OR LOGICAL SEPARATION OF INFORMATION FLOWS O/S AC-4(22) ACCESS ONLY S
+AC-4(18) SECURITY ATTRIBUTE BINDING W: Incorporated into AC-16. AC-4(19) VALIDATION OF METADATA S AC-4(20) APPROVED SOLUTIONS O AC-4(21) PHYSICAL OR LOGICAL SEPARATION OF INFORMATION FLOWS O/S AC-4(22) ACCESS ONLY S AC-4(23) MODIFY NON-RELEASABLE INFORMATION O/S

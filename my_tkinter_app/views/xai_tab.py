@@ -539,10 +539,23 @@ class XaiTab:
                            "warn" if s["heading"] == "Ambiguity" else "h"))
             blocks.append((s["body"] + "\n\n", None))
 
+        # Every recommendation is shown with the work it came from. A
+        # response step without its source is an assertion; with the
+        # citation it is something an investigator can check and an auditor
+        # can follow.
+        if rec.get("references"):
+            blocks.append(("REFERENCES\n", "h"))
+            for i, ref in enumerate(rec["references"], 1):
+                blocks.append((f"  [{i}] {ref}\n", "good"))
+
         if rec["citations"]:
-            blocks.append(("SOURCES\n", "h"))
+            blocks.append(("\nFILES QUOTED\n", "h"))
             for c in rec["citations"]:
-                blocks.append((f"  {c}\n", "good"))
+                blocks.append((f"  {c}\n", "muted"))
+            if not rec.get("references"):
+                blocks.append((
+                    "  No IEEE citation found in the quoted file. Add a "
+                    "'> Source:' line to its provenance header.\n", "warn"))
 
         if rec["missing_documents"]:
             blocks.append(("\nNOT AVAILABLE\n", "h"))

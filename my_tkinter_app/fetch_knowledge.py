@@ -105,9 +105,13 @@ SOURCES = {
                "Federal_Government_Cybersecurity_Incident_and_Vulnerability_"
                "Response_Playbooks_508C.pdf",
         "kind": "pdf",
+        # Corrected against the PDF's own title page, which reads
+        # "Publication: November 2021". The August 2024 date on the CISA
+        # landing page is when that PAGE was updated, not when the document
+        # was published -- citing it would have been wrong by three years.
         "citation": 'Cybersecurity and Infrastructure Security Agency, '
-                    '"Federal government cybersecurity incident and '
-                    'vulnerability response playbooks," CISA, Aug. 2024.',
+                    '"Cybersecurity incident & vulnerability response '
+                    'playbooks," CISA, Washington, DC, USA, Nov. 2021.',
         "landing": "https://www.cisa.gov/resources-tools/resources/federal-"
                    "government-cybersecurity-incident-and-vulnerability-"
                    "response-playbooks",
@@ -355,10 +359,14 @@ def _blocks(text, window=6):
     a reviewer needs: a control identifier means nothing without the
     sentence that follows it.
     """
+    # Every line is kept, including page numbers and running heads.
+    # Dropping them produced blocks that joined text which is NOT adjacent
+    # in the source, so the quoted passage could not be found in the
+    # document it named -- verify_extracts() caught four of those. A quote
+    # has to be contiguous to be checkable, and checkable matters more than
+    # tidy.
     lines = [re.sub(r"\s+", " ", ln).strip()
              for ln in (text or "").splitlines()]
-    lines = [ln for ln in lines
-             if len(ln) > 2 and not re.fullmatch(r"[\d\s.•—-]+", ln)]
 
     for i in range(0, len(lines), window // 2):     # 50% overlap
         block = " ".join(lines[i:i + window]).strip()
@@ -448,6 +456,112 @@ def extract(force=False):
 
 
 # ============================================================
+# CITATION AND EXTRACT VERIFICATION
+#
+# Two mechanical checks, both against the downloaded file rather than
+# against a web page:
+#
+#   citations   the title and identifier this project claims must appear in
+#               the document's own text. A landing page can say one thing
+#               and the PDF another -- that is exactly how the CISA playbook
+#               came to be cited as August 2024 when its title page reads
+#               November 2021.
+#
+#   extracts    every passage quoted into a knowledge file must appear
+#               verbatim in the source it names. This is what makes
+#               "no hallucination" a checked property rather than a claim:
+#               a sentence that is not in the document did not come from it.
+# ============================================================
+
+# Distinctive strings from each document's own front matter.
+CITATION_CLAIMS = {
+    "NIST.SP.800-61r3": ["Incident Response Recommendations", "800-61r3"],
+    "NIST.SP.800-53r5": ["Security and Privacy Controls", "800-53"],
+    "NIST.SP.800-52r2": ["Transport Layer Security", "800-52"],
+    "NIST.CSWP.29": ["Cybersecurity Framework", "CSWP"],
+    "CISA.playbooks": ["Vulnerability Response Playbooks",
+                       "Publication: November 2021"],
+    # RFCs write the number as "Request for Comments: N", never "RFC N".
+    "RFC9424": ["Indicators of Compromise", "Request for Comments: 9424"],
+    "RFC1858": ["Security Considerations for IP Fragment Filtering",
+                "Request for Comments: 1858"],
+    "RFC3128": ["Protection Against a Variant of the Tiny Fragment Attack",
+                "Request for Comments: 3128"],
+    "OWASP.Top10.2025": ["Top 10"],
+}
+
+
+def _norm(text):
+    return re.sub(r"\s+", " ", (text or "")).strip().lower()
+
+
+def verify_citations():
+    """Every claimed title and identifier must be in the document itself."""
+    problems = []
+    print(f"{'source':<22}{'claims found':<16}state")
+    for key, terms in CITATION_CLAIMS.items():
+        text = _text_of(key)
+        if text is None:
+            print(f"  {key:<20}{'-':<16}not downloaded")
+            problems.append(f"{key} not downloaded")
+            continue
+        low = _norm(text)
+        missing = [t for t in terms if _norm(t) not in low]
+        state = "ok" if not missing else f"MISSING {missing}"
+        print(f"  {key:<20}{len(terms) - len(missing)}/{len(terms):<14}{state}")
+        if missing:
+            problems.append(f"{key}: {missing} not found in the document")
+    return problems
+
+
+def verify_extracts():
+    """
+    Every quoted passage must appear verbatim in the source it names.
+
+    Only blocks under a `## From <source>` heading are checked -- prose a
+    person wrote around them is theirs, not a quote, and is not held to
+    this.
+    """
+    out_dir = os.path.join(KNOWLEDGE, "incident_response")
+    problems = []
+    cache = {}
+
+    print(f"{'file':<28}{'quoted':<9}{'traced':<9}state")
+    for name in TARGETS:
+        path = os.path.join(out_dir, name)
+        if not os.path.isfile(path):
+            continue
+
+        body = open(path, encoding="utf-8", errors="replace").read()
+        # Split into (source key, text) pairs on the generated headings.
+        parts = re.split(r"\n## From ([\w.\-]+)\n", body)
+        if len(parts) < 3:
+            print(f"  {name:<26}{'-':<9}{'-':<9}hand-written, not checked")
+            continue
+
+        quoted = traced = 0
+        for key, chunk in zip(parts[1::2], parts[2::2]):
+            if key not in cache:
+                cache[key] = _norm(_text_of(key))
+            source_text = cache[key] or ""
+            for block in [b.strip() for b in chunk.split("\n\n")]:
+                if len(block) < 100:
+                    continue
+                quoted += 1
+                if _norm(block) in source_text:
+                    traced += 1
+                else:
+                    problems.append(
+                        f"{name}: a passage attributed to {key} is not in "
+                        f"that document -- '{block[:60]}...'")
+
+        state = "ok" if quoted == traced else f"{quoted - traced} UNTRACED"
+        print(f"  {name:<26}{quoted:<9}{traced:<9}{state}")
+
+    return problems
+
+
+# ============================================================
 # VERIFY
 # ============================================================
 
@@ -510,6 +624,14 @@ def verify():
         print(f"  {key:<22}{m['retrieved'][:10]:<14}{age} d{flag}")
         if got < cutoff:
             warnings.append(f"{key} last checked {age} days ago")
+
+    print()
+    print("CITATIONS -- claimed title and identifier vs the document itself")
+    problems += verify_citations()
+
+    print()
+    print("EXTRACTS -- every quoted passage vs its source")
+    problems += verify_extracts()
 
     print()
     if problems:

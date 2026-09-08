@@ -14,20 +14,20 @@
 
 ## From NIST.SP.800-53r5
 
-SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S SC-11 Trusted Path S √ SC-11(1) IRREFUTABLE COMMUNICATIONS PATH S √ SC-12 Cryptographic Key Establishment and Management O/S SC-12(1) AVAILABILITY O/S
+S SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for Name/Address Resolution Service S SC-23 Session Authenticity S
 
-(Recursive or Caching Resolver) SC-21(1) DATA ORIGIN AND INTEGRITY W: Incorporated into SC-21. SC-22 Architecture and Provisioning for Name/Address Resolution Service SC-23 Session Authenticity S SC-23(1) INVALIDATE SESSION IDENTIFIERS AT LOGOUT S
+SC-8(5) PROTECTED DISTRIBUTION SYSTEM S SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S SC-11 Trusted Path S √ SC-11(1) IRREFUTABLE COMMUNICATIONS PATH S √ SC-12 Cryptographic Key Establishment and Management O/S
 
-SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S SC-8(5) PROTECTED DISTRIBUTION SYSTEM S SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S SC-11 Trusted Path S √
+Name/Address Resolution Service S SC-23 Session Authenticity S SC-23(1) INVALIDATE SESSION IDENTIFIERS AT LOGOUT S SC-23(2) USER-INITIATED LOGOUTS AND MESSAGE DISPLAYS W: Incorporated into AC-12(1). SC-23(3) UNIQUE SYSTEM-GENERATED SESSION IDENTIFIERS S
 
-SC-8 Transmission Confidentiality and Integrity S SC-8(1) CRYPTOGRAPHIC PROTECTION S SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S SC-8(5) PROTECTED DISTRIBUTION SYSTEM S
+Internet). Organizations specify clients that can access authoritative DNS servers in certain roles (e.g., by address ranges and explicit lists). Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2]. SC-23 SESSION AUTHENTICITY
 
-Related Controls: SC-2, SC-20, SC-21, SC-24. Control Enhancements: None. References: [SP 800-81-2]. SC-23 SESSION AUTHENTICITY Control: Protect the authenticity of communications sessions. Discussion: Protecting session authenticity addresses communications protection at the session
+SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S SC-8(5) PROTECTED DISTRIBUTION SYSTEM S SC-9 Transmission Confidentiality W: Incorporated into SC-8. SC-10 Network Disconnect S
 
-SC-7(27) UNCLASSIFIED NON-NATIONAL SECURITY SYSTEM CONNECTIONS O SC-7(28) CONNECTIONS TO PUBLIC NETWORKS O SC-7(29) SEPARATE SUBNETS TO ISOLATE FUNCTIONS S SC-8 Transmission Confidentiality and Integrity S SC-8(1) CRYPTOGRAPHIC PROTECTION S SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S
+SC-7(29) SEPARATE SUBNETS TO ISOLATE FUNCTIONS S SC-8 Transmission Confidentiality and Integrity S SC-8(1) CRYPTOGRAPHIC PROTECTION S SC-8(2) PRE- AND POST-TRANSMISSION HANDLING S SC-8(3) CRYPTOGRAPHIC PROTECTION FOR MESSAGE EXTERNALS S SC-8(4) CONCEAL OR RANDOMIZE COMMUNICATIONS S
 
 ## From NIST.SP.800-52r2
 
-handshake as a renegotiation of the attacker’s negotiated session and thus believes that the initial data transmitted by the attacker is from the legitimate client. The session renegotiation extension is defined to prevent such a session splicing or session interception. The extension uses the concept of cryptographically binding the initial session negotiation and session renegotiation. Server implementations shall perform initial and subsequent renegotiations in accordance with RFC 5746 [59] and RFC 8446 [57].
+is defined to prevent such a session splicing or session interception. The extension uses the concept of cryptographically binding the initial session negotiation and session renegotiation. Server implementations shall perform initial and subsequent renegotiations in accordance with RFC 5746 [59] and RFC 8446 [57]. 3.4.1.2 Server Name Indication Applies to TLS versions: 1.0, 1.1, 1.2, 1.3
 
-In TLS versions 1.0 to 1.2, session renegotiation is vulnerable to an attack in which the attacker forms a TLS connection with the target server, injects content of its choice, and then splices in a new TLS connection from a legitimate client. The server treats the legitimate client’s initial TLS handshake as a renegotiation of the attacker’s negotiated session and thus believes that the initial data transmitted by the attacker is from the legitimate client. The session renegotiation extension is defined to prevent such a session splicing or session interception. The extension uses the
+new TLS connection from a legitimate client. The server treats the legitimate client’s initial TLS handshake as a renegotiation of the attacker’s negotiated session and thus believes that the initial data transmitted by the attacker is from the legitimate client. The session renegotiation extension is defined to prevent such a session splicing or session interception. The extension uses the concept of cryptographically binding the initial session negotiation and session renegotiation. Server implementations shall perform initial and subsequent renegotiations in accordance with

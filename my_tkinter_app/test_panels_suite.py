@@ -267,6 +267,24 @@ def test_panel3():
         check(f"{missing['class']} offers no guidance without a source",
               not rec["citations"])
 
+    # Every recommendation must carry the work it came from. A response
+    # step without its source is an assertion; with the citation it is
+    # something an investigator can check.
+    uncited = []
+    for cls in ps.KNOWLEDGE_MAP:
+        if cls == "Benign":
+            continue
+        stub = {"class": cls, "flow_count": 1, "share_of_capture": 0.01,
+                "confidence_mean": 0.8, "confidence_min": 0.8,
+                "confidence_max": 0.8, "low_confidence_count": 0,
+                "dominant_runner_up": None, "dominant_runner_up_share": 0.0,
+                "reliability_f1": None}
+        x = ps.recommend(stub)
+        if x["citations"] and not x.get("references"):
+            uncited.append(cls)
+    check("every quoted document carries an IEEE citation",
+          not uncited, f"no citation for: {uncited}")
+
     check("every model class has a KNOWLEDGE_MAP entry",
           all(c in ps.KNOWLEDGE_MAP for c in b["encoder"].classes_))
     check("an unmapped class raises rather than guessing",

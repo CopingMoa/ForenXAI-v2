@@ -619,6 +619,26 @@ def _load_glossary():
 # PANEL 3 -- RECOMMENDATIONS
 # ============================================================
 
+def _citations_in(text):
+    """
+    Pull the IEEE citations out of a knowledge file's provenance header.
+
+    Every generated or hand-written file carries one "> Source: ..." line
+    per document it draws on. Lifting them here means the panel shows a
+    citation for every recommendation without a second lookup table that
+    could drift away from the file.
+    """
+    out = []
+    for line in (text or "").splitlines():
+        m = re.match(r"^\s*>\s*Sources?:\s*(.+?)\s*$", line)
+        if m and m.group(1) and not m.group(1).startswith("**"):
+            out.append(m.group(1))
+        elif out and re.match(r"^\s*>\s+retrieved ", line):
+            # The retrieval line belongs to the citation above it.
+            out[-1] += "  [" + line.split(">", 1)[1].strip() + "]"
+    return out
+
+
 def recommend(finding, detections=None):
     """
     What to do about one finding, quoting the retrieved documentation.
@@ -727,12 +747,18 @@ def recommend(finding, detections=None):
             ),
         })
 
+    references = []
     if documents:
         for path, text in documents.items():
+            cites = _citations_in(text)
+            references += [c for c in cites if c not in references]
             sections.append({
                 "heading": f"Guidance from {path}",
                 "body": text.strip(),
                 "source": path,
+                # Attached to the section, so a recommendation and the work
+                # it came from cannot be separated in rendering.
+                "citations": cites,
             })
     else:
         sections.append({
@@ -760,6 +786,10 @@ def recommend(finding, detections=None):
         "ambiguity": ambiguity,
         "sections": sections,
         "citations": list(documents.keys()),
+        # [UI CONNECTION: `references` -> the REFERENCES block. Full IEEE
+        #  citations lifted from each document's own provenance header, so
+        #  no recommendation is ever shown without the work it came from.]
+        "references": references,
         "missing_documents": missing,
     }
 

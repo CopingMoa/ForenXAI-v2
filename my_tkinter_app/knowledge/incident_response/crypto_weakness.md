@@ -6,14 +6,9 @@
 > treats together. Every claim traces to a cited section; where the sources
 > do not cover something, this file says so.
 >
-> Sources:
->   K. McKay and D. Cooper, "Guidelines for the selection, configuration,
->   and use of Transport Layer Security (TLS) implementations," NIST
->   SP 800-52r2, Aug. 2019, doi: 10.6028/NIST.SP.800-52r2.
->   Joint Task Force, NIST SP 800-53r5, controls SC-8, SC-13 and SC-23,
->   rel. 5.2.0, Aug. 2025.
->   Cybersecurity and Infrastructure Security Agency, "Vulnerability
->   response playbook," Aug. 2024.
+> Source: K. McKay and D. Cooper, "Guidelines for the selection, configuration, and use of Transport Layer Security (TLS) implementations," NIST SP 800-52r2, Aug. 2019, doi: 10.6028/NIST.SP.800-52r2.
+> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, controls SC-8, SC-13 and SC-23, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
 >
 > Retrieved: 2026-09-08
 
