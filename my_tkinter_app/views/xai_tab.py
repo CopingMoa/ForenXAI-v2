@@ -277,6 +277,31 @@ class XaiTab:
         if panel.get("narration_note"):
             out.append((f"  {panel['narration_note']}\n", "warn"))
 
+        # The verdict is the point of the transparency layer: a reader must
+        # be able to tell a narration whose every figure traces to the input
+        # from one that asserted something it was never given.
+        verdict = panel.get("narration_verdict")
+        if verdict:
+            severity = (panel.get("narration_stats") or {}).get(
+                "highest_severity", "none")
+            out.append((f"  {verdict}\n",
+                        {"high": "bad", "medium": "warn"}.get(severity,
+                                                              "good")))
+
+        for f in panel.get("narration_findings", []):
+            out.append((f"    [{f['severity']}] {f['check']}: {f['detail']}\n",
+                        "bad" if f["severity"] == "high" else "warn"))
+
+        pr = panel.get("narration_provenance") or {}
+        if pr.get("model"):
+            out.append((
+                f"  Source: {pr['provider']}/{pr['model']}, "
+                f"{pr.get('output_tokens', 0)} tokens, prompt "
+                f"{pr.get('prompt_sha256_12', '?')}"
+                + (f", documents: {', '.join(pr['sources_supplied'])}"
+                   if pr.get("sources_supplied") else ", figures only")
+                + "\n", "muted"))
+
         out.append(("\n" + "-" * 62 + "\n\n", "muted"))
         return out
 

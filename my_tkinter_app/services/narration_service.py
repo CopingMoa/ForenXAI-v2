@@ -42,6 +42,9 @@ full-length prompt. So panel 3's prompt is kept short, the document is the
 only source offered, and the deterministic quote stays on screen underneath.
 """
 
+from services.narration_schema import provenance, check, summary_line
+
+
 SYSTEM = "\n".join([
     "You are assisting a qualified network forensics investigator.",
     "Be precise and brief. Plain English, no marketing language.",
@@ -231,6 +234,18 @@ def narrate(panel, provider, context=None):
         panel["narration_usage"] = usage
         if usage.get("context_note"):
             panel["narration_note"] = usage["context_note"]
+
+        # What the model was shown, and whether its output stayed inside it.
+        # Recorded on the panel so a saved case can be audited later without
+        # re-running anything.
+        sources = [s["source"] for s in panel.get("sections", [])
+                   if s.get("source")]
+        panel["narration_provenance"] = provenance(panel, prompt, usage,
+                                                   sources)
+        findings, stats = check(panel["narrative"], prompt, sources)
+        panel["narration_findings"] = findings
+        panel["narration_stats"] = stats
+        panel["narration_verdict"] = summary_line(stats, findings)
 
     except Exception as e:
         panel["narrative"] = None
