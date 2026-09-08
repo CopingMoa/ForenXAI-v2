@@ -235,6 +235,12 @@ MODEL_GUIDANCE = [
         "heading": "Where this model has been shown to work",
         "when": lambda f, s: True,
     },
+    {
+        "id": "triage",
+        "doc": "analyst/triage.md",
+        "heading": "What to do with this finding",
+        "when": lambda f, s: True,
+    },
 ]
 
 # Measured test F1, random split. Classes absent from this map are at 0.94

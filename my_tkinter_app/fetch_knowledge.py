@@ -749,7 +749,7 @@ def _checkable_files():
     for name in TARGETS:
         files.append((name, os.path.join(out_dir, name)))
 
-    for folder in ("interpretability", "datasets"):
+    for folder in ("interpretability", "datasets", "analyst"):
         directory = os.path.join(KNOWLEDGE, folder)
         if not os.path.isdir(directory):
             continue
