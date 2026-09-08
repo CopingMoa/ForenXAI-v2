@@ -84,7 +84,11 @@ KNOWLEDGE_DIR = os.path.join(
 
 KNOWLEDGE_MAP = {
     "API":            {"doc": "incident_response/web_application.md",  "mitre": ["T1190"]},
-    "Benign":         {"doc": None,                                    "mitre": []},
+    # Benign has a document too. "No action" is still a finding, and the
+    # reasons it can be wrong -- low confidence, a weak class misfiled,
+    # slow-and-low traffic that looks ordinary -- deserve a source like any
+    # other recommendation.
+    "Benign":         {"doc": "incident_response/benign.md",           "mitre": []},
     "Bruteforce":     {"doc": "incident_response/credential_attack.md","mitre": ["T1110"]},
     # T1203 is CLIENT-side exploitation (browsers, documents). TRUSTLab's
     # BufferOverflow is against a listening network service, which is T1210.

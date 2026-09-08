@@ -230,6 +230,11 @@ TARGETS = {
     # These two are written by hand: no published playbook treats them as a
     # single procedure. Listed so --status counts them, and skipped by
     # --extract so a generated draft never overwrites the reasoned version.
+    "benign.md": {
+        "classes": ["Benign"], "title": "Benign traffic — no action",
+        "sources": ["NIST.SP.800-61r3", "RFC9424"],
+        "keywords": [], "hand_written": True,
+    },
     "evasion.md": {
         "classes": ["Evasion"], "title": "Detection evasion — response",
         "sources": ["RFC1858", "RFC3128", "NIST.SP.800-53r5"],
