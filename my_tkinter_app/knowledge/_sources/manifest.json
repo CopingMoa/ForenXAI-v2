@@ -169,5 +169,15 @@
     "bytes": 944793,
     "sha256": "52bc282c922a239134ee4d6f4367c58bf920a9bdd53acbb3b2aa3342e2bb7214",
     "retrieved": "2026-09-08T20:20:30"
+  },
+  "Arslan.mits": {
+    "url": "https://www.acadlore.com/journals/MITS",
+    "landing": "https://doi.org/10.56578/mits050102",
+    "citation": "R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, \"Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis,\" Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.",
+    "file": "Arslan.mits.pdf",
+    "bytes": 1849673,
+    "sha256": "6a7b09a61b920f1ba426630bc1fdaddb88fe6183f0f4a4c09b1726c102468ac3",
+    "retrieved": "2026-09-08T20:52:17",
+    "supplied_locally": true
   }
 }

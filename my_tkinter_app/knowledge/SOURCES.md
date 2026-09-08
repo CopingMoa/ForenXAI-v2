@@ -190,17 +190,8 @@ the document's **own title page**, not from a publisher's landing page.
 |---|---|---|---|
 | 1 | D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988. | Base rate fallacy (P8), inappropriate performance measures (P7), spurious correlations (P4), sampling bias | Open access at usenix.org/conference/usenixsecurity22/presentation/arp. Check §3 pitfall descriptions |
 | 2 | R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25. | High cost of errors, semantic gap, variability of benign traffic | PDF at icir.org/robin/papers/oakland10-ml.pdf; record at ieeexplore.ieee.org/document/5504793 |
-| 3 | S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Advances in Neural Information Processing Systems 30, Long Beach, CA, USA, Dec. 2017, pp. 4765-4774. | What a SHAP value is; additive feature attribution | arXiv:1705.07874; NeurIPS 2017 proceedings |
-| 4 | S. M. Lundberg et al., "Explainable AI for trees: From local explanations to global understanding," arXiv:1905.04610, May 2019. Published in revised form as Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9. | TreeSHAP; `tree_path_dependent`; exactness and consistency | arXiv:1905.04610 |
 | 5 | National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1. | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
 
-**A note on source 4.** The citation names the **preprint**, because the
-preprint is what is downloaded and hash-checked. The published Nature
-Machine Intelligence version carries a re-ordered title ("From local
-explanations to global understanding with explainable AI for trees") that
-does **not** appear on the preprint's title page, so citing it would fail
-`--verify`. Cite the artefact you actually checked; the published reference
-is given alongside for the reader.
 
 ## Which document answers which question
 
@@ -256,3 +247,41 @@ Privacy Framework, and a Springer volume. Nothing cites them, and nothing
 may until they are added to `SOURCES` in `fetch_knowledge.py` with a
 citation checked against their own title page. An unregistered file is a
 file `--verify` cannot check.
+
+
+---
+
+# Withdrawn: the two SHAP preprints
+
+`Lundberg.shap` and `Lundberg.treeshap` were removed and their PDFs
+deleted. `Arslan.mits` replaces them.
+
+**The underlying work is not in question.** "A unified approach to
+interpreting model predictions" is NeurIPS 2017 and the TreeSHAP paper
+appeared in Nature Machine Intelligence in 2020 — both peer-reviewed, both
+the canonical references for SHAP. What sat in `_sources/` was the **arXiv
+preprint** of each, which is not the reviewed artefact. A citation should
+name the thing that was actually checked, and this project checks quotes
+against the file on disk.
+
+Rather than cite a version we do not hold, the SHAP claims are now carried
+by a reviewed paper that states them and that is about intrusion detection:
+
+**[14]** R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in
+intelligent transportation systems: A comparative study on AI-based anomaly
+detection and threat analysis," *Mechatronics and Intelligent Transportation
+Systems*, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
+
+> Received 15 Dec 2025, revised 16 Feb 2026, accepted 27 Feb 2026. CC BY 4.0.
+> Supplied locally rather than fetched, so its manifest entry is marked
+> `supplied_locally` and records the SHA-256 of the file on disk.
+>
+> Used in `interpretability/shap_reading.md`, `glossary.md` and
+> `caveats.md` for what SHAP and TreeSHAP compute, and for the polynomial
+> -time property that makes explaining thousands of flows practical.
+
+**What this costs.** Arslan et al. describe and apply SHAP; they do not
+derive it. For the derivation, the NeurIPS and Nature Machine Intelligence
+papers remain the references to read — they are simply no longer quoted
+here, because the reviewed versions are not the files this repository
+holds.

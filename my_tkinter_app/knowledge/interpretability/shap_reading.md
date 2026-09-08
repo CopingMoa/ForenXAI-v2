@@ -1,7 +1,6 @@
 # Reading a SHAP attribution
 
-> Source: S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Advances in Neural Information Processing Systems 30, Long Beach, CA, USA, Dec. 2017, pp. 4765-4774.
-> Source: S. M. Lundberg et al., "Explainable AI for trees: From local explanations to global understanding," arXiv:1905.04610, May 2019. Published in revised form as Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.
+> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 > Source: National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.
 > Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
 >
@@ -9,20 +8,21 @@
 
 ## 1. What the numbers in the SHAP panel are
 
-Each row of the panel is one feature and one number. The number is that
-feature's share of the distance between the model's baseline output and
-its output for this particular flow.
+Each row of the panel is one feature and one number: that feature's share of
+the distance between the model's baseline output and its output for this
+particular flow.
 
-## From Lundberg.shap
+## From Arslan.mits
 
-> We propose SHAP values as a unified measure of feature importance. These
-> are the Shapley values of a conditional expectation function of the
-> original model
+> Shapley additive explanations (SHAP) calculates feature contributions
+> using Shapley values from game theory [31]. TreeSHAP provides optimized
+> computational power for tree-based models and delivers more accurate
+> values in polynomial time [32].
 
-The attributions add up. That is the defining property, and it is what
-makes the panel checkable rather than decorative: the pipeline verifies
-that the values sum to the model's margin plus the base value, and
-additivity error on this model is 1.8e-05.
+The attributions add up. That is the defining property and what makes the
+panel checkable rather than decorative: the pipeline verifies that the
+values sum to the model's margin plus the base value, and additivity error
+on this model is 1.8e-05.
 
 ## 2. The units are log-odds, not probability
 
@@ -36,7 +36,7 @@ probability depends entirely on where the margin already was.
 
 Two consequences that matter when writing a report:
 
-- **Do not add SHAP values to a probability.** They are in different units.
+- **Do not add SHAP values to a probability.** Different units.
 - **Do not compare a SHAP value to a percentage.** The panel states its
   units on screen for this reason, and the grounding checks flag any
   narration that renders a log-odds figure as a percentage.
@@ -44,31 +44,21 @@ Two consequences that matter when writing a report:
 ## 3. How these particular values were computed
 
 This tool uses TreeSHAP with `feature_perturbation="tree_path_dependent"`.
+The expected value comes from traversal counts already stored in the trees,
+which is why no background sample is needed, and why the attributions
+respect correlations present in the training data rather than assuming the
+features are independent.
 
-## From Lundberg.treeshap
-
-> By default, TreeExplainer computes conditional expectations using tree
-> traversal, but it also provides an option that enforces feature
-> independence and supports explaining a model's loss function
-
-Tree traversal is why no background sample is needed: the expected value
-comes from the traversal counts already stored in the trees. It also means
-the attributions respect the correlations present in the training data
-rather than assuming features are independent.
-
-The values are exact, not sampled:
-
-## From Lundberg.treeshap
-
-> Efficiently and exactly computing the Shapley values guarantees that
-> explanations will always be consistent and locally accurate.
+The polynomial-time property quoted above is what makes this practical: the
+panel explains thousands of flows in seconds, where the model-agnostic
+alternative manages about three per second.
 
 ## 4. What an attribution does NOT establish
 
-**It is not a cause.** A SHAP value says how the model's output changes as
-that feature is introduced into a conditional expectation. It describes the
-model, not the network. If the model learned an artefact, SHAP will
-faithfully report the artefact as important.
+**It is not a cause.** A SHAP value describes how the model's output moves
+as that feature is introduced. It describes the model, not the network. If
+the model learned an artefact, SHAP will faithfully report the artefact as
+important.
 
 ## From USENIX.dosdonts
 
@@ -81,9 +71,9 @@ faithfully report the artefact as important.
 them is a property of the tree structure, not a ranking of real-world
 importance.
 
-**It is not evidence the classification is right.** SHAP explains the
-answer the model gave, including when that answer is wrong. A confidently
-wrong flow gets a confident, coherent-looking explanation.
+**It is not evidence the classification is right.** SHAP explains the answer
+the model gave, including when that answer is wrong. A confidently wrong
+flow gets a confident, coherent-looking explanation.
 
 ## 5. What NIST asks you to distinguish
 
@@ -97,7 +87,7 @@ wrong flow gets a confident, coherent-looking explanation.
 The SHAP panel supplies **explainability** — the mechanism. It does not
 supply interpretability on its own. Turning "`Bwd Bulk Rate Avg` contributed
 +2.56 log-odds toward API" into "this is an API attack against host X" is
-the analyst's step, and it requires the capture, not the attribution.
+the analyst's step, and it needs the capture, not the attribution.
 
 ## 6. Using the panel in practice
 
@@ -107,16 +97,17 @@ the analyst's step, and it requires the capture, not the attribution.
 3. Look up each feature in the flow feature glossary; a feature you cannot
    define is one you cannot testify about.
 4. Check the attribution against the raw flow. If SHAP says the decision
-   turned on `Flow Duration` and the flow's duration is an artefact of the
+   turned on `Flow Duration` and that duration is an artefact of the
    extractor's timeout, the explanation is real and the finding is not.
 5. Only then read the class playbook.
 
 ## 7. Not covered by these sources
 
-Neither SHAP paper addresses network forensics, evidential standards, or
-what weight an attribution should carry in a report. NIST AI 100-1 is a
-risk-management framework and prescribes no technique. None of the three
-states a threshold above which an attribution is "important" — that
-judgement is yours and it belongs in your own runbook.
+Arslan et al. apply SHAP to intrusion detection in a vehicular context; they
+do not prescribe how much weight an attribution should carry in a forensic
+report, and neither does NIST AI 100-1, which is a risk-management framework
+rather than a technique. None of the three states a threshold above which an
+attribution is "important". That judgement is yours and belongs in your own
+runbook.
 
 Related: [[confidence]], [[reliability]], [[extraction-validity]], [[scope]]

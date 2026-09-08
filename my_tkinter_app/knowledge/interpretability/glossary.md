@@ -1,7 +1,6 @@
 # Machine learning terms used in this interface
 
-> Source: S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Advances in Neural Information Processing Systems 30, Long Beach, CA, USA, Dec. 2017, pp. 4765-4774.
-> Source: S. M. Lundberg et al., "Explainable AI for trees: From local explanations to global understanding," arXiv:1905.04610, May 2019. Published in revised form as Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.
+> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 > Source: National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.
 > Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
 >
@@ -70,19 +69,15 @@ starting point the attributions move away from. There is one per class.
 **Additivity.** The property that base value plus all SHAP values equals
 the model's margin. Checked at build time; error here is 1.8e-05.
 
-## From Lundberg.shap
+## From Arslan.mits
 
-> We propose SHAP values as a unified measure of feature importance. These
-> are the Shapley values of a conditional expectation function of the
-> original model
+> Shapley additive explanations (SHAP) calculates feature contributions
+> using Shapley values from game theory [31]. TreeSHAP provides optimized
+> computational power for tree-based models and delivers more accurate
+> values in polynomial time [32].
 
 **TreeSHAP.** The exact algorithm for Shapley values on tree ensembles,
 used here in place of the sampling-based Kernel SHAP.
-
-## From Lundberg.treeshap
-
-> Efficiently and exactly computing the Shapley values guarantees that
-> explanations will always be consistent and locally accurate.
 
 **tree_path_dependent.** The setting that computes expectations by walking
 the trees, using the traversal counts stored in them. It needs no

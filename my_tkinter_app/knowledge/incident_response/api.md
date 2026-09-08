@@ -52,7 +52,7 @@ and blocking it breaks a service that was working.
 
 **Rate-limit the source.** OWASP names this directly for this case:
 
-## From OWASP.A01.2025
+ ##From OWASP.A01.2025
 
 > Log access control failures, alert admins when appropriate (e.g., repeated
 > failures). Implement rate limits on API and controller access to minimize

@@ -1,6 +1,6 @@
 # How far a SHAP attribution can be pushed
 
-> Source: S. M. Lundberg et al., "Explainable AI for trees: From local explanations to global understanding," arXiv:1905.04610, May 2019. Published in revised form as Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.
+> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 > Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
 >
 > Retrieved: 2026-09-08
@@ -27,7 +27,7 @@ On this model the attributions plus the base value reconstruct the margin
 to within 1.8e-05; they do not sum to anything readable as a percentage.
 
 The algorithm is exact TreeSHAP with `feature_perturbation` set to
-`tree_path_dependent` (Lundberg et al., 2019), not an approximation. It
+`tree_path_dependent` (Arslan et al., 2026), not an approximation. It
 uses no background sample: the expected value comes from traversal counts
 stored in the trees.
 

@@ -226,6 +226,31 @@ SOURCES = {
         "landing": "https://arxiv.org/abs/1603.02754",
     },
 
+    # Peer-reviewed replacement for the two Lundberg preprints.
+    #
+    # The Lundberg work is not disputed -- "A unified approach" is NeurIPS
+    # 2017 and the TreeSHAP paper appeared in Nature Machine Intelligence
+    # 2020, both peer-reviewed. What was on disk was the arXiv PREPRINT of
+    # each, which is not the reviewed artefact, and a citation should name
+    # the thing that was actually checked. Rather than cite a version we do
+    # not hold, the SHAP claims are now carried by a reviewed paper that
+    # states them and that is about intrusion detection, which is this
+    # tool's domain.
+    "Arslan.mits": {
+        "url": "https://www.acadlore.com/journals/MITS",
+        "kind": "pdf",
+        "citation": 'R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, '
+                    '"Cybersecurity in intelligent transportation systems: '
+                    'A comparative study on AI-based anomaly detection and '
+                    'threat analysis," Mechatronics and Intelligent '
+                    'Transportation Systems, vol. 5, no. 1, pp. 11-30, '
+                    '2026, doi: 10.56578/mits050102.',
+        "landing": "https://doi.org/10.56578/mits050102",
+        # Supplied by the user, not fetched. --download will not overwrite
+        # a file that is already present.
+        "local_only": True,
+    },
+
     "NIST.AI.100-1": {
         "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
         "kind": "pdf",
@@ -257,33 +282,7 @@ SOURCES = {
         "landing": "https://ieeexplore.ieee.org/document/5504793",
     },
 
-    "Lundberg.shap": {
-        "url": "https://arxiv.org/pdf/1705.07874",
-        "kind": "pdf",
-        "citation": 'S. M. Lundberg and S.-I. Lee, "A unified approach to '
-                    'interpreting model predictions," in Advances in Neural '
-                    'Information Processing Systems 30, Long Beach, CA, '
-                    'USA, Dec. 2017, pp. 4765-4774.',
-        "landing": "https://arxiv.org/abs/1705.07874",
-    },
 
-    "Lundberg.treeshap": {
-        "url": "https://arxiv.org/pdf/1905.04610",
-        "kind": "pdf",
-        # Cites the PREPRINT, because the preprint is what is downloaded
-        # and checked. This work was later published in Nature Machine
-        # Intelligence vol. 2, pp. 56-67, 2020, under the re-ordered title
-        # "From local explanations to global understanding with explainable
-        # AI for trees" -- citing THAT title here would fail the citation
-        # check, correctly, because the title page of this file does not
-        # carry it. Cite the artefact you actually verified.
-        "citation": 'S. M. Lundberg et al., "Explainable AI for trees: From '
-                    'local explanations to global understanding," '
-                    'arXiv:1905.04610, May 2019. Published in revised form '
-                    'as Nature Machine Intelligence, vol. 2, no. 1, '
-                    'pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.',
-        "landing": "https://arxiv.org/abs/1905.04610",
-    },
 }
 
 
@@ -445,6 +444,33 @@ def download(force=False):
     for key, meta in SOURCES.items():
         ext = {"pdf": ".pdf", "text": ".txt", "html": ".html"}[meta["kind"]]
         path = os.path.join(SOURCE_DIR, key + ext)
+
+        # A source supplied by hand rather than fetched still needs a
+        # manifest entry, or --verify reports it as never downloaded and
+        # nothing records the hash of what is actually on disk.
+        if meta.get("local_only"):
+            if not os.path.isfile(path):
+                print(f"  MISSING {key}: expected at {path}")
+                continue
+            data = open(path, "rb").read()
+            digest = _sha(data)
+            if manifest.get(key, {}).get("sha256") != digest:
+                manifest[key] = {
+                    "url": meta["url"],
+                    "landing": meta["landing"],
+                    "citation": meta["citation"],
+                    "file": os.path.basename(path),
+                    "bytes": len(data),
+                    "sha256": digest,
+                    "retrieved": datetime.now().isoformat(
+                        timespec="seconds"),
+                    "supplied_locally": True,
+                }
+                print(f"  local   {key:<22}{len(data)/1e6:>6.2f} MB  "
+                      f"{digest[:12]}")
+            else:
+                print(f"  have    {key}  (supplied locally)")
+            continue
 
         if os.path.isfile(path) and not force:
             print(f"  have    {key}")
@@ -677,16 +703,14 @@ CITATION_CLAIMS = {
                        "800-86"],
     "Chen.xgboost": ["XGBoost: A Scalable Tree Boosting System",
                      "Carlos Guestrin"],
+    "Arslan.mits": ["Cybersecurity in Intelligent Transportation Systems",
+                    "10.56578/mits050102"],
     "NIST.AI.100-1": ["Artificial Intelligence Risk Management",
                       "NIST AI 100-1"],
     "USENIX.dosdonts": ["Machine Learning in Computer Security",
                         "31st USENIX Security Symposium"],
     "SommerPaxson.closedworld": ["Outside the Closed World",
                                  "Network Intrusion Detection"],
-    "Lundberg.shap": ["Approach to Interpreting Model Predictions",
-                      "Su-In Lee"],
-    "Lundberg.treeshap": ["Explainable AI for Trees",
-                          "Scott M. Lundberg"],
 }
 
 
