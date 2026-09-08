@@ -241,8 +241,14 @@ def test_panel3():
 
     if "Slowloris" in by_class:
         rec = ps.recommend(by_class["Slowloris"])
-        check("a class with a document cites it",
-              rec["citations"] == ["incident_response/slowloris.md"],
+        check("a class cites its own document",
+              "incident_response/slowloris.md" in rec["citations"],
+              str(rec["citations"]))
+        # Now that Slowloris and DoS have separate files, the ambiguity
+        # retrieval finally has two documents to pull rather than one shared
+        # one. Both playbooks reaching the panel is the point of it.
+        check("an ambiguous pair retrieves both playbooks",
+              "incident_response/dos.md" in rec["citations"],
               str(rec["citations"]))
         # Assert a durable property, not the sample text: the retrieved
         # document must reach the panel with its own provenance header
