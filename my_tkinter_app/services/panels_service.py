@@ -814,7 +814,15 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
     # Put the intake facts in front of the investigator rather than in a log:
     # a truncated file or a high coercion rate changes what the numbers mean.
     summary["intake"] = {**intake_report, **matrix_report}
-    summary["lines"] = describe(intake_report, matrix_report) + summary["lines"][1:]
+    # describe() names the CSV, which is what was read; the investigator
+    # uploaded a PCAP and thinks in those terms. Report both, in that order,
+    # so the provenance chain PCAP -> CSV -> analysis is visible on screen
+    # rather than implied.
+    summary["lines"] = (
+        [f"Evidence: {source_name}"]
+        + describe(intake_report, matrix_report)
+        + summary["lines"][1:]
+    )
     findings = aggregate(names, proba, k, bundle, flows)
 
     if not findings:
