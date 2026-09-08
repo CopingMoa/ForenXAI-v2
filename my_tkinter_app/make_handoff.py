@@ -56,6 +56,7 @@ PAYLOAD = [
     ("handoff_docs/OLLAMA.md", "OLLAMA.md", False),
     ("fetch_knowledge.py", "fetch_knowledge.py", False),
     ("deploy_multiclass_model.py", "deploy_multiclass_model.py", False),
+    ("audit_rag.py", "audit_rag.py", False),
 ]
 
 SKIP_DIRS = {"__pycache__", ".git"}
