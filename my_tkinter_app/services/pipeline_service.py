@@ -13,6 +13,9 @@ from services.utils import (
 from services.model_service import (
     validate_model_schema,
     get_shap_background,
+    get_benign_class_ids,
+    get_class_names,
+    get_explainer_kind,
 )
 
 from services.cicflowmeter_service import (
@@ -639,6 +642,37 @@ def run_forensic_pipeline(
         X
     )
 
+    # --------------------------------------------------------
+    # Which predicted integers mean "benign" comes from the model's
+    # frozen schema. It must never be assumed from the integer value.
+    #
+    # This used to count anything in [1, 2, 3, 4, 5] as malicious. That
+    # was right only by coincidence -- the legacy schemas happen to put
+    # Benign at 0. The multiclass model's classes are alphabetical, so
+    # Benign is 1 and API is 0, and the old rule would have reported
+    # every benign flow as a threat and everything from DNS (6) upward
+    # as benign. Silently, with no error.
+    # --------------------------------------------------------
+
+    benign_class_ids = get_benign_class_ids(
+        model_name
+    )
+
+    if not benign_class_ids:
+
+        raise ValueError(
+            f"The frozen schema for {model_name} does not declare which "
+            "class is benign, so attack flows cannot be separated from "
+            "normal ones.\n\n"
+            "Add a 'benign_classes' entry, or a 'family_mapping' "
+            "containing 'Benign', to the model's "
+            "frozen_feature_schema_l2.json."
+        )
+
+    class_names = get_class_names(
+        model_name
+    )
+
     threat_probabilities = None
 
     if hasattr(
@@ -654,48 +688,68 @@ def run_forensic_pipeline(
             model.classes_
         )
 
-        if 1 in classes:
+        # Probability that the flow is an attack of ANY kind: one minus
+        # the benign probability. Taking the probability of a single
+        # hardcoded class index gave the benign probability for this
+        # model, which is the exact opposite of a threat score.
+        threat_column_indices = [
+            position
+            for position, class_id in enumerate(classes)
+            if int(class_id) not in benign_class_ids
+        ]
 
-            threat_class_index = (
-                classes.index(1)
-            )
+        if threat_column_indices:
 
             threat_probabilities = (
                 probabilities[
                     :,
-                    threat_class_index
-                ]
+                    threat_column_indices
+                ].sum(axis=1)
             )
 
     total_flows = len(
         predictions
     )
 
-    # --------------------------------------------------------
-    # Current project convention:
-    # class 0 = benign
-    # class > 0 = threat/attack family
-    # --------------------------------------------------------
-
-    malicious_count = sum(
-        1
-        for prediction in predictions
-        if prediction in [
-            1,
-            2,
-            3,
-            4,
-            5,
-            True,
-            "Attack",
-            "attack"
-        ]
+    malicious_count = int(
+        sum(
+            1
+            for prediction in predictions
+            if int(prediction) not in benign_class_ids
+        )
     )
 
     benign_count = (
         total_flows
         - malicious_count
     )
+
+    # What was actually found, by name. A count of "threat flows" with no
+    # class attached is not something an investigator can act on.
+    class_breakdown = {}
+
+    for prediction in predictions:
+        label = class_names.get(
+            int(prediction),
+            f"class_{int(prediction)}"
+        )
+        class_breakdown[label] = class_breakdown.get(label, 0) + 1
+
+    class_breakdown = dict(
+        sorted(
+            class_breakdown.items(),
+            key=lambda item: item[1],
+            reverse=True
+        )
+    )
+
+    current_case[
+        "class_breakdown"
+    ] = class_breakdown
+
+    current_case[
+        "model_classes"
+    ] = len(class_names)
 
     current_case[
         "total_flows"
@@ -753,6 +807,15 @@ def run_forensic_pipeline(
         else "success"
     )
 
+    # Name what was found. A threat count with no class attached is not
+    # something an investigator can act on.
+    for label, count in class_breakdown.items():
+
+        log_fn(
+            f"      {label}: {count:,}",
+            "info"
+        )
+
     # ========================================================
     # STAGE 8 — SHAP
     # ========================================================
@@ -762,9 +825,30 @@ def run_forensic_pipeline(
         "info"
     )
 
+    explainer_kind = get_explainer_kind(
+        model_name
+    )
+
     shap_background = get_shap_background(
         model_name
     )
+
+    if explainer_kind == "tree":
+
+        log_fn(
+            "[+] Tree ensemble: using TreeSHAP "
+            "(feature_perturbation=tree_path_dependent). "
+            "Exact, and no background sample is required.",
+            "info"
+        )
+
+    else:
+
+        log_fn(
+            "[+] Model-agnostic estimator: using Kernel SHAP "
+            "against the frozen background.",
+            "info"
+        )
 
     shap_results, shap_metadata = (
         generate_shap_explanation(
@@ -774,7 +858,9 @@ def run_forensic_pipeline(
             case_id,
             case_dir,
             log_fn,
-            shap_background
+            shap_background,
+            explainer_kind=explainer_kind,
+            class_names=class_names
         )
     )
 

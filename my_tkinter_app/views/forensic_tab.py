@@ -1889,7 +1889,17 @@ class ForensicTab:
 
             # ------------------------------------------------
             # Determine benign
+            #
+            # By NAME whenever the frozen mapping could translate the
+            # prediction. The raw-integer fallback below is only for a
+            # model whose mapping failed to load, because "0" does not
+            # mean benign in general -- in the 16-class model the classes
+            # are alphabetical, so 0 is API, an attack. Applying the
+            # numeric rule there would drop every API flow from this
+            # table silently.
             # ------------------------------------------------
+
+            translated = prediction_text in reverse_mapping
 
             is_benign = (
                 classification.lower()
@@ -1897,13 +1907,19 @@ class ForensicTab:
                     "benign",
                     "normal"
                 }
-                or prediction_text
-                in {
-                    "0",
-                    "0.0",
-                    "false"
-                }
             )
+
+            if not translated:
+
+                is_benign = (
+                    is_benign
+                    or prediction_text
+                    in {
+                        "0",
+                        "0.0",
+                        "false"
+                    }
+                )
 
             # ------------------------------------------------
             # Ignore benign flows

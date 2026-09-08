@@ -22,6 +22,8 @@ Sections:
   H  UI          the widgets fill and follow the selection
   I  PCAP        a capture converts to the exact schema the model needs,
                  and which engine converted it is recorded
+  J  MODEL       the Forensic tab and the XAI tab run the same model and
+                 report the same classes
 
 No framework. A failure prints what was expected and what happened; the
 exit code is the number of failures.
@@ -643,6 +645,99 @@ def test_pcap():
 
 
 # ============================================================
+# J  MODEL -- one model across both tabs
+# ============================================================
+
+def test_model():
+    section("J  MODEL -- Forensic tab and XAI tab agree")
+
+    import joblib
+
+    from services.flow_intake import read_flows, to_matrix
+    from services.model_service import (discover_models,
+                                        get_benign_class_ids,
+                                        get_class_names,
+                                        get_expected_features,
+                                        get_explainer_kind,
+                                        get_shap_background,
+                                        load_model)
+    from services.panels_service import load_bundle
+
+    NAME = "ForenXAI-Multiclass"
+
+    models = discover_models()
+    check(f"{NAME} is discovered", NAME in models, str(list(models)))
+    if NAME not in models:
+        return
+
+    bundle = load_bundle()
+
+    # The deployed model must be the same artefact the panels load.
+    deployed = joblib.load(models[NAME]["model_path"])
+    inner = deployed.steps[-1][1]
+    check("the deployed model is the bundle's XGBoost",
+          inner.__class__ is bundle["model"].__class__
+          and inner.n_classes_ == bundle["model"].n_classes_
+          and inner.n_features_in_ == bundle["model"].n_features_in_)
+
+    check("the deployed schema lists the bundle's 74 features, in order",
+          get_expected_features(NAME) == list(bundle["features"]))
+
+    # Benign must be resolved from the schema, never assumed to be 0. The
+    # multiclass classes are alphabetical, so Benign is 1 -- the old
+    # hardcoded [1,2,3,4,5] rule would have inverted the whole report.
+    benign = get_benign_class_ids(NAME)
+    names = get_class_names(NAME)
+    check("benign resolves to the Benign class, not to index 0",
+          benign == {1} and names[1] == "Benign",
+          f"benign={benign}, names[1]={names.get(1)}")
+    check("index 0 is API, which must NOT count as benign",
+          names[0] == "API" and 0 not in benign)
+
+    for legacy in ("CIDS2018", "TII"):
+        if legacy in models:
+            check(f"{legacy} still resolves Benign to 0",
+                  get_benign_class_ids(legacy) == {0})
+
+    # TreeSHAP for the tree model; Kernel for the legacy ones.
+    check("the multiclass model declares TreeSHAP",
+          get_explainer_kind(NAME) == "tree")
+    check("TreeSHAP needs no background, and that is not an error",
+          get_shap_background(NAME) is None)
+    for legacy in ("CIDS2018", "TII"):
+        if legacy in models:
+            check(f"{legacy} still uses Kernel SHAP with a background",
+                  get_explainer_kind(legacy) == "kernel"
+                  and get_shap_background(legacy) is not None)
+
+    # The point of the whole exercise: both tabs, same flows, same classes.
+    handle = load_model(NAME)
+    flows, _ = read_flows(SAMPLE_FULL, bundle["features"])
+    X, _ = to_matrix(flows, bundle["features"])
+
+    panel_pred = bundle["model"].predict(bundle["scaler"].transform(X))
+    forensic_pred = handle.predict(X)
+
+    check("Forensic tab and XAI tab predict the same class for every flow",
+          bool(np.array_equal(panel_pred, forensic_pred)),
+          f"{float((panel_pred == forensic_pred).mean()):.4f} agreement")
+
+    # The dtype trap, asserted directly. float64 in gave numerically
+    # identical features but a different class on 12.7% of a real capture,
+    # because split thresholds were learned in float32.
+    as_frame = pd.DataFrame(np.asarray(X, dtype="float64"),
+                            columns=bundle["features"])
+    check("a float64 frame still predicts identically (the cast is applied)",
+          bool(np.array_equal(handle.predict(as_frame), panel_pred)))
+
+    # And the scaler really is applied -- unscaled input must differ, or
+    # the Pipeline is not doing what the schema claims.
+    unscaled = bundle["model"].predict(np.asarray(X, dtype="float32"))
+    check("the Pipeline scales (unscaled input gives a different answer)",
+          not np.array_equal(unscaled, panel_pred))
+
+
+# ============================================================
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--llm", action="store_true",
@@ -664,6 +759,7 @@ def main():
     test_panel3()
     test_schema()
     test_pcap()
+    test_model()
 
     if args.llm or args.all:
         test_llm()

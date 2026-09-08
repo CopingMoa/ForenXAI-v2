@@ -175,6 +175,74 @@ def normalize_shap_values(
 # KERNEL SHAP EXPLANATION
 # ============================================================
 
+def prepare_kernel_background(shap_background, n_features):
+    """
+    Turn the frozen background artifact into a validated numeric matrix.
+
+    The .joblib artifact holds a shap.utils._legacy.DenseData, whose matrix
+    lives in .data; older exports are plain arrays. Both are accepted, and
+    both are checked, because a background with the wrong feature count
+    produces attributions for the wrong columns rather than an error.
+    """
+
+    if hasattr(shap_background, "data"):
+        background_data = shap_background.data
+    else:
+        background_data = np.asarray(shap_background)
+
+    background_data = np.asarray(background_data, dtype=float)
+
+    if background_data.ndim != 2:
+        raise ValueError(
+            "SHAP background must be a 2-dimensional matrix."
+        )
+
+    if background_data.shape[1] != n_features:
+        raise ValueError(
+            "SHAP background feature count does not match model input.\n\n"
+            f"Background features: {background_data.shape[1]}\n"
+            f"Model features: {n_features}"
+        )
+
+    if not np.isfinite(background_data).all():
+        raise ValueError(
+            "SHAP background contains NaN or infinite values."
+        )
+
+    return background_data
+
+
+def unwrap_estimator(model):
+    """
+    Return (estimator, transform) for a model that may be a Pipeline.
+
+    The multiclass model ships as Pipeline([scaler, model]) so that
+    .predict() on a raw feature frame scales first. TreeSHAP has to explain
+    the tree ensemble itself, on the SCALED matrix the trees were fitted
+    against -- handing it the Pipeline, or raw values, gives attributions
+    for a model or an input space that does not exist.
+
+    `transform` is the function that maps the raw frame into the estimator's
+    input space; it is the identity for a bare estimator.
+    """
+
+    steps = getattr(model, "named_steps", None)
+
+    if not steps:
+        return model, (lambda frame: frame)
+
+    estimator = model.steps[-1][1]
+    preprocessing = model.steps[:-1]
+
+    def transform(frame):
+        out = frame
+        for _, step in preprocessing:
+            out = step.transform(out)
+        return out
+
+    return estimator, transform
+
+
 def generate_shap_explanation(
     model,
     X,
@@ -182,29 +250,34 @@ def generate_shap_explanation(
     case_id,
     case_dir,
     log_fn,
-    shap_background
+    shap_background,
+    explainer_kind="kernel",
+    class_names=None
 ):
     """
-    Generate Kernel SHAP explanations for the selected
-    ForenXAI model.
+    Generate SHAP explanations for the selected ForenXAI model.
 
-    IMPORTANT:
+    explainer_kind selects how, and it comes from the model's frozen
+    schema rather than from guesswork here:
 
-    shap_background must contain the ACTUAL background
-    data, not the path to the .joblib file.
+      "tree"    TreeSHAP with feature_perturbation "tree_path_dependent".
+                Exact, fast, and needs NO background sample -- the expected
+                value comes from traversal counts stored in the trees. Used
+                by the multiclass XGBoost model.
 
-    Expected background:
+      "kernel"  KernelExplainer against a frozen background. The
+                model-agnostic fallback, and the only option for the legacy
+                CalibratedClassifierCV models, which are not tree ensembles
+                TreeSHAP can read.
 
-        SHAP DenseData
-        or
-        NumPy array
+    shap_background must contain the ACTUAL background data, not a path.
+    It is required for "kernel" and ignored for "tree".
 
-    The function explains:
-
-        model.predict_proba(X)
-
-    This is intentionally model-agnostic and therefore
-    works with the current CalibratedClassifierCV model.
+    Units differ between the two and this matters when reading the numbers:
+    Kernel SHAP here explains predict_proba, so its values are in
+    probability. TreeSHAP explains the raw margin, so its values are in
+    LOG-ODDS and sum to the margin plus the base value, NOT to a
+    probability.
     """
 
     # ========================================================
@@ -226,7 +299,9 @@ def generate_shap_explanation(
     # BACKGROUND VALIDATION
     # ========================================================
 
-    if shap_background is None:
+    # Only Kernel SHAP needs one. For a tree model a missing background is
+    # the expected state, not a failure, so it must not skip the stage.
+    if explainer_kind != "tree" and shap_background is None:
 
         log_fn(
             "[!] SHAP background is not available. "
@@ -243,140 +318,88 @@ def generate_shap_explanation(
         # STAGE 1 — PREPARE BACKGROUND
         # ====================================================
 
-        log_fn(
-            "[*] Preparing frozen Kernel SHAP background...",
-            "info"
-        )
+        background_data = None
 
+        if explainer_kind == "tree":
 
-        # ----------------------------------------------------
-        # Your .joblib artifact contains:
-        #
-        # shap.utils._legacy.DenseData
-        #
-        # The actual NumPy matrix is stored in:
-        #
-        #     shap_background.data
-        #
-        # ----------------------------------------------------
-
-        if hasattr(
-            shap_background,
-            "data"
-        ):
-
-            background_data = (
-                shap_background.data
+            log_fn(
+                "[*] TreeSHAP reads the expected value from the trees "
+                "themselves, so no background is prepared.",
+                "info"
             )
 
         else:
 
-            background_data = (
-                np.asarray(
-                    shap_background
-                )
+            log_fn(
+                "[*] Preparing frozen Kernel SHAP background...",
+                "info"
             )
 
-
-        # ----------------------------------------------------
-        # Convert to numeric NumPy matrix
-        # ----------------------------------------------------
-
-        background_data = np.asarray(
-            background_data,
-            dtype=float
-        )
-
-
-        # ====================================================
-        # VALIDATE BACKGROUND DIMENSIONS
-        # ====================================================
-
-        if background_data.ndim != 2:
-
-            raise ValueError(
-                "SHAP background must be a "
-                "2-dimensional matrix."
+            background_data = prepare_kernel_background(
+                shap_background,
+                len(X.columns)
             )
 
-
-        # ----------------------------------------------------
-        # Number of features must match X
-        # ----------------------------------------------------
-
-        if background_data.shape[1] != len(
-            X.columns
-        ):
-
-            raise ValueError(
-                "SHAP background feature count "
-                "does not match model input.\n\n"
-                f"Background features: "
-                f"{background_data.shape[1]}\n"
-                f"Model features: "
-                f"{len(X.columns)}"
+            log_fn(
+                "[+] Frozen SHAP background loaded: "
+                f"{background_data.shape[0]} samples × "
+                f"{background_data.shape[1]} features.",
+                "success"
             )
-
-
-        # ----------------------------------------------------
-        # Make sure background contains no NaN/Infinity
-        # ----------------------------------------------------
-
-        if not np.isfinite(
-            background_data
-        ).all():
-
-            raise ValueError(
-                "SHAP background contains "
-                "NaN or infinite values."
-            )
-
-
-        log_fn(
-            "[+] Frozen SHAP background loaded: "
-            f"{background_data.shape[0]} samples × "
-            f"{background_data.shape[1]} features.",
-            "success"
-        )
 
 
         # ====================================================
         # STAGE 2 — CREATE KERNEL SHAP EXPLAINER
         # ====================================================
 
-        log_fn(
-            "[*] Creating Kernel SHAP explainer...",
-            "info"
-        )
+        if explainer_kind == "tree":
 
+            # The multiclass model is Pipeline([scaler, XGBClassifier]).
+            # TreeSHAP must explain the ensemble itself, on the SCALED
+            # matrix it was fitted against -- the Pipeline is not a tree
+            # model, and raw values are not the space the trees split on.
+            estimator, transform = unwrap_estimator(model)
 
-        # ----------------------------------------------------
-        # IMPORTANT:
-        #
-        # DO NOT use:
-        #
-        #     shap.TreeExplainer(model)
-        #
-        # because the current CIDS2018 model is:
-        #
-        #     CalibratedClassifierCV
-        #
-        # Instead, explain the complete model through:
-        #
-        #     model.predict_proba
-        #
-        # ----------------------------------------------------
+            log_fn(
+                f"[*] Creating TreeSHAP explainer for "
+                f"{type(estimator).__name__}...",
+                "info"
+            )
 
-        explainer = shap.KernelExplainer(
-            model.predict_proba,
-            background_data
-        )
+            explainer = shap.TreeExplainer(
+                estimator,
+                feature_perturbation="tree_path_dependent"
+            )
 
+            explain_input = transform(X)
 
-        log_fn(
-            "[+] Kernel SHAP explainer created.",
-            "success"
-        )
+            log_fn(
+                "[+] TreeSHAP explainer created. Values are in LOG-ODDS "
+                "(margin), not probability.",
+                "success"
+            )
+
+        else:
+
+            log_fn(
+                "[*] Creating Kernel SHAP explainer...",
+                "info"
+            )
+
+            # The legacy models are CalibratedClassifierCV, which TreeSHAP
+            # cannot read. Explain the whole estimator through its
+            # predict_proba instead; values are then in probability.
+            explainer = shap.KernelExplainer(
+                model.predict_proba,
+                background_data
+            )
+
+            explain_input = X
+
+            log_fn(
+                "[+] Kernel SHAP explainer created.",
+                "success"
+            )
 
 
         # ====================================================
@@ -390,12 +413,21 @@ def generate_shap_explanation(
         )
 
 
-        raw_shap_values = (
-            explainer.shap_values(
-                X,
-                nsamples="auto"
+        if explainer_kind == "tree":
+
+            # Exact: no sampling parameter, and no approximation to state.
+            raw_shap_values = explainer.shap_values(
+                explain_input
             )
-        )
+
+        else:
+
+            raw_shap_values = (
+                explainer.shap_values(
+                    explain_input,
+                    nsamples="auto"
+                )
+            )
 
 
         # ====================================================

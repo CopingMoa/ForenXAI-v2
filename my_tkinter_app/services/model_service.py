@@ -11,6 +11,13 @@ def get_shap_background(dataset_name):
     Returns:
         numpy.ndarray with shape:
             (background_samples, model_features)
+
+        or None for a model that uses TreeSHAP, which needs no background.
+
+    A tree model returning None here is a correct answer, not a degraded
+    one: with feature_perturbation "tree_path_dependent" the expected value
+    comes from the traversal counts already stored in the trees, so there is
+    no background distribution to supply. Only KernelExplainer needs one.
     """
 
     models = discover_models()
@@ -19,6 +26,9 @@ def get_shap_background(dataset_name):
         raise FileNotFoundError(
             f"Model '{dataset_name}' was not found."
         )
+
+    if get_explainer_kind(dataset_name) == "tree":
+        return None
 
     background_path = models[
         dataset_name
@@ -304,6 +314,113 @@ def get_family_mapping(
         return {}
 
     return mapping
+
+
+# ============================================================
+# BENIGN CLASS IDENTIFICATION
+# ============================================================
+
+def get_benign_class_ids(
+    dataset_name
+):
+    """
+    Return the set of predicted integers that mean "not an attack".
+
+    This has to be read from the schema, never assumed from the integer
+    value. The pipeline used to count anything in [1, 2, 3, 4, 5] as
+    malicious, which happened to be right for the legacy models because
+    their family_mapping puts Benign at 0. It is WRONG for the multiclass
+    model, whose classes are alphabetical:
+
+        API = 0, Benign = 1, Bruteforce = 2, ... WebBased = 15
+
+    Under the old rule that model would have reported every Benign flow as
+    a threat, every API flow as benign, and everything from DNS (6) upward
+    as benign -- confident, inverted, and with no error raised.
+
+    Returns a set of ints. Empty means the schema declares no benign class,
+    which callers must treat as "cannot separate", not as "none are benign".
+    """
+
+    schema = load_feature_schema(
+        dataset_name
+    )
+
+    mapping = get_family_mapping(
+        dataset_name
+    )
+
+    if not mapping:
+        return set()
+
+    declared = schema.get(
+        "benign_classes"
+    )
+
+    if not declared:
+        # No explicit declaration: fall back to matching on the name. Every
+        # schema in this project spells it "Benign".
+        declared = [
+            name
+            for name in mapping
+            if str(name).strip().lower() == "benign"
+        ]
+
+    return {
+        int(mapping[name])
+        for name in declared
+        if name in mapping
+    }
+
+
+def get_class_names(
+    dataset_name
+):
+    """
+    Return predicted integer -> class name, from the frozen schema.
+
+    The report and the UI both need to print a name rather than an index,
+    and the mapping belongs to the model, not to the widget.
+    """
+
+    mapping = get_family_mapping(
+        dataset_name
+    )
+
+    return {
+        int(index): str(name)
+        for name, index in mapping.items()
+    }
+
+
+def get_explainer_kind(
+    dataset_name
+):
+    """
+    Which SHAP explainer this model needs: "tree" or "kernel".
+
+    Tree ensembles get TreeSHAP -- exact, fast, and with
+    feature_perturbation "tree_path_dependent" it reads the traversal
+    counts stored in the trees, so it needs no background sample.
+    KernelExplainer is the model-agnostic fallback the legacy
+    CalibratedClassifierCV models require, and it does need a background.
+
+    Declared in the schema so the choice is recorded with the model rather
+    than inferred at run time from whatever object happened to load.
+    """
+
+    try:
+        schema = load_feature_schema(
+            dataset_name
+        )
+    except FileNotFoundError:
+        return "kernel"
+
+    kind = str(
+        schema.get("explainer", "kernel")
+    ).strip().lower()
+
+    return kind if kind in ("tree", "kernel") else "kernel"
 
 
 # ============================================================
