@@ -254,13 +254,40 @@ def narrate(panel, provider, context=None):
     return panel
 
 
-def narrate_all(result, provider):
-    """Narrate whichever panels are present, in the order they are read."""
+# Which panels a language model is allowed to narrate by default.
+#
+# Panel 3 is absent deliberately. Its content is a response playbook someone
+# else already wrote carefully; the deterministic panel quotes it verbatim
+# with its source, and a quote cannot be invented. Asking a model to reorder
+# that prose buys presentation and risks the one guarantee the panel exists
+# to provide.
+#
+# Panels 1 and 2 are different. Panel 1 turns counts into a sentence, and
+# panel 2 does the thing no template can: combining a feature's definition,
+# its observed value and the direction of its contribution into "unusually
+# long for automated traffic". That judgement is why a model is here at all.
+#
+# Narrating panel 3 stays possible -- pass it explicitly -- but it is a
+# decision someone makes, not the default.
+DEFAULT_PANELS = ("summary", "shap")
+
+ALL_PANELS = ("summary", "shap", "recommend")
+
+
+def narrate_all(result, provider, panels=DEFAULT_PANELS):
+    """
+    Narrate the requested panels.
+
+    `panels` defaults to the two where prose adds information. Pass
+    ALL_PANELS to include recommendations, and see the note above for why
+    that is not the default.
+    """
     finding = result.get("selected")
 
-    for key in ("summary", "shap", "recommend"):
+    for key in panels:
         panel = result.get(key)
         if isinstance(panel, dict):
             narrate(panel, provider, {"finding": finding})
 
+    result["narrated_panels"] = list(panels)
     return result

@@ -769,7 +769,7 @@ def recommend(finding, detections=None):
 # ============================================================
 
 def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
-                 narrate_with=None):
+                 narrate_with=None, narrate_panels=None):
     """
     Everything XaiTab needs, from a CICFlowMeter CSV.
 
@@ -779,6 +779,10 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
      additive: every figure, label and citation stays on screen either way,
      so a missing or broken model degrades the panel rather than emptying
      it.]
+    [UI CONNECTION: narrate_panels <- which panels to narrate. Defaults to
+     panels 1 and 2. Panel 3 is excluded on purpose: it quotes a response
+     playbook verbatim with its source, and a quote cannot be invented.
+     Pass narration_service.ALL_PANELS to include it.]
 
     Returns a dict with `summary`, `findings`, `shap` and `recommend`, or
     an `error` string the tab can display verbatim.
@@ -847,7 +851,9 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
         ok, detail = provider.available()
 
         if ok:
-            result = narrate_all(result, provider)
+            from services.narration_service import DEFAULT_PANELS
+            result = narrate_all(result, provider,
+                                 narrate_panels or DEFAULT_PANELS)
             result["narrated_by"] = f"{provider.name}/{provider.model}"
         else:
             result["narration_unavailable"] = detail

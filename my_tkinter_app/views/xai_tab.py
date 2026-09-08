@@ -62,6 +62,12 @@ class XaiTab:
         # narration is additive, so a missing model costs prose, not
         # evidence.
         self.narrate = tk.BooleanVar(value=False)
+
+        # Panel 3 is deterministic by default even when narration is on.
+        # It quotes a response playbook verbatim with its source, and a
+        # quote cannot be invented -- asking a model to reword it buys
+        # presentation and risks the guarantee the panel exists to provide.
+        self.narrate_recommend = tk.BooleanVar(value=False)
         self.provider_name = "ollama"
 
         self.frame = tk.Frame(notebook, bg=BG)
@@ -106,7 +112,19 @@ class XaiTab:
             font=("Segoe UI", 9), relief="flat", bd=0,
             highlightthickness=0
         )
-        self.chk_narrate.pack(side=tk.RIGHT, padx=12)
+        self.chk_narrate.pack(side=tk.RIGHT, padx=(12, 4))
+
+        # Separate, and deliberately harder to reach: rewording a quoted
+        # playbook is a different decision from explaining a number.
+        self.chk_narrate_rec = tk.Checkbutton(
+            bar, text="...including recommendations",
+            variable=self.narrate_recommend,
+            command=self._on_narrate_toggled,
+            bg=PANEL, fg=MUTED, selectcolor=TEXT_BG,
+            activebackground=PANEL, activeforeground=FG,
+            font=("Segoe UI", 8), relief="flat", bd=0, highlightthickness=0
+        )
+        self.chk_narrate_rec.pack(side=tk.RIGHT, padx=(0, 6))
 
         # The three panels get their own notebook so each has the full
         # width. Stacked vertically none of them is tall enough to read.
@@ -378,7 +396,8 @@ class XaiTab:
         try:
             result = build_panels(
             csv_path, source, finding_index=0,
-            narrate_with=self.provider_name if self.narrate.get() else None)
+            narrate_with=self.provider_name if self.narrate.get() else None,
+            narrate_panels=self._panels_to_narrate())
         except Exception as e:                      # never lose a worker crash
             result = {"error": f"{type(e).__name__}: {e}"}
         self._results.put(("all", result))
@@ -540,6 +559,11 @@ class XaiTab:
     # EVENT HANDLERS
     # ========================================================
 
+    def _panels_to_narrate(self):
+        """Panels 1 and 2 by default; panel 3 only when asked for."""
+        from services.narration_service import DEFAULT_PANELS, ALL_PANELS
+        return ALL_PANELS if self.narrate_recommend.get() else DEFAULT_PANELS
+
     def _on_narrate_toggled(self):
         """
         Re-run the current finding with or without narration.
@@ -585,7 +609,8 @@ class XaiTab:
                 result = build_panels(
                 csv_path, source, finding_index=index,
                 narrate_with=(self.provider_name
-                              if self.narrate.get() else None))
+                              if self.narrate.get() else None),
+                narrate_panels=self._panels_to_narrate())
             except Exception as e:
                 result = {"error": f"{type(e).__name__}: {e}"}
             self._results.put(("selected", result))

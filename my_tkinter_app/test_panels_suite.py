@@ -347,7 +347,26 @@ def test_llm():
           == [s["body"] for s in narr["recommend"]["sections"]
               if s.get("source")])
 
-    for key in ("summary", "shap", "recommend"):
+    # Panel 3 is deterministic by default: its content is a quoted playbook,
+    # and a quote cannot be invented.
+    check("panel 3 is not narrated by default",
+          not narr["recommend"].get("narrative"),
+          "recommendations were narrated without being asked for")
+    check("only panels 1 and 2 are narrated by default",
+          narr.get("narrated_panels") == ["summary", "shap"],
+          str(narr.get("narrated_panels")))
+
+    from services.narration_service import ALL_PANELS
+    explicit = build_panels(SAMPLE_FULL, "x.pcap", narrate_with="ollama",
+                            narrate_panels=ALL_PANELS)
+    check("panel 3 narrates when explicitly asked",
+          bool(explicit["recommend"].get("narrative")))
+    check("the document stays quoted verbatim even when narrated",
+          [s["body"] for s in plain["recommend"]["sections"] if s.get("source")]
+          == [s["body"] for s in explicit["recommend"]["sections"]
+              if s.get("source")])
+
+    for key in ("summary", "shap"):
         p = narr[key]
         check(f"{key}: a narration was produced",
               bool(p.get("narrative")), p.get("narration_error", ""))
