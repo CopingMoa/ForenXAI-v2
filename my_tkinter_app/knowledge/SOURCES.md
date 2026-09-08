@@ -10,9 +10,7 @@ and point `config/knowledge_map.py` at the section — not the whole document.
 An 80-page publication in one file dilutes the answer and, at 8,192 tokens of
 context, triggers truncation.
 
-**Licensing.** US Government works (NIST, CISA) are public domain. UK
-Government works (NCSC) are Open Government Licence v3.0 — attribution
-required. IETF RFCs are freely redistributable under the IETF Trust
+**Licensing.** US Government works (NIST, CISA) are public domain. IETF RFCs are freely redistributable under the IETF Trust
 provisions. ENISA reports permit reuse with attribution. MITRE ATT&CK is free
 with the attribution notice below. OWASP is CC BY-SA 4.0. Check each before
 redistributing with the application.
@@ -42,13 +40,15 @@ https://www.cisa.gov/resources-tools/resources/federal-government-cybersecurity-
 > prescriptive than NIST — closer to the ordered steps panel 3 wants.
 > Public domain.
 
-**[3]** National Cyber Security Centre, "Incident management," NCSC, London,
-U.K., v1.0, Sep. 19, 2019. [Online]. Available:
-https://www.ncsc.gov.uk/collection/incident-management
+**[3]** National Institute of Standards and Technology, "The NIST
+Cybersecurity Framework (CSF) 2.0," National Institute of Standards and
+Technology, Gaithersburg, MD, USA, NIST CSWP 29, Feb. 2024, doi:
+10.6028/NIST.CSWP.29.
 
-> Concise and readable, written for organisations rather than federal
-> agencies. Note the 2019 date: still listed as current, but the oldest
-> item in this tier. Open Government Licence v3.0.
+> The Respond and Recover functions give the organisational framing that
+> SP 800-61r3 profiles against, so the two are designed to be read
+> together. Final, current, and the vocabulary a reader is most likely to
+> already know. Public domain.
 
 ---
 
@@ -104,19 +104,19 @@ web application security risks," OWASP Foundation, Wakefield, MA, USA, 2025.
 
 ---
 
-## Cited with a caveat
+## Tier 4 — prescriptive controls
 
-**[9]** K. Scarfone and P. Mell, "Guide to intrusion detection and prevention
-systems (IDPS)," National Institute of Standards and Technology,
-Gaithersburg, MD, USA, NIST SP 800-94, Feb. 2007, doi:
-10.6028/NIST.SP.800-94.
+**[9]** Joint Task Force, "Security and privacy controls for information
+systems and organizations," National Institute of Standards and Technology,
+Gaithersburg, MD, USA, NIST SP 800-53r5, Sep. 2020, rel. 5.2.0, Aug. 2025,
+doi: 10.6028/NIST.SP.800-53r5.
 
-> **Superseded.** NIST retired the 2012 draft revision because its inputs
-> "were no longer applicable to the relevant technologies or threat models,"
-> and no replacement has been finalised. Still the clearest published
-> statement of what flow-level detection can and cannot see, which is
-> directly relevant to this project's limitations — but cite it as historical
-> context, never as current guidance, and say that it is superseded.
+> Individual controls a recommendation can name: SI-4 System Monitoring,
+> SC-7 Boundary Protection, SC-5 Denial-of-Service Protection, AC-7
+> Unsuccessful Logon Attempts. More specific than a framework and more
+> quotable than a playbook — a control identifier is exactly the kind of
+> citation an investigator can act on and an auditor can check. Final and
+> maintained: release 5.2.0, August 2025. Public domain.
 
 ---
 
