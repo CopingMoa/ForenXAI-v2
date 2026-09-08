@@ -11,8 +11,8 @@ An 80-page publication in one file dilutes the answer and, at 8,192 tokens of
 context, triggers truncation.
 
 **Licensing.** US Government works (NIST, CISA) are public domain. IETF RFCs are freely redistributable under the IETF Trust
-provisions. ENISA reports permit reuse with attribution. MITRE ATT&CK is free
-with the attribution notice below. OWASP is CC BY-SA 4.0. Check each before
+provisions. ENISA reports permit reuse with attribution. OWASP is
+CC BY-SA 4.0. Check each before
 redistributing with the application.
 
 ---
@@ -56,14 +56,19 @@ Technology, Gaithersburg, MD, USA, NIST CSWP 29, Feb. 2024, doi:
 
 These say what the attack *is*, and give shared vocabulary.
 
-**[4]** MITRE Corporation, "MITRE ATT&CK: Enterprise matrix," The MITRE
-Corporation, McLean, VA, USA, 2026. [Online]. Available:
-https://attack.mitre.org/
+**[4]** *Withdrawn.* MITRE ATT&CK was mapped per class and has been
+removed.
 
-> Required attribution: "© 2026 The MITRE Corporation. This work is
-> reproduced and distributed with the permission of The MITRE Corporation."
-> Already used in `KNOWLEDGE_MAP`; ten of sixteen classes map cleanly and
-> three deliberately do not.
+> ATT&CK describes adversary behaviour observed at the HOST -- process
+> creation, credential access, file writes. This tool sees CICFlowMeter flow
+> records, which carry none of it, so a technique ID here read as
+> corroboration the evidence could not support. Coverage was also uneven in
+> a way that was not random: three classes had no honest mapping, and three
+> others all collapsed onto T1190. ATT&CK for ICS is a separate matrix and
+> describes neither the enterprise nor the IoT behaviour TRUSTLab captures.
+>
+> Map ATT&CK where the evidence lives -- endpoint telemetry -- not from flow
+> records.
 
 **[5]** K. Paine, O. Whitehouse, J. Sellwood, and A. Shaw, "Indicators of
 compromise (IoCs) and their role in attack defence," RFC 9424, Aug. 2023,
@@ -99,8 +104,8 @@ USA, Nov. 2023. [Online]. Available: https://www.first.org/cvss/v4-0/
 web application security risks," OWASP Foundation, Wakefield, MA, USA, 2025.
 [Online]. Available: https://owasp.org/Top10/2025/
 
-> The right reference for the API, WebBased and Exploitation classes, which
-> ATT&CK covers only coarsely as T1190. CC BY-SA 4.0.
+> The right reference for the API, WebBased and Exploitation classes.
+> CC BY-SA 4.0.
 
 ---
 

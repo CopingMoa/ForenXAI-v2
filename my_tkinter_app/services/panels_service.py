@@ -64,46 +64,50 @@ KNOWLEDGE_DIR = os.path.join(
 # Only denial_of_service.md is present as a sample; the rest are declared
 # so the panel reports what is missing instead of inventing guidance.
 #
-# MITRE ATT&CK IDs were verified against attack.mitre.org. Every ID below is
-# real and correctly named. Three classes have no honest mapping and carry an
-# empty list rather than a plausible-looking wrong one:
+# NO MITRE ATT&CK MAPPING.
 #
-#   Evasion   TRUSTLab means network-IDS evasion -- overlapping IP
-#             fragmentation, TTL creeping. T1205 Traffic Signaling is port
-#             knocking, a different thing; T1027 explicitly does not cover
-#             packet-level evasion. Enterprise ATT&CK has no technique for
-#             it, so none is claimed.
-#   TLSSSL    TRUSTLab means Heartbleed, POODLE, BEAST, certificate
-#             anomalies -- exploiting TLS weaknesses. T1573 Encrypted
-#             Channel is the opposite: an adversary USING encryption to hide
-#             C2. T1600 Weaken Encryption is device-level, not protocol.
-#             Heartbleed alone would be T1190/T1210; the class is broader
-#             than any single technique.
-#   Benign    not an attack.
+# The IDs that used to be here were real and correctly named, and they were
+# still removed. Enterprise ATT&CK describes adversary behaviour observed at
+# the HOST -- process creation, credential access, registry, file writes.
+# This tool sees CICFlowMeter flow records, which carry none of that. A flow
+# table can suggest a technique; it cannot establish one.
+#
+# Two consequences that made the mapping worse than nothing:
+#
+#   * It read as corroboration. An analyst copying "T1046" into a report was
+#     citing a host-behaviour framework for evidence that was never host
+#     behaviour. The UI's "(unverified)" label did not stop that.
+#   * Coverage was uneven and the gaps were not random. Evasion, TLSSSL and
+#     Benign had no honest mapping at all; the classes that did map, mapped
+#     coarsely -- three separate classes all landing on T1190.
+#
+# IoT traffic makes it worse again: ATT&CK for ICS is a separate matrix, and
+# neither matrix describes the device behaviour TRUSTLab captures.
+#
+# If ATT&CK is wanted later, map it where the evidence lives -- endpoint
+# telemetry -- not from flow records.
 # ============================================================
 
 KNOWLEDGE_MAP = {
     # One document per class. A file covering three classes cannot say
     # anything specific to any of them, and the panel quotes the whole file
     # -- so a DoS finding was showing Slowloris guidance and the reverse.
-    "API":            {"doc": "incident_response/api.md",             "mitre": ["T1190"]},
-    "Benign":         {"doc": "incident_response/benign.md",          "mitre": []},
-    "Bruteforce":     {"doc": "incident_response/bruteforce.md",      "mitre": ["T1110"]},
-    # T1203 is CLIENT-side exploitation (browsers, documents). TRUSTLab's
-    # BufferOverflow is against a listening network service, which is T1210.
-    "BufferOverflow": {"doc": "incident_response/bufferoverflow.md",  "mitre": ["T1210"]},
-    "C2Beaconing":    {"doc": "incident_response/c2beaconing.md",     "mitre": ["T1071"]},
-    "DDoS":           {"doc": "incident_response/ddos.md",            "mitre": ["T1498"]},
-    "DNS":            {"doc": "incident_response/dns.md",             "mitre": ["T1071.004"]},
-    "DoS":            {"doc": "incident_response/dos.md",             "mitre": ["T1499"]},
-    "Evasion":        {"doc": "incident_response/evasion.md",         "mitre": []},
-    "Exfiltration":   {"doc": "incident_response/exfiltration.md",    "mitre": ["T1041"]},
-    "Exploitation":   {"doc": "incident_response/exploitation.md",    "mitre": ["T1190"]},
-    "MITM":           {"doc": "incident_response/mitm.md",            "mitre": ["T1557"]},
-    "PortScan":       {"doc": "incident_response/portscan.md",        "mitre": ["T1046"]},
-    "Slowloris":      {"doc": "incident_response/slowloris.md",       "mitre": ["T1499.002"]},
-    "TLSSSL":         {"doc": "incident_response/tlsssl.md",          "mitre": []},
-    "WebBased":       {"doc": "incident_response/webbased.md",        "mitre": ["T1190"]},
+    "API":            {"doc": "incident_response/api.md"},
+    "Benign":         {"doc": "incident_response/benign.md"},
+    "Bruteforce":     {"doc": "incident_response/bruteforce.md"},
+    "BufferOverflow": {"doc": "incident_response/bufferoverflow.md"},
+    "C2Beaconing":    {"doc": "incident_response/c2beaconing.md"},
+    "DDoS":           {"doc": "incident_response/ddos.md"},
+    "DNS":            {"doc": "incident_response/dns.md"},
+    "DoS":            {"doc": "incident_response/dos.md"},
+    "Evasion":        {"doc": "incident_response/evasion.md"},
+    "Exfiltration":   {"doc": "incident_response/exfiltration.md"},
+    "Exploitation":   {"doc": "incident_response/exploitation.md"},
+    "MITM":           {"doc": "incident_response/mitm.md"},
+    "PortScan":       {"doc": "incident_response/portscan.md"},
+    "Slowloris":      {"doc": "incident_response/slowloris.md"},
+    "TLSSSL":         {"doc": "incident_response/tlsssl.md"},
+    "WebBased":       {"doc": "incident_response/webbased.md"},
 }
 
 # Pairs the model provably cannot separate, with the evidence.
@@ -1021,7 +1025,6 @@ def recommend(finding, detections=None, summary=None):
     return {
         "panel": "recommendations",
         "class": cls,
-        "mitre": entry["mitre"],
         "ambiguity": ambiguity,
         "sections": sections,
         "citations": list(documents.keys()) + sorted(seen),

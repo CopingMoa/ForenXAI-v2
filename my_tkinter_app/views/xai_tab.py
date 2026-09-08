@@ -529,10 +529,9 @@ class XaiTab:
         """[UI CONNECTION: sections -> headed blocks, citations -> sources]"""
         blocks = [(f"RECOMMENDATIONS -- {rec['class']}\n\n", "h")]
 
-        if rec["mitre"]:
-            blocks.append((
-                f"MITRE ATT&CK: {', '.join(rec['mitre'])}   "
-                "(unverified -- review before citing)\n\n", "muted"))
+        # No MITRE ATT&CK line. ATT&CK describes host-observed adversary
+        # behaviour; this tool sees flow records, which cannot establish it.
+        # See the note above KNOWLEDGE_MAP in services/panels_service.py.
 
         # Guidance about the attack comes first, then guidance about the
         # model's own output, with a divider between them. Without it the

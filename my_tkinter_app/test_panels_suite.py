@@ -308,9 +308,11 @@ def test_panel3():
           all(c in ps.KNOWLEDGE_MAP for c in b["encoder"].classes_))
     check("an unmapped class raises rather than guessing",
           _raises(lambda: ps.recommend({"class": "NotAClass"})))
-    check("MITRE lists are either empty or look like technique IDs",
-          all(all(m.startswith("T1") for m in e["mitre"])
-              for e in ps.KNOWLEDGE_MAP.values()))
+    # ATT&CK was removed on purpose: it describes host-observed behaviour
+    # and this tool sees flow records. Asserted so it cannot creep back as a
+    # plausible-looking field nobody can support from the evidence.
+    check("no ATT&CK technique is claimed from flow records",
+          all("mitre" not in e for e in ps.KNOWLEDGE_MAP.values()))
 
 
 def _raises(fn):
