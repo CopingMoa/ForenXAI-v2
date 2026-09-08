@@ -24,6 +24,8 @@ Sections:
                  and which engine converted it is recorded
   J  MODEL       the Forensic tab and the XAI tab run the same model and
                  report the same classes
+  K  GUIDANCE    recommendations follow the RESULT -- confidence,
+                 reliability, ambiguity, extraction -- not just the class
 
 No framework. A failure prints what was expected and what happened; the
 exit code is the number of failures.
@@ -485,6 +487,111 @@ def test_ui():
 
 
 # ============================================================
+# K  MODEL GUIDANCE -- results-driven retrieval
+# ============================================================
+
+def test_model_guidance():
+    section("K  MODEL GUIDANCE -- recommendations follow the result")
+
+    import services.panels_service as ps
+
+    _, b, flows, X, proba, k, names = _load()
+    summary = ps.summarise_capture(flows, names, proba, "x.pcap")
+    findings = ps.aggregate(names, proba, k, b, flows)
+    by_class = {f["class"]: f for f in findings}
+
+    # Every document the condition map can retrieve must exist. A rule
+    # pointing at a missing file fails silently at run time.
+    for rule in ps.MODEL_GUIDANCE:
+        check(f"{rule['id']} -> {rule['doc']} exists",
+              os.path.isfile(os.path.join(ps.KNOWLEDGE_DIR, rule["doc"])))
+
+    # ...and carries an IEEE citation, or a recommendation would appear
+    # with no source, which is the thing this whole panel exists to avoid.
+    for rule in ps.MODEL_GUIDANCE:
+        path = os.path.join(ps.KNOWLEDGE_DIR, rule["doc"])
+        if not os.path.isfile(path):
+            continue
+        cites = ps._citations_in(open(path, encoding="utf-8").read())
+        check(f"{rule['doc']} carries a citation", bool(cites),
+              "no '> Source:' line")
+
+    any_finding = findings[0]
+    rec = ps.recommend(any_finding, summary=summary)
+
+    # Always-on guidance.
+    for always in ("shap", "shap_limits", "scope"):
+        check(f"{always} guidance is always retrieved",
+              always in rec["model_guidance"], str(rec["model_guidance"]))
+
+    check("every model-guidance section carries citations",
+          all(s.get("citations")
+              for s in rec["sections"] if s.get("kind") == "model"))
+
+    check("model guidance is marked as such, not mixed with attack advice",
+          any(s.get("kind") == "model" for s in rec["sections"])
+          and any(s.get("kind") != "model" for s in rec["sections"]))
+
+    # Condition: a weak class must pull the reliability document.
+    if "Slowloris" in by_class:
+        weak = ps.recommend(by_class["Slowloris"], summary=summary)
+        check("a weak-F1 class retrieves the reliability guidance",
+              "reliability" in weak["model_guidance"],
+              str(weak["model_guidance"]))
+        check("a weak-F1 class retrieves the ambiguity guidance",
+              "ambiguity" in weak["model_guidance"],
+              str(weak["model_guidance"]))
+
+    # Condition: a strong class with no low-confidence flows must NOT pull
+    # the reliability document. Guidance that always fires is noise.
+    strong = dict(any_finding)
+    strong["reliability_f1"] = None
+    strong["low_confidence_count"] = 0
+    strong["dominant_runner_up"] = None
+    strong["share_of_capture"] = 0.9
+    quiet = ps.recommend(strong, summary=summary)
+    check("a strong class does not retrieve reliability guidance",
+          "reliability" not in quiet["model_guidance"],
+          str(quiet["model_guidance"]))
+    check("no low-confidence flows means no confidence guidance",
+          "confidence" not in quiet["model_guidance"],
+          str(quiet["model_guidance"]))
+
+    # Condition: base rate fires on a small share of a large capture.
+    tiny = dict(any_finding)
+    tiny["share_of_capture"] = 0.001
+    tiny["low_confidence_count"] = 0
+    big = {"facts": {"total_flows": 50_000}}
+    check("a small share of a large capture retrieves base-rate guidance",
+          "base_rate" in ps.recommend(tiny, summary=big)["model_guidance"])
+
+    # Condition: the fallback extractor pulls the validity document.
+    fallback = {"facts": {"total_flows": 10, "flow_engine": "python"}}
+    check("the fallback extractor retrieves extraction-validity guidance",
+          "extraction" in
+          ps.recommend(any_finding, summary=fallback)["model_guidance"])
+
+    java = {"facts": {"total_flows": 10, "flow_engine": "java"}}
+    check("CICFlowMeter v4 with no timeout warning does not",
+          "extraction" not in
+          ps.recommend(any_finding, summary=java)["model_guidance"])
+
+    # No summary must not crash -- capture-level rules simply do not fire.
+    bare = ps.recommend(any_finding)
+    check("recommend() still works without a summary",
+          "scope" in bare["model_guidance"])
+
+    # A document is retrieved once even when two rules select it.
+    both = dict(any_finding)
+    both["low_confidence_count"] = 5
+    both["share_of_capture"] = 0.001
+    r = ps.recommend(both, summary=big)
+    docs = [s.get("source") for s in r["sections"] if s.get("kind") == "model"]
+    check("a document selected twice is retrieved once",
+          len(docs) == len(set(docs)), str(docs))
+
+
+# ============================================================
 # I  PCAP -- the capture intake path
 # ============================================================
 
@@ -760,6 +867,7 @@ def main():
     test_schema()
     test_pcap()
     test_model()
+    test_model_guidance()
 
     if args.llm or args.all:
         test_llm()

@@ -128,6 +128,115 @@ AMBIGUOUS_PAIRS = [
     },
 ]
 
+
+# ============================================================
+# RESULT CONDITION -> DOCUMENTS
+#
+# The map above answers "what is this attack". It cannot answer the other
+# half of what is on screen: what a 0.55 confidence means, why a class
+# scoring F1 0.67 needs different handling, whether a SHAP value is a
+# cause, or whether the flow features are even comparable to the ones the
+# model was trained on.
+#
+# Those answers used to be prose written in this file with no source behind
+# them, while every attack claim carried an IEEE citation. That asymmetry
+# is the thing this fixes: guidance about the MODEL is retrieved from
+# sourced documents on the same terms as guidance about the ATTACK.
+#
+# `when` is given the finding and the capture summary and returns True if
+# the document applies. Entries are evaluated in order and every match is
+# retrieved, so a weak-F1 finding with low-confidence flows gets both.
+# ============================================================
+
+def _has_low_confidence(finding, summary):
+    return bool(finding.get("low_confidence_count"))
+
+
+def _is_weak_class(finding, summary):
+    return finding.get("reliability_f1") is not None
+
+
+def _has_ambiguity(finding, summary):
+    runner = finding.get("dominant_runner_up")
+    share = finding.get("dominant_runner_up_share", 0.0)
+    return any(
+        {finding["class"], runner} == pair["classes"]
+        and share >= pair["margin"]
+        for pair in AMBIGUOUS_PAIRS
+    )
+
+
+def _is_small_share_of_large_capture(finding, summary):
+    """
+    The base-rate case: few attack flows in a big capture.
+
+    This is where a low false-positive rate still produces mostly false
+    findings, and it is also the case that looks most alarming on screen.
+    """
+    facts = (summary or {}).get("facts", {})
+    total = facts.get("total_flows", 0)
+    return total >= 1000 and finding.get("share_of_capture", 1.0) < 0.05
+
+
+def _extraction_is_questionable(finding, summary):
+    facts = (summary or {}).get("facts", {})
+    return bool(
+        facts.get("flow_timeout_warning")
+        or facts.get("flow_engine") == "python"
+    )
+
+
+MODEL_GUIDANCE = [
+    {
+        "id": "shap",
+        "doc": "interpretability/shap_reading.md",
+        "heading": "How to read the attributions",
+        "when": lambda f, s: True,
+    },
+    {
+        "id": "shap_limits",
+        "doc": "interpretability/caveats.md",
+        "heading": "Limits to quote alongside the explanation",
+        "when": lambda f, s: True,
+    },
+    {
+        "id": "reliability",
+        "doc": "interpretability/reliability.md",
+        "heading": "How reliable this class is",
+        "when": _is_weak_class,
+    },
+    {
+        "id": "confidence",
+        "doc": "interpretability/confidence.md",
+        "heading": "What the confidence number means",
+        "when": _has_low_confidence,
+    },
+    {
+        "id": "base_rate",
+        "doc": "interpretability/confidence.md",
+        "heading": "Base rates in a mostly-benign capture",
+        "when": _is_small_share_of_large_capture,
+    },
+    {
+        "id": "ambiguity",
+        "doc": "interpretability/class_ambiguity.md",
+        "heading": "Why two classes are competing",
+        "when": _has_ambiguity,
+    },
+    {
+        "id": "extraction",
+        "doc": "datasets/extraction_validity.md",
+        "heading": "Whether these features are comparable",
+        "when": _extraction_is_questionable,
+    },
+    {
+        "id": "scope",
+        "doc": "datasets/scope.md",
+        "heading": "Where this model has been shown to work",
+        "when": lambda f, s: True,
+    },
+]
+
 # Measured test F1, random split. Classes absent from this map are at 0.94
 # or above. Used to hedge the confidence line rather than to score.
 LOW_CONFIDENCE_CLASSES = {
@@ -720,9 +829,14 @@ def _citations_in(text):
     return out
 
 
-def recommend(finding, detections=None):
+def recommend(finding, detections=None, summary=None):
     """
     What to do about one finding, quoting the retrieved documentation.
+
+    `summary` is the Flow Summary panel's output. It is optional so existing
+    callers keep working, but without it the capture-level conditions --
+    base rate, extraction validity -- cannot be evaluated and their guidance
+    is silently not retrieved. Pass it.
 
     Takes the aggregate, not a single row, so the advice can account for
     scale: three PortScan flows and thirty thousand are the same class and a
@@ -778,8 +892,15 @@ def recommend(finding, detections=None):
         elif name not in missing:
             missing.append(name)
 
+    model_guidance = []
+
     f1 = finding.get("reliability_f1")
 
+    # The measured figures. What they MEAN is not asserted here any more --
+    # that comes from the retrieved documents below, which carry citations.
+    # This block previously told the reader to "treat the classification as
+    # uncertain" on no authority but its own, while every attack claim on
+    # the same screen was sourced.
     confidence_note = (
         f"Mean confidence {finding['confidence_mean']:.2f} across "
         f"{finding['flow_count']:,} flows "
@@ -789,9 +910,8 @@ def recommend(finding, detections=None):
 
     if f1 is not None:
         confidence_note += (
-            f"This class scores F1 {f1:.4f} on the held-out test set, which "
-            f"is one of the four weakest of the sixteen. Treat the "
-            f"classification as uncertain."
+            f"This class scores F1 {f1:.4f} on the held-out test set, one of "
+            f"the weakest of the sixteen. See the reliability guidance below."
         )
     else:
         confidence_note += (
@@ -801,7 +921,8 @@ def recommend(finding, detections=None):
     if finding["low_confidence_count"]:
         confidence_note += (
             f" {finding['low_confidence_count']:,} of these flows are below "
-            f"0.60 confidence and warrant individual review."
+            f"0.60 confidence. See the confidence guidance below for what "
+            f"that threshold does and does not establish."
         )
 
     sections = [
@@ -852,13 +973,44 @@ def recommend(finding, detections=None):
             ),
         })
 
-    sections.append({
-        "heading": "Scope",
-        "body": (
-            "This model was trained and validated on TRUSTLab only. "
-            "Performance on other capture environments is not established."
-        ),
-    })
+    # Guidance about the MODEL'S OUTPUT, retrieved on the same terms as the
+    # attack guidance above: by condition, from a sourced document, with the
+    # citation attached. Each document is retrieved once however many
+    # conditions selected it -- a reader does not want the same file twice.
+    seen = set()
+    for rule in MODEL_GUIDANCE:
+        try:
+            applies = rule["when"](finding, summary)
+        except Exception:
+            # A predicate that cannot evaluate must not take the panel down.
+            # Omitting guidance is recoverable; an empty panel is not.
+            applies = False
+
+        if not applies or rule["doc"] in seen:
+            continue
+
+        path = os.path.join(KNOWLEDGE_DIR, rule["doc"])
+        if not os.path.isfile(path):
+            if rule["doc"] not in missing:
+                missing.append(rule["doc"])
+            continue
+
+        seen.add(rule["doc"])
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+
+        cites = _citations_in(text)
+        references += [c for c in cites if c not in references]
+        model_guidance.append(rule["id"])
+        sections.append({
+            "heading": rule["heading"],
+            "body": text.strip(),
+            "source": rule["doc"],
+            "citations": cites,
+            # Marks this as guidance about the model rather than about the
+            # attack, so the tab can group or collapse it separately.
+            "kind": "model",
+        })
 
     return {
         "panel": "recommendations",
@@ -866,11 +1018,13 @@ def recommend(finding, detections=None):
         "mitre": entry["mitre"],
         "ambiguity": ambiguity,
         "sections": sections,
-        "citations": list(documents.keys()),
+        "citations": list(documents.keys()) + sorted(seen),
         # [UI CONNECTION: `references` -> the REFERENCES block. Full IEEE
         #  citations lifted from each document's own provenance header, so
         #  no recommendation is ever shown without the work it came from.]
         "references": references,
+        # Which result conditions fired, for the report and for testing.
+        "model_guidance": model_guidance,
         "missing_documents": missing,
     }
 
@@ -967,7 +1121,8 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
         "findings": findings,
         "selected": finding,
         "shap": shap_panel,
-        "recommend": recommend(finding, shap_panel["detections"]),
+        "recommend": recommend(finding, shap_panel["detections"],
+                               summary=summary),
     }
 
     if narrate_with:

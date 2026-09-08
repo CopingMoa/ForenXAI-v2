@@ -1,5 +1,16 @@
 # Scope and claim boundary
 
+> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
+> Source: R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25.
+>
+> Retrieved: 2026-09-08
+>
+> The measured figures below (952,000 training flows, 280,000 test flows,
+> 0.9337 accuracy, 0.9287 macro F1) are this project's own results, not
+> claims from either work. The two sources are cited for the general point
+> that a score measured inside one environment does not transfer to
+> another -- see [[extraction-validity]] and [[reliability]].
+
 ## What this model was built from
 
 Trained and validated entirely on TRUSTLab. 952,000 training flows, 280,000

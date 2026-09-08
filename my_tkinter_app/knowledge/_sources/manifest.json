@@ -79,5 +79,50 @@
     "bytes": 25877,
     "sha256": "37db8253029a5a6afd4f8383cda997a0a482e45766110591bf8f5a3b0d423857",
     "retrieved": "2026-09-08T10:04:36"
+  },
+  "NIST.AI.100-1": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+    "landing": "https://www.nist.gov/itl/ai-risk-management-framework",
+    "citation": "National Institute of Standards and Technology, \"Artificial Intelligence Risk Management Framework (AI RMF 1.0),\" NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.",
+    "file": "NIST.AI.100-1.pdf",
+    "bytes": 1946127,
+    "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
+    "retrieved": "2026-09-08T17:00:03"
+  },
+  "USENIX.dosdonts": {
+    "url": "https://www.usenix.org/system/files/sec22-arp.pdf",
+    "landing": "https://www.usenix.org/conference/usenixsecurity22/presentation/arp",
+    "citation": "D. Arp et al., \"Dos and don'ts of machine learning in computer security,\" in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.",
+    "file": "USENIX.dosdonts.pdf",
+    "bytes": 1055756,
+    "sha256": "fd71f39c2cd0f9532859c6bb5f2e3b94be97eec50b43f97aaa916e43f3f4acdb",
+    "retrieved": "2026-09-08T17:00:07"
+  },
+  "SommerPaxson.closedworld": {
+    "url": "https://www.icir.org/robin/papers/oakland10-ml.pdf",
+    "landing": "https://ieeexplore.ieee.org/document/5504793",
+    "citation": "R. Sommer and V. Paxson, \"Outside the closed world: On using machine learning for network intrusion detection,\" in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25.",
+    "file": "SommerPaxson.closedworld.pdf",
+    "bytes": 162273,
+    "sha256": "b73595240914c8b75ee6255bf08a0a429b0753f669427107388af7a90281866a",
+    "retrieved": "2026-09-08T17:00:09"
+  },
+  "Lundberg.shap": {
+    "url": "https://arxiv.org/pdf/1705.07874",
+    "landing": "https://arxiv.org/abs/1705.07874",
+    "citation": "S. M. Lundberg and S.-I. Lee, \"A unified approach to interpreting model predictions,\" in Advances in Neural Information Processing Systems 30, Long Beach, CA, USA, Dec. 2017, pp. 4765-4774.",
+    "file": "Lundberg.shap.pdf",
+    "bytes": 1014198,
+    "sha256": "01c7aa8f7d9edcf0cd185bf02e82363f743e441fcaf05b99e6054bfb470bf8ae",
+    "retrieved": "2026-09-08T17:00:11"
+  },
+  "Lundberg.treeshap": {
+    "url": "https://arxiv.org/pdf/1905.04610",
+    "landing": "https://arxiv.org/abs/1905.04610",
+    "citation": "S. M. Lundberg et al., \"From local explanations to global understanding with explainable AI for trees,\" Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.",
+    "file": "Lundberg.treeshap.pdf",
+    "bytes": 19028452,
+    "sha256": "aa3824ce44c797539ec61cbb24a900a348363dc609a3ae717df5c92315557482",
+    "retrieved": "2026-09-08T17:01:08"
   }
 }

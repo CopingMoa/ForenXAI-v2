@@ -534,7 +534,27 @@ class XaiTab:
                 f"MITRE ATT&CK: {', '.join(rec['mitre'])}   "
                 "(unverified -- review before citing)\n\n", "muted"))
 
+        # Guidance about the attack comes first, then guidance about the
+        # model's own output, with a divider between them. Without it the
+        # model documents -- which are long -- push the response playbook
+        # off the top of the panel, and the reader has no way to tell which
+        # sections are about the traffic and which are about how far the
+        # classification can be trusted.
+        divider_written = False
+
         for s in rec["sections"]:
+            if s.get("kind") == "model" and not divider_written:
+                divider_written = True
+                blocks.append((
+                    "\n" + "-" * 58 + "\n"
+                    "HOW FAR TO TRUST THIS RESULT\n"
+                    + "-" * 58 + "\n\n", "h"))
+                blocks.append((
+                    "Retrieved because of what the model actually returned "
+                    "for this finding -- its confidence, its measured "
+                    "reliability for this class, and how the flows were "
+                    "extracted. Each carries a citation below.\n\n", "muted"))
+
             blocks.append((f"{s['heading'].upper()}\n",
                            "warn" if s["heading"] == "Ambiguity" else "h"))
             blocks.append((s["body"] + "\n\n", None))

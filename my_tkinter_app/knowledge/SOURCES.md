@@ -165,3 +165,65 @@ them addresses acting on a machine-learning classification whose reliability
 varies by class — that gap is why the panel states the per-class F1 and the
 Slowloris/DoS ambiguity beside the guidance, rather than presenting the
 classification as settled fact.
+
+---
+
+# Machine learning and interpretability sources
+
+Added so the panel can answer questions about the **model's output** —
+confidence, per-class reliability, class ambiguity, SHAP attributions,
+extraction validity — on the same footing as questions about the attack.
+Before this, those answers were prose written in `panels_service.py` with no
+source behind them, while every attack claim on the same screen carried an
+IEEE citation.
+
+All five are freely downloadable and are fetched by
+`python fetch_knowledge.py --download`. Each citation below was taken from
+the document's **own title page**, not from a publisher's landing page.
+
+| # | Source | Used for | Verify by |
+|---|---|---|---|
+| 1 | D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988. | Base rate fallacy (P8), inappropriate performance measures (P7), spurious correlations (P4), sampling bias | Open access at usenix.org/conference/usenixsecurity22/presentation/arp. Check §3 pitfall descriptions |
+| 2 | R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE Symp. Security and Privacy, Oakland, CA, USA, May 2010, pp. 305-316, doi: 10.1109/SP.2010.25. | High cost of errors, semantic gap, variability of benign traffic | PDF at icir.org/robin/papers/oakland10-ml.pdf; record at ieeexplore.ieee.org/document/5504793 |
+| 3 | S. M. Lundberg and S.-I. Lee, "A unified approach to interpreting model predictions," in Advances in Neural Information Processing Systems 30, Long Beach, CA, USA, Dec. 2017, pp. 4765-4774. | What a SHAP value is; additive feature attribution | arXiv:1705.07874; NeurIPS 2017 proceedings |
+| 4 | S. M. Lundberg et al., "Explainable AI for trees: From local explanations to global understanding," arXiv:1905.04610, May 2019. Published in revised form as Nature Machine Intelligence, vol. 2, no. 1, pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9. | TreeSHAP; `tree_path_dependent`; exactness and consistency | arXiv:1905.04610 |
+| 5 | National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1. | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
+
+**A note on source 4.** The citation names the **preprint**, because the
+preprint is what is downloaded and hash-checked. The published Nature
+Machine Intelligence version carries a re-ordered title ("From local
+explanations to global understanding with explainable AI for trees") that
+does **not** appear on the preprint's title page, so citing it would fail
+`--verify`. Cite the artefact you actually checked; the published reference
+is given alongside for the reader.
+
+## Which document answers which question
+
+| Document | Retrieved when |
+|---|---|
+| `interpretability/shap_reading.md` | Always — every finding has attributions |
+| `interpretability/caveats.md` | Always — the limits to quote alongside them |
+| `datasets/scope.md` | Always — where the model has been shown to work |
+| `interpretability/reliability.md` | The class has a weak measured F1 |
+| `interpretability/confidence.md` | Flows below 0.60 confidence, **or** a small attack share of a large capture |
+| `interpretability/class_ambiguity.md` | The runner-up class dominates the finding |
+| `datasets/extraction_validity.md` | The fallback extractor ran, or the flow-timeout warning fired |
+| `interpretability/glossary.md` | Reference — every ML term the panels display |
+
+The conditions live in `MODEL_GUIDANCE` in `services/panels_service.py`.
+
+## Reviewing these five
+
+Same procedure as the incident-response playbooks, with one difference:
+every quoted passage in these documents is inside a markdown blockquote
+(`>`) under a `## From <source>` heading, so the source's words and the
+author's are visually distinct. `python fetch_knowledge.py --verify` checks
+only the blockquoted lines against the document, and reports 0 problems for
+all five today.
+
+What `--verify` does **not** check is whether the numeric claims about this
+project's own model are right — 0.9337 accuracy, 0.9287 macro F1, DoS F1
+0.6703, Slowloris F1 0.7593, 0.9044 importance correlation, 1.8e-05
+additivity error. Those come from the pipeline's own artifacts, and each
+document says so explicitly rather than implying the cited works support
+them.

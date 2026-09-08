@@ -149,6 +149,84 @@ SOURCES = {
                     'Foundation, 2025.',
         "landing": "https://owasp.org/Top10/2025/",
     },
+
+    # --------------------------------------------------------------
+    # MACHINE LEARNING AND INTERPRETABILITY
+    # --------------------------------------------------------------
+    #
+    # Everything above answers "what is this attack and what do I do about
+    # it". None of it says how to read a MODEL OUTPUT -- what a 0.55
+    # confidence means, whether a SHAP value is a cause, why a class
+    # scoring F1 0.67 needs different handling from one scoring 0.99, or
+    # why accuracy measured on a held-out split does not carry to a
+    # different network.
+    #
+    # All of those are on screen in the three panels, and until now the
+    # answers were prose written directly in panels_service.py with no
+    # source behind them. These are the sources for them.
+    #
+    # Citations are taken from each document's own title page, never from a
+    # publisher's landing page -- the rule that caught the CISA date being
+    # three years wrong.
+
+    "NIST.AI.100-1": {
+        "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+        "kind": "pdf",
+        "citation": 'National Institute of Standards and Technology, '
+                    '"Artificial Intelligence Risk Management Framework '
+                    '(AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: '
+                    '10.6028/NIST.AI.100-1.',
+        "landing": "https://www.nist.gov/itl/ai-risk-management-framework",
+    },
+
+    "USENIX.dosdonts": {
+        "url": "https://www.usenix.org/system/files/sec22-arp.pdf",
+        "kind": "pdf",
+        "citation": 'D. Arp et al., "Dos and don\'ts of machine learning in '
+                    'computer security," in Proc. 31st USENIX Security '
+                    'Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.',
+        "landing": "https://www.usenix.org/conference/usenixsecurity22/"
+                   "presentation/arp",
+    },
+
+    "SommerPaxson.closedworld": {
+        "url": "https://www.icir.org/robin/papers/oakland10-ml.pdf",
+        "kind": "pdf",
+        "citation": 'R. Sommer and V. Paxson, "Outside the closed world: On '
+                    'using machine learning for network intrusion '
+                    'detection," in Proc. IEEE Symp. Security and Privacy, '
+                    'Oakland, CA, USA, May 2010, pp. 305-316, doi: '
+                    '10.1109/SP.2010.25.',
+        "landing": "https://ieeexplore.ieee.org/document/5504793",
+    },
+
+    "Lundberg.shap": {
+        "url": "https://arxiv.org/pdf/1705.07874",
+        "kind": "pdf",
+        "citation": 'S. M. Lundberg and S.-I. Lee, "A unified approach to '
+                    'interpreting model predictions," in Advances in Neural '
+                    'Information Processing Systems 30, Long Beach, CA, '
+                    'USA, Dec. 2017, pp. 4765-4774.',
+        "landing": "https://arxiv.org/abs/1705.07874",
+    },
+
+    "Lundberg.treeshap": {
+        "url": "https://arxiv.org/pdf/1905.04610",
+        "kind": "pdf",
+        # Cites the PREPRINT, because the preprint is what is downloaded
+        # and checked. This work was later published in Nature Machine
+        # Intelligence vol. 2, pp. 56-67, 2020, under the re-ordered title
+        # "From local explanations to global understanding with explainable
+        # AI for trees" -- citing THAT title here would fail the citation
+        # check, correctly, because the title page of this file does not
+        # carry it. Cite the artefact you actually verified.
+        "citation": 'S. M. Lundberg et al., "Explainable AI for trees: From '
+                    'local explanations to global understanding," '
+                    'arXiv:1905.04610, May 2019. Published in revised form '
+                    'as Nature Machine Intelligence, vol. 2, no. 1, '
+                    'pp. 56-67, Jan. 2020, doi: 10.1038/s42256-019-0138-9.',
+        "landing": "https://arxiv.org/abs/1905.04610",
+    },
 }
 
 
@@ -529,11 +607,74 @@ CITATION_CLAIMS = {
     "RFC3128": ["Protection Against a Variant of the Tiny Fragment Attack",
                 "Request for Comments: 3128"],
     "OWASP.Top10.2025": ["Top 10"],
+
+    # Machine learning sources. Claims deliberately avoid characters the
+    # PDF text layer renders as ligatures or curly quotes -- "Unified"
+    # comes out as "Uni<fi>ed" and "Don'ts" as "Don<rsquo>ts", so a claim
+    # containing either would fail against a document that is in fact
+    # correct. _norm() collapses whitespace but does not fold those.
+    "NIST.AI.100-1": ["Artificial Intelligence Risk Management",
+                      "NIST AI 100-1"],
+    "USENIX.dosdonts": ["Machine Learning in Computer Security",
+                        "31st USENIX Security Symposium"],
+    "SommerPaxson.closedworld": ["Outside the Closed World",
+                                 "Network Intrusion Detection"],
+    "Lundberg.shap": ["Approach to Interpreting Model Predictions",
+                      "Su-In Lee"],
+    "Lundberg.treeshap": ["Explainable AI for Trees",
+                          "Scott M. Lundberg"],
+}
+
+
+# Characters a PDF text layer emits that a person retyping the same
+# sentence would not. Folding them lets a quote be written readably and
+# still be checked against the document -- without this, quoting "traffic"
+# from a paper whose text layer holds "traf<ffi>c" fails verification even
+# though the quote is correct.
+_TEXT_FOLD = {
+    "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl",
+    "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st",
+    "‘": "'", "’": "'", "‛": "'",
+    "“": '"', "”": '"',
+    "‐": "-", "‑": "-", "‒": "-", "–": "-",
+    "—": "-", "−": "-",
+    " ": " ", " ": " ", " ": " ", " ": " ",
+    "​": "", "­": "",
 }
 
 
 def _norm(text):
-    return re.sub(r"\s+", " ", (text or "")).strip().lower()
+    """
+    Fold a passage to the form both sides of a quote check are compared in.
+
+    Ligatures, curly quotes and the various dashes are folded because they
+    are artefacts of how the PDF stores glyphs, not of what the document
+    says. Whitespace collapses so a quote spanning a line break still
+    matches. Case is dropped last.
+
+    What is deliberately NOT folded: letters, digits, and word order. A
+    passage that fails this check after folding really is not in the
+    document, which is the whole point of running it.
+    """
+    text = text or ""
+
+    for bad, good in _TEXT_FOLD.items():
+        if bad in text:
+            text = text.replace(bad, good)
+
+    # Hyphenation across a line break is deliberately NOT repaired.
+    #
+    # Joining "detec-\ntion" back into "detection" is tempting and breaks
+    # things: passages already quoted in the playbooks were extracted with
+    # the newline collapsed to a space, so they read "cti- documentation".
+    # Repairing the source to "ctidocumentation" then fails to match five
+    # quotes that were correct all along. Collapsing whitespace and nothing
+    # else keeps both sides in the same shape.
+    #
+    # The practical consequence for an author: choose a span that is not
+    # broken across a line, or reproduce the break as the extraction shows
+    # it. `python fetch_knowledge.py --verify` will say which.
+    return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def verify_citations():
@@ -555,6 +696,71 @@ def verify_citations():
     return problems
 
 
+def _quoted_blocks(chunk):
+    """
+    The passages inside a `## From <source>` section that are claimed quotes.
+
+    Two conventions, and the section says which it is using:
+
+      * If it contains markdown blockquote lines, ONLY those are quotes.
+        Everything else is the author's own commentary. This lets a
+        hand-written document put a quote and the reason it matters in the
+        same section without the commentary being reported as an
+        untraceable quote.
+
+      * Otherwise every paragraph is a quote. This is what the generated
+        playbooks do, and they must keep verifying unchanged.
+
+    The blockquote form is preferred for anything written by hand: it is
+    visible in the rendered document, so a reader can see which words are
+    the source's and which are ours.
+    """
+    lines = chunk.split("\n")
+
+    if any(line.lstrip().startswith(">") for line in lines):
+        blocks, current = [], []
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped.startswith(">"):
+                current.append(stripped[1:].strip())
+            elif current:
+                blocks.append(" ".join(current).strip())
+                current = []
+        if current:
+            blocks.append(" ".join(current).strip())
+        return [b for b in blocks if b]
+
+    return [b.strip() for b in chunk.split("\n\n") if b.strip()]
+
+
+def _checkable_files():
+    """
+    Every knowledge file whose quotes are checked, as (label, full path).
+
+    Covers the model-guidance documents as well as the per-class playbooks.
+    Those documents make claims about confidence, reliability and SHAP that
+    drive what the interface recommends, so they are held to exactly the
+    same standard: a quote is either in the document it names or it is a
+    problem.
+    """
+    files = []
+
+    out_dir = os.path.join(KNOWLEDGE, "incident_response")
+    for name in TARGETS:
+        files.append((name, os.path.join(out_dir, name)))
+
+    for folder in ("interpretability", "datasets"):
+        directory = os.path.join(KNOWLEDGE, folder)
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            if name.endswith(".md"):
+                files.append((f"{folder}/{name}",
+                              os.path.join(directory, name)))
+
+    return files
+
+
 def verify_extracts():
     """
     Every quoted passage must appear verbatim in the source it names.
@@ -563,29 +769,47 @@ def verify_extracts():
     person wrote around them is theirs, not a quote, and is not held to
     this.
     """
-    out_dir = os.path.join(KNOWLEDGE, "incident_response")
     problems = []
     cache = {}
 
     print(f"{'file':<28}{'quoted':<9}{'traced':<9}state")
-    for name in TARGETS:
-        path = os.path.join(out_dir, name)
+    for name, path in _checkable_files():
         if not os.path.isfile(path):
             continue
 
         body = open(path, encoding="utf-8", errors="replace").read()
         # Split into (source key, text) pairs on the generated headings.
-        parts = re.split(r"\n## From ([\w.\-]+)\n", body)
-        if len(parts) < 3:
+        # A quote section ends at the NEXT HEADING OF ANY LEVEL, not at the
+        # next "## From". Splitting only on "## From" swallows whatever the
+        # author wrote after the quote and then reports their own prose as
+        # an untraceable quote -- which makes the check noisy enough to
+        # ignore, and a check people ignore is worse than none.
+        sections = re.split(r"\n(?=#{1,6} )", body)
+
+        quote_sections = [
+            s for s in sections
+            if re.match(r"#{1,6} From ([\w.\-]+)\s*$", s.split("\n", 1)[0])
+        ]
+
+        if not quote_sections:
             print(f"  {name:<26}{'-':<9}{'-':<9}hand-written, not checked")
             continue
 
         quoted = traced = 0
-        for key, chunk in zip(parts[1::2], parts[2::2]):
+        for section in quote_sections:
+            heading, _, chunk = section.partition("\n")
+            key = re.match(r"#{1,6} From ([\w.\-]+)\s*$", heading).group(1)
+
             if key not in cache:
                 cache[key] = _norm(_text_of(key))
             source_text = cache[key] or ""
-            for block in [b.strip() for b in chunk.split("\n\n")]:
+
+            if not source_text:
+                problems.append(
+                    f"{name}: quotes {key}, which is not downloaded")
+                continue
+
+            for block in _quoted_blocks(chunk):
                 if len(block) < 100:
                     continue
                 quoted += 1
