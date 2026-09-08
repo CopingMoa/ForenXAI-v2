@@ -768,11 +768,17 @@ def recommend(finding, detections=None):
 # ONE CALL FOR THE TAB
 # ============================================================
 
-def build_panels(csv_path, source_name="capture.pcap", finding_index=0):
+def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
+                 narrate_with=None):
     """
     Everything XaiTab needs, from a CICFlowMeter CSV.
 
-    [UI CONNECTION: csv_path <- current_case["generated_csv_path"]]
+    [UI CONNECTION: csv_path      <- current_case["generated_csv_path"]]
+    [UI CONNECTION: narrate_with  <- a provider name ("ollama") to add plain
+     English beside the numbers, or None for numbers only. Narration is
+     additive: every figure, label and citation stays on screen either way,
+     so a missing or broken model degrades the panel rather than emptying
+     it.]
 
     Returns a dict with `summary`, `findings`, `shap` and `recommend`, or
     an `error` string the tab can display verbatim.
@@ -823,10 +829,27 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0):
         rows=finding["representative_rows"]
     )
 
-    return {
+    result = {
         "summary": summary,
         "findings": findings,
         "selected": finding,
         "shap": shap_panel,
         "recommend": recommend(finding, shap_panel["detections"]),
     }
+
+    if narrate_with:
+        # Imported here rather than at module load so the panels work with
+        # no language model installed at all.
+        from services.llm_provider import get_provider
+        from services.narration_service import narrate_all
+
+        provider = get_provider(narrate_with)
+        ok, detail = provider.available()
+
+        if ok:
+            result = narrate_all(result, provider)
+            result["narrated_by"] = f"{provider.name}/{provider.model}"
+        else:
+            result["narration_unavailable"] = detail
+
+    return result

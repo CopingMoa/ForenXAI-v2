@@ -57,6 +57,13 @@ class XaiTab:
         # started yet, and a background analysis can finish before it has.
         self._results = queue.Queue()
 
+        # Plain-English narration from a LOCAL model, off until asked for.
+        # The numbers, labels and citations are on screen either way --
+        # narration is additive, so a missing model costs prose, not
+        # evidence.
+        self.narrate = tk.BooleanVar(value=False)
+        self.provider_name = "ollama"
+
         self.frame = tk.Frame(notebook, bg=BG)
         notebook.add(self.frame, text="SHAP & Human Review")
 
@@ -79,11 +86,27 @@ class XaiTab:
         )
         self.lbl_hash.pack(anchor="w", padx=15)
 
+        bar = tk.Frame(self.frame, bg=PANEL)
+        bar.pack(fill="x", padx=15, pady=8)
+
         self.lbl_xai_summary = tk.Label(
-            self.frame, text="No analysis available.",
+            bar, text="No analysis available.",
             bg=PANEL, fg=GOOD, font=("Segoe UI", 11, "bold")
         )
-        self.lbl_xai_summary.pack(fill="x", padx=15, pady=8)
+        self.lbl_xai_summary.pack(side=tk.LEFT, padx=10, pady=6)
+
+        # [UI CONNECTION: ticking this re-runs the panels with narration.
+        #  It costs about 20 s locally on qwen2.5:3b, so it is opt-in
+        #  rather than automatic.]
+        self.chk_narrate = tk.Checkbutton(
+            bar, text="Explain in plain English (local model)",
+            variable=self.narrate, command=self._on_narrate_toggled,
+            bg=PANEL, fg=MUTED, selectcolor=TEXT_BG,
+            activebackground=PANEL, activeforeground=FG,
+            font=("Segoe UI", 9), relief="flat", bd=0,
+            highlightthickness=0
+        )
+        self.chk_narrate.pack(side=tk.RIGHT, padx=12)
 
         # The three panels get their own notebook so each has the full
         # width. Stacked vertically none of them is tall enough to read.
@@ -227,6 +250,37 @@ class XaiTab:
     # ========================================================
 
     @staticmethod
+    def _narration_blocks(panel):
+        """
+        The model's paragraph, above the evidence it describes.
+
+        Labelled every time. An investigator must be able to tell which
+        words came from a language model and which are measurements, and
+        the answer cannot depend on remembering a setting.
+        """
+        if panel.get("narration_error"):
+            return [
+                ("PLAIN ENGLISH\n", "h"),
+                (f"  unavailable: {panel['narration_error']}\n\n", "warn"),
+            ]
+
+        text = panel.get("narrative")
+        if not text:
+            return []
+
+        out = [
+            ("PLAIN ENGLISH  (written by a local model from the figures "
+             "below)\n", "h"),
+            (text.strip() + "\n", None),
+        ]
+
+        if panel.get("narration_note"):
+            out.append((f"  {panel['narration_note']}\n", "warn"))
+
+        out.append(("\n" + "-" * 62 + "\n\n", "muted"))
+        return out
+
+    @staticmethod
     def _write(widget, blocks):
         """blocks is a list of (text, tag) pairs; tag may be None."""
         widget.config(state=tk.NORMAL)
@@ -297,7 +351,9 @@ class XaiTab:
     def _compute(self, csv_path, current_case):
         source = os.path.basename(current_case.get("pcap_path") or csv_path)
         try:
-            result = build_panels(csv_path, source, finding_index=0)
+            result = build_panels(
+            csv_path, source, finding_index=0,
+            narrate_with=self.provider_name if self.narrate.get() else None)
         except Exception as e:                      # never lose a worker crash
             result = {"error": f"{type(e).__name__}: {e}"}
         self._results.put(("all", result))
@@ -459,6 +515,27 @@ class XaiTab:
     # EVENT HANDLERS
     # ========================================================
 
+    def _on_narrate_toggled(self):
+        """
+        Re-run the current finding with or without narration.
+
+        Nothing is cached between the two states: the panels are cheap to
+        rebuild (20 microseconds per flow to classify, 8.1 ms for the two
+        explained rows) and the language model is the only slow part, so
+        re-running is simpler than holding two versions of every panel.
+        """
+        if not self.current_case.get("generated_csv_path"):
+            return
+
+        if self.narrate.get():
+            self._write(self.txt_summary, [
+                ("Asking the local model...\n", "muted"),
+                ("This takes about 20 seconds. The figures are already "
+                 "correct; the model only adds prose.\n", "muted"),
+            ])
+
+        self._on_finding_selected()
+
     def _on_finding_selected(self, _event=None):
         """Recompute panels 2 and 3 for the chosen finding."""
         if not self.panels or not self.panels.get("findings"):
@@ -480,7 +557,10 @@ class XaiTab:
                 self.current_case.get("pcap_path") or csv_path
             )
             try:
-                result = build_panels(csv_path, source, finding_index=index)
+                result = build_panels(
+                csv_path, source, finding_index=index,
+                narrate_with=(self.provider_name
+                              if self.narrate.get() else None))
             except Exception as e:
                 result = {"error": f"{type(e).__name__}: {e}"}
             self._results.put(("selected", result))
