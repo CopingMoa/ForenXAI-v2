@@ -361,12 +361,14 @@ MODEL_GUIDANCE = [
         "id": "shap",
         "doc": "interpretability/shap_reading.md",
         "heading": "How to read the attributions",
+        "panel": "shap",
         "when": lambda f, s: True,
     },
     {
         "id": "shap_limits",
         "doc": "interpretability/caveats.md",
         "heading": "Limits to quote alongside the explanation",
+        "panel": "shap",
         "when": lambda f, s: True,
     },
     {
@@ -378,6 +380,7 @@ MODEL_GUIDANCE = [
         "id": "glossary",
         "doc": "interpretability/glossary.md",
         "heading": "What these terms mean in this interface",
+        "panel": "shap",
         "when": lambda f, s: True,
     },
     {
@@ -402,6 +405,7 @@ MODEL_GUIDANCE = [
         "id": "ambiguity",
         "doc": "interpretability/class_ambiguity.md",
         "heading": "Why two classes are competing",
+        "panel": "shap",
         "when": _has_ambiguity,
     },
     {
@@ -1126,6 +1130,7 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6, summary=None):
         sv = np.stack(sv, axis=-1)
 
     glossary = _load_glossary()
+    feature_cautions = _load_feature_cautions()
 
     detections = []
 
@@ -1206,9 +1211,25 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6, summary=None):
                     "direction": (
                         "supports" if contrib[i] > 0 else "argues against"
                     ),
-                    **({"caution": caution}
-                       if caution and _TIMING_FEATURE.search(
-                           bundle["features"][i]) else {}),
+                    # Two sources, and the capture-specific one wins.
+                    #
+                    # `caution` above is about THIS capture (its flows hit
+                    # the extractor's timeout, so the timing features are
+                    # off-scale). The glossary's are about the FEATURE
+                    # wherever it appears -- the destination port may be the
+                    # lab's service layout, the initial window sizes are
+                    # partly an OS fingerprint. Only the first was ever
+                    # attached, so eight features the corpus explicitly says
+                    # to warn about reached the panel unmarked.
+                    **({"caution": (
+                        caution
+                        if caution and _TIMING_FEATURE.search(
+                            bundle["features"][i])
+                        else feature_cautions.get(bundle["features"][i]))}
+                       if ((caution and _TIMING_FEATURE.search(
+                            bundle["features"][i]))
+                           or feature_cautions.get(bundle["features"][i]))
+                       else {}),
                 }
                 for i in order
             ],
@@ -1226,6 +1247,44 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6, summary=None):
         "detections": detections,
         "units": "log-odds (model margin), not probability",
     }
+
+
+def _load_feature_cautions():
+    """Feature name -> the warning the glossary says to show with it.
+
+    knowledge/features/glossary.md carries a section headed "Features that
+    need a warning shown with them": Dst Port may be the lab's service
+    layout rather than the attack, the initial window sizes are partly an OS
+    fingerprint, and so on. The author wrote them to be displayed, and
+    nothing read them -- _load_glossary() parses only the description table,
+    so every attribution reached the panel with caution=None.
+
+    The cost was not only a missing line on screen. prompt_shap() gives a
+    cautioned feature its caution INSTEAD OF the standard-deviation
+    comparison, precisely so the distance cannot be over-read; with no
+    caution ever set, that branch never ran, and qwen2.5:3b turned "1.4
+    standard deviations above the training mean" on the destination port
+    into "indicating a service that is unusual or not typical" -- an
+    inference about the service from a fact about the model, which is the
+    exact reading this warning exists to prevent.
+    """
+    path = os.path.join(KNOWLEDGE_DIR, "features", "glossary.md")
+    if not os.path.isfile(path):
+        return {}
+
+    out, in_section = {}, False
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("## "):
+                in_section = "warning" in line.lower()
+                continue
+            if not in_section:
+                continue
+            m = re.match(r"\s*-\s*\*\*`([^`]+)`\*\*\s*[-—:]+\s*(.+)",
+                         line)
+            if m:
+                out[m.group(1)] = m.group(2).strip()
+    return out
 
 
 def _load_glossary():
@@ -1295,7 +1354,179 @@ def readable_markup(text):
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
-def digest_document(text):
+# A section whose content is its heading rather than its prose: the quoted
+# passages, and the closing honesty section every knowledge file carries.
+_NOT_PROSE = re.compile(r"not covered|^#{1,6}\s+From\s", re.I)
+
+
+def _lede(text, max_words=90):
+    """The opening paragraph of each section, as one readable paragraph.
+
+    WHY THIS EXISTS
+    digest_document() was written for a response playbook, where the content
+    IS the prescriptive lines and the quoted passages. Applied to an
+    explanatory document it produces neither: `interpretability/
+    shap_reading.md` is 997 words across seven sections explaining how to
+    read an attribution, and the playbook digest reduced it to two truncated
+    fragments -- "It is not a cause." -- under five quotations about
+    regression-tree leaf scores and the definition of explainable AI. The
+    document's whole value is its prose, and the prose was the one part not
+    shown.
+
+    So an explanatory document is summarised by what its author wrote first
+    in each section, which is where the point of the section is made. `From`
+    sections are skipped because they are quotations rather than exposition,
+    and the closing "Not covered by these sources" section is skipped
+    because out of context it reads as a description of the panel rather
+    than of the document.
+    """
+    out, words = [], 0
+    for section in re.split(r"\n(?=#{1,6} )", readable_markup(text)):
+        head = section.split("\n", 1)[0].strip()
+        if not re.match(r"#{2,6}\s", head) or _NOT_PROSE.search(head):
+            continue
+        for para in re.split(r"\n\s*\n", section.partition("\n")[2]):
+            flat = re.sub(r"\s+", " ", re.sub(r"\*\*", "", para)).strip()
+            # Blockquotes, bullets and tables are structure; the first plain
+            # paragraph is the one written to be read on its own.
+            if not flat or flat[0] in ">-*|" or flat.startswith("#"):
+                continue
+            out.append(flat)
+            words += len(flat.split())
+            break
+        if words >= max_words:
+            break
+
+    joined = " ".join(out).split()
+    if len(joined) <= max_words:
+        return " ".join(joined)
+    # Trim to a sentence boundary rather than mid-clause.
+    clipped = " ".join(joined[:max_words])
+    cut = max(clipped.rfind(". "), clipped.rfind("? "), clipped.rfind("! "))
+    return clipped[:cut + 1] if cut > 60 else clipped + "..."
+
+
+# A bolded lead-in at the start of a line, or of a list item. The knowledge
+# files write their prescriptive statements this way -- "**Do not add SHAP
+# values to a probability.**", "**It is not a cause.**" -- as complete
+# sentences, so the bold run IS the point and needs no reassembly.
+_KEY_POINT = re.compile(r"^(?:[-*+]\s+)?\*\*([A-Z][^*]{3,}?)\*\*", re.M)
+
+
+def _key_points(text, limit=5):
+    """The prescriptive statements of an explanatory document.
+
+    Scanned across the whole document rather than section by section, which
+    is what the playbook digest does and why this section showed two points
+    where the author wrote five. Two causes, both structural:
+
+      - Three of the five sit in prose that FOLLOWS a `## From` quotation.
+        Splitting on headings puts that prose inside the quote section, and
+        the playbook digest skips quote sections wholesale.
+      - The other two are consecutive bullets in one list. Paragraph
+        splitting treats the list as a single block, so only the first
+        bullet survived.
+
+    Neither is a property of the document -- both are artefacts of reading it
+    with a splitter built for a different shape of file. Quoted lines are
+    still excluded, because a passage from a cited work is evidence for a
+    point rather than a point of its own.
+    """
+    body = "\n".join(
+        line for line in readable_markup(text).splitlines()
+        if not line.lstrip().startswith(">"))
+
+    points, seen = [], set()
+    for m in _KEY_POINT.finditer(body):
+        point = re.sub(r"\s+", " ", m.group(1)).strip()
+        if not point.endswith((".", "!", "?")):
+            point += "."
+        key = point.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        points.append(point)
+        if len(points) == limit:
+            break
+    return points
+
+
+def _definitions(text):
+    """Term and its first sentence, for a document written as a term list.
+
+    The bolded lead-in IS the term and the prose after it IS the definition,
+    so both are already marked up; nothing is inferred.
+    """
+    body = "\n".join(
+        line for line in readable_markup(text).splitlines()
+        if not line.lstrip().startswith(">"))
+
+    out, seen = [], set()
+    for m in _KEY_POINT.finditer(body):
+        term = re.sub(r"\s+", " ", m.group(1)).strip().rstrip(".")
+        rest = re.sub(r"\s+", " ", body[m.end():]).strip()
+        # Stop at the next term, so a definition never absorbs the one after
+        # it -- which is exactly what made the paragraph form unreadable.
+        nxt = _KEY_POINT.search(body, m.end())
+        if nxt:
+            rest = re.sub(r"\s+", " ",
+                          body[m.end():nxt.start()]).strip()
+        rest = re.sub(r"^[\s.:—-]+", "", rest)
+        sentence = re.match(r"(.+?[.!?])(?:\s|$)", rest)
+        meaning = (sentence.group(1) if sentence else rest).strip()
+        key = term.lower()
+        if not term or not meaning or key in seen:
+            continue
+        seen.add(key)
+        out.append({"term": term, "meaning": meaning})
+    return out
+
+
+def _is_term_list(text):
+    """Is this document a glossary rather than an argument?
+
+    Measured across the nine explanatory documents in the corpus rather than
+    guessed: the glossary carries 24 bolded lead-ins with a median length of
+    2 words, and no other document has more than 6. Reliability and
+    extraction-validity are the closest on length -- 2-word lead-ins -- and
+    are nowhere near on count. A four-fold gap is wide enough to read off
+    the document's shape and not have to tag it by hand, so a term list
+    added later renders correctly without anyone remembering to declare it.
+
+    Getting this wrong costs a section rendered in the other form, which is
+    a presentation fault and not a claim about the evidence.
+    """
+    points = [re.sub(r"\s+", " ", m.group(1)).strip()
+              for m in _KEY_POINT.finditer(
+                  "\n".join(line for line in readable_markup(text).splitlines()
+                            if not line.lstrip().startswith(">")))]
+    if len(points) < 10:
+        return False
+    lengths = sorted(len(p.split()) for p in points)
+    return lengths[len(lengths) // 2] <= 3
+
+
+def _preamble(text, max_words=60):
+    """The document's own opening line, before the first section heading.
+
+    A glossary's summary must not be built from its definitions: running
+    them together produced "Class. One of the sixteen labels... Held-out
+    test set. 280,000 flows..." which reads as one broken sentence. The
+    author already wrote the one-line statement of what the list is for.
+    """
+    body = readable_markup(text)
+    body = re.split(r"\n#{1,6} ", body, maxsplit=1)[0]
+    for para in re.split(r"\n\s*\n", body):
+        flat = re.sub(r"\s+", " ", re.sub(r"\*\*", "", para)).strip()
+        if not flat or flat[0] in ">-*|#":
+            continue
+        words = flat.split()
+        return " ".join(words[:max_words]) + ("..." if len(words) > max_words
+                                               else "")
+    return ""
+
+
+def digest_document(text, style="playbook"):
     """A document reduced to what a panel should actually show.
 
     Panel 3 rendered every retrieved file in full -- up to 30,000 characters
@@ -1349,7 +1580,24 @@ def digest_document(text):
             m = re.match(r"(.+?[.!?])(?:\s|$)", flat)
             actions.append((m.group(1) if m else flat).strip())
 
-    return {"outline": outline, "quotes": quotes, "actions": actions[:8]}
+    if style == "explainer":
+        # A term list is not an argument, and summarising one as prose runs
+        # its definitions together into a single broken sentence. Detected
+        # from the document's shape; see _is_term_list().
+        if _is_term_list(text):
+            return {"outline": outline, "quotes": quotes, "actions": [],
+                    "summary": _preamble(text),
+                    "definitions": _definitions(text), "style": "glossary"}
+
+        # Five at most, and the paragraph above them carries the reasoning.
+        # Eight fragments with no connective prose is what made this section
+        # unreadable in the first place.
+        return {"outline": outline, "quotes": quotes,
+                "actions": _key_points(text, 5), "summary": _lede(text),
+                "style": "explainer"}
+
+    return {"outline": outline, "quotes": quotes, "actions": actions[:8],
+            "style": "playbook"}
 
 
 def _quoted_blocks(chunk):
@@ -1564,7 +1812,12 @@ def recommend(finding, detections=None, summary=None):
             "body": readable_markup(text),
             "source": rule["doc"],
             "citations": cites,
-            "digest": digest_document(text),
+            "digest": digest_document(text, style="explainer"),
+            # Which panel this guidance belongs on. Reading an attribution
+            # is panel 2's subject, so its documents were three of the ten
+            # sections on the RECOMMENDATIONS panel, pushing the response
+            # playbook down the page. Untagged entries stay where they were.
+            "panel": rule.get("panel", "recommend"),
             # Marks this as guidance about the model rather than about the
             # attack, so the tab can group or collapse it separately.
             "kind": "model",

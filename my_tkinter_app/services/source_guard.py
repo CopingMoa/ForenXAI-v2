@@ -63,6 +63,45 @@ _RAW = {}
 _RESULT = {}
 
 
+# Keys answered from the extracted-text cache because the source document
+# itself was not shipped. Read by verify_sections() so a panel built from a
+# --no-sources copy can say which of the two it checked against.
+FROM_CACHE = set()
+
+
+def _cached_only(key, suffix):
+    """The cached extraction for a key whose source document is absent.
+
+    A --no-sources build ships knowledge/_sources/.cache -- 7.2 MB of
+    extracted text -- and leaves the 98 MB of PDFs behind. Without this the
+    absent PDF made normalised_source() return None, every quote in every
+    retrieved document failed to verify, and the panels rendered with the
+    check switched off in the one build most likely to be handed to someone
+    else.
+
+    The cache filename carries the hash of the PDF it was extracted from, so
+    the recipient still knows WHICH document the text came from; what they
+    cannot do is re-derive that text from the document themselves. That is a
+    real step down from the full build and it is recorded rather than
+    glossed: the key goes into FROM_CACHE, and the panel reports the weaker
+    provenance instead of implying the stronger one.
+
+    Exactly one cache file must match. Two would mean two extractions of
+    different documents under one key, and choosing between them silently is
+    how the wrong text ends up backing a quote.
+    """
+    if not os.path.isdir(CACHE):
+        return None
+    stamps = [f for f in os.listdir(CACHE)
+              if f.startswith(key + ".") and f.endswith(suffix)]
+    if len(stamps) != 1:
+        return None
+    with open(os.path.join(CACHE, stamps[0]), encoding="utf-8") as fh:
+        text = fh.read()
+    FROM_CACHE.add(key)
+    return text
+
+
 def _digest(path, n=16):
     h = hashlib.sha256()
     with open(path, "rb") as fh:
@@ -86,8 +125,9 @@ def normalised_source(key):
     ext = {"pdf": ".pdf", "text": ".txt", "html": ".html"}[meta["kind"]]
     path = os.path.join(fk.SOURCE_DIR, key + ext)
     if not os.path.isfile(path):
-        _TEXT[key] = None
-        return None
+        cached = _cached_only(key, ".norm")
+        _TEXT[key] = cached
+        return cached
 
     # Content-addressed: the hash is in the filename, so a replaced source
     # cannot be answered from the cache written for the old one.
@@ -126,8 +166,9 @@ def raw_source(key):
     ext = {"pdf": ".pdf", "text": ".txt", "html": ".html"}[meta["kind"]]
     path = os.path.join(fk.SOURCE_DIR, key + ext)
     if not os.path.isfile(path):
-        _RAW[key] = None
-        return None
+        cached = _cached_only(key, ".raw")
+        _RAW[key] = cached
+        return cached
 
     stamp = os.path.join(CACHE, f"{key}.{_digest(path)}.raw")
     if os.path.isfile(stamp):
@@ -371,7 +412,16 @@ def verify_sections(sections):
             continue
         r = verify_document(src)
         if r["ok"]:
-            verified.append({**s, "quotes_verified": r["checked"]})
+            # Say WHAT the quotes were checked against. A --no-sources build
+            # ships the extracted-text cache rather than the PDFs, so the
+            # check still runs but one link of the chain is missing: the
+            # recipient cannot re-derive that text from the document. The
+            # panel reports the weaker provenance instead of implying the
+            # stronger one.
+            verified.append({**s,
+                             "quotes_verified": r["checked"],
+                             "verified_against": (
+                                 "cache" if FROM_CACHE else "source")})
         else:
             quarantined.append({**s, "verification": r})
     return verified, quarantined

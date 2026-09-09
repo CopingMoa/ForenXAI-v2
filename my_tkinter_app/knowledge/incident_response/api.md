@@ -1,8 +1,8 @@
 # API abuse — response
 
-> Source: Open Worldwide Application Security Project, "A01:2025 — Broken access control," in OWASP Top 10:2025, OWASP Foundation, 2025.
-> Source: Open Worldwide Application Security Project, "A07:2025 — Authentication failures," in OWASP Top 10:2025, OWASP Foundation, 2025.
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, controls AC-4 and SI-4, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: Open Worldwide Application Security Project. 2025. A01:2025 - Broken Access Control. In OWASP Top 10:2025. OWASP Foundation.
+> Source: Open Worldwide Application Security Project. 2025. A07:2025 - Authentication Failures. In OWASP Top 10:2025. OWASP Foundation.
+> Source: Joint Task Force. 2025. Security and Privacy Controls for Information Systems and Organizations. NIST Special Publication 800-53, Revision 5, Release 5.2.0. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-53r5, Controls AC-4 and SI-4.
 >
 > Retrieved: 2026-09-08
 

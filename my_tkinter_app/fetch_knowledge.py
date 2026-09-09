@@ -75,6 +75,30 @@ SOURCES = {
     #      S&P 2010) -- every one a real paper, none of them the published
     #      PDF.
     #
+    #      Lundberg.treeshap was re-checked on 2026-09-09 and STAYS OUT.
+    #      The bibliographic record verified against Crossref:
+    #
+    #        Lundberg, Erion, Chen, DeGrave, Prutkin, Nair, Katz,
+    #        Himmelfarb, Bansal and Lee. 2020. From local explanations to
+    #        global understanding with explainable AI for trees. Nature
+    #        Machine Intelligence 2, 1 (2020), 56-67.
+    #        https://doi.org/10.1038/s42256-019-0138-9
+    #
+    #      Unpaywall reports the article as open access, which looks
+    #      promising until you read the version field: the only free copy
+    #      is PMC7326367, and it is classified `submittedVersion` -- the
+    #      author's manuscript before review, not the version of record.
+    #      That is a preprint by another route, so rule 1 applies.
+    #
+    #      TO ADD IT PROPERLY: obtain the Nature PDF through institutional
+    #      access, confirm page 1 carries the journal front matter (Nature
+    #      Machine Intelligence, vol 2, pp 56-67, the DOI above), drop it in
+    #      knowledge/_sources/Lundberg.treeshap.pdf and add the entry here.
+    #      That is the route Chen.xgboost took. Until then
+    #      knowledge/interpretability/glossary.md is right to say no source
+    #      in _sources describes SHAP or TreeSHAP, and the SHAP definitions
+    #      there stand as this project's own words rather than quotations.
+    #
     #      Chen.xgboost was removed on the same basis and has been
     #      RESTORED: the copy now in _sources carries the ACM block on
     #      page 1 ("Permission to make digital or hard copies...", KDD '16,
@@ -98,38 +122,27 @@ SOURCES = {
         "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/"
                "NIST.SP.800-61r3.pdf",
         "kind": "pdf",
-        "citation": 'A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, '
-                    '"Incident response recommendations and considerations '
-                    'for cybersecurity risk management," NIST SP 800-61r3, '
-                    'Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.',
+        "citation": 'Alex Nelson, Sanjay Rekhi, Murugiah Souppaya, and Karen Scarfone. 2025. Incident Response Recommendations and Considerations for Cybersecurity Risk Management: A CSF 2.0 Community Profile. NIST Special Publication 800-61r3. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-61r3',
         "landing": "https://csrc.nist.gov/pubs/sp/800/61/r3/final",
     },
     "NIST.SP.800-53r5": {
         "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/"
                "NIST.SP.800-53r5.pdf",
         "kind": "pdf",
-        "citation": 'Joint Task Force, "Security and privacy controls for '
-                    'information systems and organizations," NIST '
-                    'SP 800-53r5, rel. 5.2.0, Aug. 2025, doi: '
-                    '10.6028/NIST.SP.800-53r5.',
+        "citation": 'Joint Task Force. 2025. Security and Privacy Controls for Information Systems and Organizations. NIST Special Publication 800-53, Revision 5, Release 5.2.0. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-53r5',
         "landing": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
     },
     "NIST.SP.800-52r2": {
         "url": "https://nvlpubs.nist.gov/nistpubs/SpecialPublications/"
                "NIST.SP.800-52r2.pdf",
         "kind": "pdf",
-        "citation": 'K. McKay and D. Cooper, "Guidelines for the selection, '
-                    'configuration, and use of Transport Layer Security '
-                    '(TLS) implementations," NIST SP 800-52r2, Aug. 2019, '
-                    'doi: 10.6028/NIST.SP.800-52r2.',
+        "citation": 'Kerry A. McKay and David A. Cooper. 2019. Guidelines for the Selection, Configuration, and Use of Transport Layer Security (TLS) Implementations. NIST Special Publication 800-52, Revision 2. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-52r2',
         "landing": "https://csrc.nist.gov/pubs/sp/800/52/r2/final",
     },
     "NIST.CSWP.29": {
         "url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
         "kind": "pdf",
-        "citation": 'National Institute of Standards and Technology, "The '
-                    'NIST Cybersecurity Framework (CSF) 2.0," NIST CSWP 29, '
-                    'Feb. 2024, doi: 10.6028/NIST.CSWP.29.',
+        "citation": 'National Institute of Standards and Technology. 2024. The NIST Cybersecurity Framework (CSF) 2.0. NIST CSWP 29. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.CSWP.29',
         "landing": "https://www.nist.gov/cyberframework",
     },
     "CISA.playbooks": {
@@ -141,9 +154,7 @@ SOURCES = {
         # "Publication: November 2021". The August 2024 date on the CISA
         # landing page is when that PAGE was updated, not when the document
         # was published -- citing it would have been wrong by three years.
-        "citation": 'Cybersecurity and Infrastructure Security Agency, '
-                    '"Cybersecurity incident & vulnerability response '
-                    'playbooks," CISA, Washington, DC, USA, Nov. 2021.',
+        "citation": 'Cybersecurity and Infrastructure Security Agency. 2021. Cybersecurity Incident and Vulnerability Response Playbooks: Operational Procedures for Planning and Conducting Cybersecurity Incident and Vulnerability Response Activities in FCEB Information Systems. CISA, Washington, DC, USA.',
         "landing": "https://www.cisa.gov/resources-tools/resources/federal-"
                    "government-cybersecurity-incident-and-vulnerability-"
                    "response-playbooks",
@@ -151,26 +162,19 @@ SOURCES = {
     "RFC9424": {
         "url": "https://www.rfc-editor.org/rfc/rfc9424.txt",
         "kind": "text",
-        "citation": 'K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, '
-                    '"Indicators of compromise (IoCs) and their role in '
-                    'attack defence," RFC 9424, Aug. 2023, doi: '
-                    '10.17487/RFC9424.',
+        "citation": 'K. Paine, O. Whitehouse, J. Sellwood, and A. Shaw. 2023. Indicators of Compromise (IoCs) and Their Role in Attack Defence. RFC 9424. Internet Engineering Task Force. https://doi.org/10.17487/RFC9424',
         "landing": "https://www.rfc-editor.org/rfc/rfc9424.html",
     },
     "RFC1858": {
         "url": "https://www.rfc-editor.org/rfc/rfc1858.txt",
         "kind": "text",
-        "citation": 'G. Ziemba, D. Reed and P. Traina, "Security '
-                    'considerations for IP fragment filtering," RFC 1858, '
-                    'Oct. 1995, doi: 10.17487/RFC1858.',
+        "citation": 'G. Ziemba, D. Reed, and P. Traina. 1995. Security Considerations for IP Fragment Filtering. RFC 1858. Internet Engineering Task Force. https://doi.org/10.17487/RFC1858',
         "landing": "https://www.rfc-editor.org/rfc/rfc1858.html",
     },
     "RFC3128": {
         "url": "https://www.rfc-editor.org/rfc/rfc3128.txt",
         "kind": "text",
-        "citation": 'I. Miller, "Protection against a variant of the tiny '
-                    'fragment attack," RFC 3128, Jun. 2001, doi: '
-                    '10.17487/RFC3128.',
+        "citation": 'I. Miller. 2001. Protection Against a Variant of the Tiny Fragment Attack. RFC 3128. Internet Engineering Task Force. https://doi.org/10.17487/RFC3128',
         "landing": "https://www.rfc-editor.org/rfc/rfc3128.html",
     },
     # The 2025 index page. Kept for the citation, but note it is an INDEX:
@@ -180,35 +184,27 @@ SOURCES = {
     "OWASP.Top10.2025": {
         "url": "https://owasp.org/Top10/2025/",
         "kind": "html",
-        "citation": 'Open Worldwide Application Security Project, "OWASP '
-                    'Top 10:2025 — web application security risks," OWASP '
-                    'Foundation, 2025.',
+        "citation": 'Open Worldwide Application Security Project. 2025. OWASP Top 10:2025 - Web Application Security Risks. OWASP Foundation.',
         "landing": "https://owasp.org/Top10/2025/",
     },
     "OWASP.A01.2025": {
         "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
         "kind": "html",
-        "citation": 'Open Worldwide Application Security Project, '
-                    '"A01:2025 — Broken access control," in OWASP Top '
-                    '10:2025, OWASP Foundation, 2025.',
+        "citation": 'Open Worldwide Application Security Project. 2025. A01:2025 - Broken Access Control. In OWASP Top 10:2025. OWASP Foundation.',
         "landing": "https://owasp.org/Top10/2025/"
                    "A01_2025-Broken_Access_Control/",
     },
     "OWASP.A05.2025": {
         "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
         "kind": "html",
-        "citation": 'Open Worldwide Application Security Project, '
-                    '"A05:2025 — Injection," in OWASP Top 10:2025, OWASP '
-                    'Foundation, 2025.',
+        "citation": 'Open Worldwide Application Security Project. 2025. A05:2025 - Injection. In OWASP Top 10:2025. OWASP Foundation.',
         "landing": "https://owasp.org/Top10/2025/A05_2025-Injection/",
     },
     "OWASP.A07.2025": {
         "url": "https://owasp.org/Top10/2025/"
                "A07_2025-Authentication_Failures/",
         "kind": "html",
-        "citation": 'Open Worldwide Application Security Project, '
-                    '"A07:2025 — Authentication failures," in OWASP Top '
-                    '10:2025, OWASP Foundation, 2025.',
+        "citation": 'Open Worldwide Application Security Project. 2025. A07:2025 - Authentication Failures. In OWASP Top 10:2025. OWASP Foundation.',
         "landing": "https://owasp.org/Top10/2025/"
                    "A07_2025-Authentication_Failures/",
     },
@@ -238,10 +234,7 @@ SOURCES = {
         "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/"
                "nistspecialpublication800-86.pdf",
         "kind": "pdf",
-        "citation": 'K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide '
-                    'to integrating forensic techniques into incident '
-                    'response," NIST SP 800-86, Aug. 2006, doi: '
-                    '10.6028/NIST.SP.800-86.',
+        "citation": 'Karen Kent, Suzanne Chevalier, Tim Grance, and Hung Dang. 2006. Guide to Integrating Forensic Techniques into Incident Response. NIST Special Publication 800-86. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-86',
         "landing": "https://csrc.nist.gov/pubs/sp/800/86/final",
     },
 
@@ -257,34 +250,41 @@ SOURCES = {
     # states them and that is about intrusion detection, which is this
     # tool's domain.
 
+    # Added to close the one asymmetry left in the corpus: every attack
+    # claim carried a citation while the SHAP definitions were the project's
+    # own words. Lundberg's TreeSHAP paper cannot be used -- its only open
+    # copy is a submitted manuscript, which rule 1 excludes -- but rule 2
+    # applies here: this is a NIST publication, and the NIST PDF IS the
+    # authoritative artefact. Section 4.2 defines SHAP and Shapley values
+    # verbatim, so the glossary can quote a source instead of asserting.
+    "NIST.IR.8312": {
+        "url": "https://nvlpubs.nist.gov/nistpubs/ir/2021/NIST.IR.8312.pdf",
+        "kind": "pdf",
+        "citation": "P. Jonathon Phillips, Carina A. Hahn, Peter C. Fontana, "
+                    "Amy N. Yates, Kristen Greene, David A. Broniatowski, and "
+                    "Mark A. Przybocki. 2021. Four Principles of Explainable "
+                    "Artificial Intelligence. NISTIR 8312. National Institute "
+                    "of Standards and Technology, Gaithersburg, MD, USA. "
+                    "https://doi.org/10.6028/NIST.IR.8312",
+        "landing": "https://csrc.nist.gov/pubs/ir/8312/final",
+    },
     "NIST.AI.100-1": {
         "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
         "kind": "pdf",
-        "citation": 'National Institute of Standards and Technology, '
-                    '"Artificial Intelligence Risk Management Framework '
-                    '(AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: '
-                    '10.6028/NIST.AI.100-1.',
+        "citation": 'National Institute of Standards and Technology. 2023. Artificial Intelligence Risk Management Framework (AI RMF 1.0). NIST AI 100-1. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.AI.100-1',
         "landing": "https://www.nist.gov/itl/ai-risk-management-framework",
     },
 
     "Chen.xgboost": {
         "url": "https://dl.acm.org/doi/pdf/10.1145/2939672.2939785",
         "kind": "pdf",
-        "citation": 'T. Chen and C. Guestrin, "XGBoost: A scalable tree '
-                    'boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. '
-                    'Knowledge Discovery and Data Mining, San Francisco, CA, '
-                    'USA, Aug. 2016, pp. 785-794, doi: '
-                    '10.1145/2939672.2939785.',
+        "citation": "Tianqi Chen and Carlos Guestrin. 2016. XGBoost: A Scalable Tree Boosting System. In Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD '16). ACM, New York, NY, USA, 785-794. https://doi.org/10.1145/2939672.2939785",
         "landing": "https://dl.acm.org/doi/10.1145/2939672.2939785",
     },
     "Iyengar.aip": {
         "url": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
         "kind": "pdf",
-        "citation": 'S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, '
-                    'Prasad HB and C. Krishna Mohan, Artificial Intelligence '
-                    'in Practice: Theory and Application for Cyber Security '
-                    'and Forensics. Cham, Switzerland: Springer Nature, 2025, '
-                    'doi: 10.1007/978-3-031-89327-8.',
+        "citation": 'S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB, and C. Krishna Mohan. 2025. Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Springer Nature, Cham, Switzerland. https://doi.org/10.1007/978-3-031-89327-8',
         "landing": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
     },
     # The Communications of the ACM Research Highlights version, not the
@@ -296,11 +296,7 @@ SOURCES = {
     "Arp.cacm": {
         "url": "https://dl.acm.org/doi/pdf/10.1145/3643456",
         "kind": "pdf",
-        "citation": 'D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, '
-                    'F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, '
-                    '"Pitfalls in machine learning for computer security," '
-                    'Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, '
-                    'doi: 10.1145/3643456.',
+        "citation": 'Daniel Arp, Erwin Quiring, Feargus Pendlebury, Alexander Warnecke, Fabio Pierazzi, Christian Wressnegger, Lorenzo Cavallaro, and Konrad Rieck. 2024. Pitfalls in Machine Learning for Computer Security. Commun. ACM 67, 11 (Nov. 2024), 104-112. https://doi.org/10.1145/3643456',
         "landing": "https://dl.acm.org/doi/10.1145/3643456",
     },
 

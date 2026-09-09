@@ -355,16 +355,13 @@ class XaiTab:
         words came from a language model and which are measurements, and
         the answer cannot depend on remembering a setting.
         """
-        if panel.get("narration_error"):
-            return [
-                ("PLAIN ENGLISH\n", "h"),
-                (f"  unavailable: {panel['narration_error']}\n\n", "warn"),
-            ]
-
         text = panel.get("narrative")
         withheld = panel.get("narration_withheld")
 
-        if not text and not withheld:
+        if not text:
+            # No paragraph at all, from any source. The panel below is
+            # complete on its own, so it is shown without a heading rather
+            # than with an explanation of an absence.
             return []
 
         if text and "ANCHOR:" in text.upper():
@@ -376,63 +373,55 @@ class XaiTab:
                     "Each step quotes the line that prescribes it.\n\n",
                     "muted")]
             out += XaiTab._step_blocks(text)
-        elif text:
+        else:
+            # The heading names who wrote the paragraph, which is what a
+            # reader needs in order to weigh it. When the model's own words
+            # fail their checks the panel now shows the same summary written
+            # from the figures instead, so the honest label is "summarised
+            # from the figures" -- never an explanation of an absent
+            # paragraph.
+            source = ("summarised from the figures below"
+                      if panel.get("narration_fallback")
+                      else "written by a local model from the figures below")
             out = [
-                ("PLAIN ENGLISH  (written by a local model from the figures "
-                 "below)\n", "h"),
+                (f"PLAIN ENGLISH  ({source})\n", "h"),
                 (text.strip() + "\n", None),
             ]
-        else:
-            # A suppressed paragraph used to render as nothing at all, which
-            # is the one outcome the reader must not be left with: it looks
-            # identical to narration being switched off. Withholding is a
-            # RESULT -- the model asserted something that could not be
-            # traced -- so it is reported, with the reason below and the
-            # text itself kept in the case file for audit.
-            out = [
-                ("PLAIN ENGLISH  (withheld)\n", "h"),
-                ("  The local model's paragraph was not displayed because a "
-                 "claim in it could not be traced to what the model was "
-                 "given. The evidence below is unaffected and complete; the "
-                 "withheld text is kept in the saved case.\n", "warn"),
-            ]
 
-        if panel.get("narration_note"):
-            out.append((f"  {panel['narration_note']}\n", "warn"))
+        # NOTHING ABOUT THE MACHINERY IS PRINTED HERE.
+        #
+        # This block used to carry, in turn: a note that the context was
+        # truncated, a line naming the words the neutraliser cut, a verdict,
+        # and one row per finding tagged "[high] anchors:". All of it
+        # describes how the text was produced rather than what was found, and
+        # an investigator reading a capture has no use for any of it. The
+        # panel now shows the text and its source, or -- when the model's
+        # words did not survive their checks -- the same summary composed
+        # from the figures. Either way it reads as a report about the
+        # capture.
+        #
+        # None of it is lost. Every finding, edit, verdict and note stays on
+        # the panel for the saved case, and narrate() prints them to the
+        # console as they happen, which is where whoever is running the tool
+        # can see them.
 
-        # An edit to model output must never be silent. Say what was cut and
-        # why; the unedited text is kept on the panel for the saved case.
-        if panel.get("narration_edits"):
-            cut = ", ".join(f'"{w}"' for w in panel["narration_edits"])
-            out.append((
-                f"  Removed from the text above: {cut} -- judgement words "
-                f"about a quantity, where the measured comparison against "
-                f"the training data is given with each value below.\n",
-                "warn"))
-
-        # The verdict is the point of the transparency layer: a reader must
-        # be able to tell a narration whose every figure traces to the input
-        # from one that asserted something it was never given.
-        verdict = panel.get("narration_verdict")
-        if verdict:
-            severity = (panel.get("narration_stats") or {}).get(
-                "highest_severity", "none")
-            out.append((f"  {verdict}\n",
-                        {"high": "bad", "medium": "warn"}.get(severity,
-                                                              "good")))
-
-        for f in panel.get("narration_findings", []):
-            out.append((f"    [{f['severity']}] {f['check']}: {f['detail']}\n",
-                        "bad" if f["severity"] == "high" else "warn"))
-
+        # Who wrote it and from what, in words. The token count and the
+        # prompt hash are an audit record, not a caption; they stay in
+        # narration_provenance for the saved case.
         pr = panel.get("narration_provenance") or {}
-        if pr.get("model"):
+        if panel.get("narration_fallback"):
+            # Attributing this paragraph to the model would be false: the
+            # model's words were withheld and this one was composed from the
+            # panel's own figures. What ran is still recorded in
+            # narration_provenance for the saved case.
+            out.append(("  Composed from the figures on this panel, not "
+                        "written by a language model.\n", "muted"))
+        elif pr.get("model"):
+            docs = pr.get("sources_supplied")
             out.append((
-                f"  Source: {pr['provider']}/{pr['model']}, "
-                f"{pr.get('output_tokens', 0)} tokens, prompt "
-                f"{pr.get('prompt_sha256_12', '?')}"
-                + (f", documents: {', '.join(pr['sources_supplied'])}"
-                   if pr.get("sources_supplied") else ", figures only")
+                f"  Written by {pr['model']} running on this machine, "
+                + (f"from {', '.join(docs)}." if docs
+                   else "from the figures above.")
                 + "\n", "muted"))
 
         out.append(("\n" + "-" * 62 + "\n\n", "muted"))
@@ -804,7 +793,84 @@ class XaiTab:
                     f"\n  Typical drivers for {d['predicted']}: "
                     f"{', '.join(d['class_typical'][:4])}\n", "muted"))
 
+        # How to read what is above it, on the panel that shows it. These
+        # sections used to sit on the RECOMMENDATIONS panel, where they
+        # explained an attribution the reader had left two panels ago.
+        guidance = [s for s in (self.panels or {}).get("recommend", {})
+                    .get("sections", []) if s.get("panel") == "shap"]
+        if guidance:
+            blocks.append(("\n" + "=" * 58 + "\n", "muted"))
+            blocks.append(("HOW TO READ THIS\n", "h"))
+            for s in guidance:
+                blocks.append((f"\n{s['heading']}\n", "h"))
+                blocks += self._digest_blocks(s)
+
         self._write(self.txt_shap, blocks)
+
+    @staticmethod
+    def _digest_blocks(s):
+        """One retrieved document, rendered in the shape it was written in.
+
+        Shared by panels 2 and 3 so a document reads the same wherever it is
+        shown. A retrieved file is never pasted in full: nine documents in
+        full ran to about 30,000 characters, and burying the two lines that
+        matter inside that is a way of not saying them. The file is named so
+        it can be opened.
+        """
+        blocks = []
+        dg = s.get("digest") or {}
+
+        if dg.get("style") == "glossary":
+            # A term list, rendered as one. Summarised as prose it became
+            # "Class. One of the sixteen labels... Held-out test set.
+            # 280,000 flows..." -- four definitions run into one sentence --
+            # above an "In short" list of bare terms with their meanings
+            # stripped off.
+            #
+            # Shown in full rather than capped at five like the explanatory
+            # sections. Completeness is what a glossary is for, the entries
+            # are one line each, and cutting it risks removing the term the
+            # reader was looking up.
+            if dg.get("summary"):
+                blocks.append(("\n    " + dg["summary"] + "\n", "muted"))
+            for d in dg.get("definitions", []):
+                blocks.append(("\n    " + d["term"] + "\n", None))
+                blocks.append(("      " + d["meaning"] + "\n", "muted"))
+
+        elif dg.get("style") == "explainer":
+            # An explanatory document is read, not worked through. This used
+            # to render as the playbook shape -- two truncated fragments over
+            # five quotations about regression-tree leaf scores and the
+            # definition of explainable AI -- which explained nothing and
+            # buried the 997 words that did. The paragraph is the document's
+            # own opening prose and the points are the statements its author
+            # bolded; the quotations stay in the file and are still verified
+            # against the cited work, which the source line below reports.
+            if dg.get("summary"):
+                blocks.append(("\n    " + dg["summary"] + "\n", None))
+            if dg.get("actions"):
+                blocks.append(("\n  In short\n", "muted"))
+                for a in dg["actions"]:
+                    blocks.append(("    - " + a + "\n", None))
+
+        else:
+            if dg.get("actions"):
+                blocks.append(("\n  What the document prescribes\n",
+                               "muted"))
+                for a in dg["actions"]:
+                    blocks.append(("    - " + a + "\n", None))
+            for q in dg.get("quotes", []):
+                blocks.append(("\n  Quoted from " + q["source"]
+                               + "\n", "muted"))
+                blocks.append(('    "' + q["text"] + '"\n', "good"))
+
+        n = s.get("quotes_verified", 0)
+        blocks.append((
+            "\n  Source: knowledge/" + s["source"] + " - "
+            + format(len(s["body"].split()), ",") + " words, " + str(n) + " "
+            + ("quote" if n == 1 else "quotes")
+            + " verified against the cited document.\n", "muted"))
+        return blocks
 
     def _render_recommend(self, rec):
         """[UI CONNECTION: sections -> headed blocks, citations -> sources]"""
@@ -860,6 +926,13 @@ class XaiTab:
             return [(f"\n{step[0]} - {title}\n", tag)]
 
         for s in rec["sections"]:
+            # Guidance about reading an attribution belongs with the
+            # attributions. Three of these sections explain SHAP, and on a
+            # panel whose subject is what to DO they pushed the response
+            # playbook down the page. They are rendered on panel 2 instead.
+            if s.get("panel") == "shap":
+                continue
+
             # Evidence and the model's steps go in once the finding has been
             # stated and before any guidance: found -> why -> what to do.
             if evidence_pending and s.get("source"):
@@ -902,27 +975,8 @@ class XaiTab:
             # documents in full ran to about 30,000 characters, and burying
             # the two lines that matter inside that is a way of not saying
             # them. The file is named so it can be opened.
-            dg = s.get("digest")
-            if dg and s.get("source"):
-                # The section outline used to print here as a pipe-separated
-                # list of headings. It told the reader the document has
-                # sections, which they could assume, and pushed the two
-                # useful parts down the panel. Dropped.
-                if dg["actions"]:
-                    blocks.append(("\n  What the document prescribes\n",
-                                   "muted"))
-                    for a in dg["actions"]:
-                        blocks.append((f"    - {a}\n", None))
-                for q in dg["quotes"]:
-                    blocks.append((f"\n  Quoted from {q['source']}\n",
-                                   "muted"))
-                    blocks.append((f"    \"{q['text']}\"\n", "good"))
-                n = s.get("quotes_verified", 0)
-                blocks.append((
-                    f"\n  Source: knowledge/{s['source']} - "
-                    f"{len(s['body'].split()):,} words, {n} "
-                    f"{'quote' if n == 1 else 'quotes'} verified against the "
-                    f"cited document.\n", "muted"))
+            if s.get("digest") and s.get("source"):
+                blocks += self._digest_blocks(s)
             else:
                 blocks.append((s["body"] + "\n", None))
 

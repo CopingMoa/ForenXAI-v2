@@ -457,6 +457,29 @@ shap==0.52.0
 tkinterdnd2==0.4.3
 xgboost==3.0.5
 catboost==1.2.8
+seaborn==0.13.2
+
+# ------------------------------------------------------------
+# NARRATION AND THE CITED-SOURCE CORPUS -- both required
+# ------------------------------------------------------------
+#
+# requests is how the app talks to the local Ollama server that
+# writes the three XAI panels. Without it every panel falls back
+# to its deterministic summary; the app still runs, but no
+# sentence is model-written.
+#
+# pypdf re-extracts a PDF whenever the extracted-text cache is
+# missing. That extracted text is what source_guard checks each
+# quoted passage against, so without pypdf and without the cache
+# every quote fails verification and its document is quarantined
+# -- the panels then render with their citations withheld.
+#
+# Ship the .cache/ folder alongside the PDFs (see README) and
+# neither cost is paid at run time: verification of the whole
+# corpus is 0.68 ms once memoised.
+
+requests==2.34.2
+pypdf==6.17.0
 
 # ------------------------------------------------------------
 # PCAP FALLBACK -- read this before skipping it

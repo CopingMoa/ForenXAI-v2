@@ -1,9 +1,10 @@
 # Machine learning terms used in this interface
 
-> Source: National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.
-> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
-> Source: T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785.
-> Source: S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C. Krishna Mohan, Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Cham, Switzerland: Springer Nature, 2025, doi: 10.1007/978-3-031-89327-8.
+> Source: National Institute of Standards and Technology. 2023. Artificial Intelligence Risk Management Framework (AI RMF 1.0). NIST AI 100-1. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.AI.100-1
+> Source: P. Jonathon Phillips, Carina A. Hahn, Peter C. Fontana, Amy N. Yates, Kristen Greene, David A. Broniatowski, and Mark A. Przybocki. 2021. Four Principles of Explainable Artificial Intelligence. NISTIR 8312. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.IR.8312
+> Source: Daniel Arp, Erwin Quiring, Feargus Pendlebury, Alexander Warnecke, Fabio Pierazzi, Christian Wressnegger, Lorenzo Cavallaro, and Konrad Rieck. 2024. Pitfalls in Machine Learning for Computer Security. Commun. ACM 67, 11 (Nov. 2024), 104-112. https://doi.org/10.1145/3643456
+> Source: Tianqi Chen and Carlos Guestrin. 2016. XGBoost: A Scalable Tree Boosting System. In Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD '16). ACM, New York, NY, USA, 785-794. https://doi.org/10.1145/2939672.2939785
+> Source: S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB, and C. Krishna Mohan. 2025. Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Springer Nature, Cham, Switzerland. https://doi.org/10.1007/978-3-031-89327-8
 >
 > Retrieved: 2026-09-08
 
@@ -76,10 +77,20 @@ starting point the attributions move away from. There is one per class.
 the model's margin. Checked at build time; error here is 1.8e-05.
 
 **TreeSHAP.** The exact algorithm for Shapley values on tree ensembles,
-used here in place of the sampling-based Kernel SHAP. No document in
-`knowledge/_sources` describes SHAP or TreeSHAP, so the definitions in this
-section describe what the library computes and what this interface shows,
-and carry no citation.
+used here in place of the sampling-based Kernel SHAP.
+
+## From NIST.IR.8312
+
+> Another commonly-used local explanation algorithm is SHAP (SHapley Additive ex-
+> Planations) [82]. SHAP provides a per-feature importance for an input on a regression
+> problem by converting the scenario to a coalitional game from game theory and then pro-
+> ducing the Shapley values from that game. SHAP treats the features as the players, the
+> features value vs. a default value as the strategies, and the system output as the payoff,
+> forming a coalitional game from the input.
+
+NIST names the method and its basis; it does not describe TreeSHAP, the
+tree-specific exact algorithm, or the `tree_path_dependent` setting. Those
+two entries remain descriptions of what the library computes here.
 
 **tree_path_dependent.** The setting that computes expectations by walking
 the trees, using the traversal counts stored in them. It needs no
@@ -140,10 +151,11 @@ feature — see [[extraction-validity]].
 
 None of these documents defines these terms for network forensics
 specifically, and none states what weight any of these figures should carry
-in a report. None of them describes SHAP, Shapley values or TreeSHAP at
-all, which is why those entries are unsourced definitions of what this
-interface shows. The numeric values quoted above (0.9337, 0.9287, 0.6703,
-1.8e-05) are this project's own measurements, not claims from the cited
-works.
+in a report. NISTIR 8312 defines SHAP and Shapley values, quoted above, but
+no source here describes TreeSHAP, the exact tree algorithm, or the
+`tree_path_dependent` setting -- those two entries remain descriptions of
+what the library computes rather than quotations. The numeric values quoted
+above (0.9337, 0.9287, 0.6703, 1.8e-05) are this project's own
+measurements, not claims from the cited works.
 
 Related: [[confidence]], [[reliability]], [[shap-reading]], [[class-ambiguity]], [[scope]], [[extraction-validity]]

@@ -26,6 +26,10 @@ Sections:
                  report the same classes
   K  GUIDANCE    recommendations follow the RESULT -- confidence,
                  reliability, ambiguity, extraction -- not just the class
+  L  NEUTRALISER the one edit made to model prose removes only what it
+                 should, and never breaks the sentence carrying it
+  M  DIGEST      a playbook, an explanatory document and a term list are
+                 each read in the shape they were written in
 
 No framework. A failure prints what was expected and what happened; the
 exit code is the number of failures.
@@ -380,11 +384,21 @@ def test_schema():
                        "attack_flows": 2},
              "sections": []}
     out = ns.narrate(panel, _Liar())
-    check("an ungrounded narration is withheld from display",
-          out["narrative"] is None, repr(out.get("narrative")))
+    check("an ungrounded narration never reaches the display",
+          "998,877" not in (out.get("narrative") or "")
+          and "not_supplied" not in (out.get("narrative") or ""),
+          repr(out.get("narrative")))
     check("the withheld text is kept for audit",
           bool(out.get("narration_withheld")))
     check("the verdict says why", "UNVERIFIED" in out["narration_verdict"])
+    # Withholding the model's words is right; leaving the panel to explain
+    # its own absence is not. A paragraph written from the same figures
+    # takes its place, labelled so the reader knows who wrote it.
+    check("a deterministic summary is shown in its place",
+          bool(out.get("narrative")) and bool(out.get("narration_fallback")),
+          repr(out.get("narrative")))
+    check("the replacement states only supplied figures",
+          "12" in (out.get("narrative") or ""), repr(out.get("narrative")))
 
     class _Honest:
         def complete(self, system, user, **kw):
@@ -445,39 +459,45 @@ def test_llm():
           == [s["body"] for s in narr["recommend"]["sections"]
               if s.get("source")])
 
-    # Panel 3 is deterministic by default: its content is a quoted playbook,
-    # and a quote cannot be invented.
+    from services.narration_service import ALL_PANELS
+
     check("all three panels are narrated -- narration is not optional",
           all(narr[k].get("narrative") or narr[k].get("narration_withheld")
               or narr[k].get("narration_error")
               for k in ("summary", "shap", "recommend")),
           "a panel was left un-narrated; narration runs on every panel")
-    check("only panels 1 and 2 are narrated by default",
-          narr.get("narrated_panels") == ["summary", "shap"],
+    check("every panel is narrated by default",
+          list(narr.get("narrated_panels") or []) == list(ALL_PANELS),
           str(narr.get("narrated_panels")))
-
-    from services.narration_service import ALL_PANELS
-    explicit = build_panels(SAMPLE_FULL, "x.pcap", narrate_with="ollama",
-                            narrate_panels=ALL_PANELS)
-    check("panel 3 narrates when explicitly asked",
-          bool(explicit["recommend"].get("narrative")))
     check("the document stays quoted verbatim even when narrated",
           [s["body"] for s in plain["recommend"]["sections"] if s.get("source")]
-          == [s["body"] for s in explicit["recommend"]["sections"]
+          == [s["body"] for s in narr["recommend"]["sections"]
               if s.get("source")])
 
-    for key in ("summary", "shap"):
+    for key in ALL_PANELS:
         p = narr[key]
-        check(f"{key}: a narration was produced",
-              bool(p.get("narrative")), p.get("narration_error", ""))
+        # Either prose, or prose withheld with the reason recorded. Asserting
+        # that prose exists made the suite fail whenever the grounding check
+        # did its job -- a model that invented a figure withheld the
+        # paragraph, which is the designed outcome, and the run reported it
+        # as a defect. What must always hold is that the panel reached a
+        # decided state, never that the model behaved.
+        check(f"{key}: narrated, or withheld with a reason",
+              bool(p.get("narrative")) or bool(p.get("narration_withheld"))
+              or bool(p.get("narration_error")),
+              str(p.get("narration_error")))
         check(f"{key}: provenance was recorded",
               bool(p.get("narration_provenance", {}).get("prompt_sha256_12")))
         check(f"{key}: a verdict was recorded",
               bool(p.get("narration_verdict")))
-        check(f"{key}: no HIGH-severity grounding finding",
-              not any(x["severity"] == "high"
-                      for x in p.get("narration_findings", [])),
-              str(p.get("narration_findings")))
+        # A high-severity finding must never be left on display. It may be
+        # found -- that is the check working -- but the prose must then be
+        # withheld rather than shown.
+        high = [x for x in p.get("narration_findings", [])
+                if x["severity"] == "high"]
+        check(f"{key}: nothing HIGH-severity is left on display",
+              not high or p.get("narrative") is None,
+              str(high))
 
 
 # ============================================================
@@ -513,7 +533,9 @@ def test_ui():
             check("findings listed", tab.lst_findings.size() > 0)
             check("units stated in the SHAP panel",
                   "log-odds" in body(tab.txt_shap))
-            check("narration is off by default", not tab.narrate.get())
+            check("narration ran rather than being offered as a toggle",
+                  not hasattr(tab, "narrate"),
+                  "XaiTab.narrate is back; narration is unconditional")
             state["first"] = tab.panels["selected"]["class"]
             if tab.lst_findings.size() > 2:
                 tab.lst_findings.selection_clear(0, tk.END)
@@ -921,6 +943,102 @@ def test_model():
     check("the Pipeline scales (unscaled input gives a different answer)",
           not np.array_equal(unscaled, panel_pred))
 
+def test_neutraliser():
+    """The one function that REWRITES model output rather than judging it.
+
+    It shipped with a corrupted backreference -- a literal 0x01 byte where
+    the \\1 belonged -- so restoring punctuation after a cut inserted an
+    invisible control character and ran sentences together on screen. It had
+    no test at all, which is why that survived.
+    """
+    section("L  NEUTRALISER  the only edit made to model prose")
+    from services.narration_schema import neutralise_magnitude as nm
+
+    out, cut = nm("unusually short gaps between packets were seen.")
+    check("an attributive adjective is removed", cut == ["unusually short"],
+          str(cut))
+    check("the sentence survives the cut",
+          out == "gaps between packets were seen.", repr(out))
+
+    out, cut = nm("It showed unusually short gaps, then a large burst.")
+    check("punctuation is preserved after a cut", ", then a burst." in out,
+          repr(out))
+    check("no control byte is inserted",
+          not any(ord(c) < 9 or 13 < ord(c) < 32 for c in out), repr(out))
+
+    out, cut = nm("The gaps between packets were unusually short.")
+    check("a predicative adjective is left alone", cut == [], str(cut))
+    check("a predicative sentence is not truncated",
+          out.endswith("unusually short."), repr(out))
+
+    out, cut = nm("The model had low confidence in this flow.")
+    check("a hedge on the model's certainty is not cut", cut == [], str(cut))
+    check("'low confidence' never becomes 'confidence'",
+          "low confidence" in out, repr(out))
+
+    out, cut = nm("Backward volume is small; forward volume is large.")
+    check("two clauses are not merged into one", out.count(";") == 1,
+          repr(out))
+
+    check("empty input is safe", nm(None)[1] == [], str(nm(None)))
+
+def test_digest_shapes():
+    """A document is read in the shape it was written in.
+
+    One digest for three shapes of document shipped as one: the playbook
+    digest applied to an explanatory file reduced 997 words to two truncated
+    fragments under five quotations, and applied to a term list it ran four
+    definitions into a single sentence.
+    """
+    section("M  DIGEST  each document is read in its own shape")
+    from services.panels_service import digest_document
+
+    play = digest_document(
+        open(os.path.join(HERE, "knowledge", "incident_response",
+                          "slowloris.md"), encoding="utf-8").read())
+    check("a response playbook keeps the playbook shape",
+          play["style"] == "playbook", play["style"])
+    check("a playbook still yields quotes", len(play["quotes"]) > 0)
+
+    expl = digest_document(
+        open(os.path.join(HERE, "knowledge", "interpretability",
+                          "shap_reading.md"), encoding="utf-8").read(),
+        style="explainer")
+    check("an explanatory document is read as prose",
+          expl["style"] == "explainer", expl["style"])
+    check("it carries a summary paragraph",
+          len(expl.get("summary", "").split()) > 25, expl.get("summary", "")[:60])
+    check("its points are the statements the author bolded",
+          len(expl["actions"]) == 5, str(expl["actions"]))
+    check("no point is a bare fragment",
+          all(len(a.split()) >= 4 for a in expl["actions"]),
+          str(expl["actions"]))
+
+    gloss = digest_document(
+        open(os.path.join(HERE, "knowledge", "interpretability",
+                          "glossary.md"), encoding="utf-8").read(),
+        style="explainer")
+    check("a term list is detected from its shape",
+          gloss["style"] == "glossary", gloss["style"])
+    check("every term carries its meaning",
+          gloss["definitions"] and all(d["term"] and d["meaning"]
+                                       for d in gloss["definitions"]),
+          str(len(gloss.get("definitions", []))))
+    check("a definition does not absorb the next term",
+          all(len(d["meaning"].split()) < 60 for d in gloss["definitions"]))
+    check("the summary is the document's own preamble, not its definitions",
+          "Class." not in gloss["summary"], gloss["summary"][:60])
+
+    # Only the term list is a term list. Reliability has 2-word lead-ins too
+    # and must not be caught by the count-and-length rule.
+    for name in ("caveats", "reliability", "confidence", "class_ambiguity"):
+        d = digest_document(
+            open(os.path.join(HERE, "knowledge", "interpretability",
+                              name + ".md"), encoding="utf-8").read(),
+            style="explainer")
+        check(f"{name} is not mistaken for a term list",
+              d["style"] == "explainer", d["style"])
+
 
 # ============================================================
 def main():
@@ -946,6 +1064,8 @@ def main():
     test_pcap()
     test_model()
     test_model_guidance()
+    test_neutraliser()
+    test_digest_shapes()
 
     if args.llm or args.all:
         test_llm()

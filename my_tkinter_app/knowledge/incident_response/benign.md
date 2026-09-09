@@ -1,7 +1,7 @@
 # Benign traffic — validation and event analysis
 
-> Source: A. Nelson, S. Rekhi, M. Souppaya and K. Scarfone, "Incident response recommendations and considerations for cybersecurity risk management," NIST SP 800-61r3, Apr. 2025, doi: 10.6028/NIST.SP.800-61r3.
-> Source: K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, "Indicators of compromise (IoCs) and their role in attack defence," RFC 9424, Aug. 2023, doi: 10.17487/RFC9424.
+> Source: Alex Nelson, Sanjay Rekhi, Murugiah Souppaya, and Karen Scarfone. 2025. Incident Response Recommendations and Considerations for Cybersecurity Risk Management: A CSF 2.0 Community Profile. NIST Special Publication 800-61r3. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-61r3
+> Source: K. Paine, O. Whitehouse, J. Sellwood, and A. Shaw. 2023. Indicators of Compromise (IoCs) and Their Role in Attack Defence. RFC 9424. Internet Engineering Task Force. https://doi.org/10.17487/RFC9424
 >
 > Retrieved: 2026-09-08
 

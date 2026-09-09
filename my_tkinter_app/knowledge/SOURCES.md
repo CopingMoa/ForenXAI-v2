@@ -189,7 +189,7 @@ the document's **own title page**, not from a publisher's landing page.
 | # | Source | Used for | Verify by |
 |---|---|---|---|
 | 1 | D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988. | Base rate fallacy (P8), inappropriate performance measures (P7), spurious correlations (P4), sampling bias | Open access at usenix.org/conference/usenixsecurity22/presentation/arp. Check §3 pitfall descriptions |
-| 5 | National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1. | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
+| 5 | National Institute of Standards and Technology. 2023. Artificial Intelligence Risk Management Framework (AI RMF 1.0). NIST AI 100-1. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.AI.100-1 | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
 
 ## Which document answers which question
 
@@ -227,7 +227,7 @@ them.
 
 | # | Source | Used for | Verify by |
 |---|---|---|---|
-| 9 | K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide to integrating forensic techniques into incident response," NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86. | Data acquisition procedure, quoted in the classes where containment destroys evidence — Exploitation, BufferOverflow, Exfiltration | nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-86.pdf, §4 |
+| 9 | Karen Kent, Suzanne Chevalier, Tim Grance, and Hung Dang. 2006. Guide to Integrating Forensic Techniques into Incident Response. NIST Special Publication 800-86. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-86 | Data acquisition procedure, quoted in the classes where containment destroys evidence — Exploitation, BufferOverflow, Exfiltration | nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-86.pdf, §4 |
 | 11 | OWASP, "A01:2025 — Broken access control," in OWASP Top 10:2025. | API, WebBased — access control and rate limiting | owasp.org/Top10/2025/A01_2025-Broken_Access_Control/ |
 | 12 | OWASP, "A05:2025 — Injection," in OWASP Top 10:2025. | WebBased, Exploitation — parameterised queries | owasp.org/Top10/2025/A05_2025-Injection/ |
 | 13 | OWASP, "A07:2025 — Authentication failures," in OWASP Top 10:2025. | Bruteforce — failed-login handling, MFA | owasp.org/Top10/2025/A07_2025-Authentication_Failures/ |

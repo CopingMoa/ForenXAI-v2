@@ -1,8 +1,8 @@
 # Web application attack — response
 
-> Source: Open Worldwide Application Security Project, "A05:2025 — Injection," in OWASP Top 10:2025, OWASP Foundation, 2025.
-> Source: Open Worldwide Application Security Project, "A01:2025 — Broken access control," in OWASP Top 10:2025, OWASP Foundation, 2025.
-> Source: Cybersecurity and Infrastructure Security Agency, "Cybersecurity incident & vulnerability response playbooks," CISA, Washington, DC, USA, Nov. 2021.
+> Source: Open Worldwide Application Security Project. 2025. A05:2025 - Injection. In OWASP Top 10:2025. OWASP Foundation.
+> Source: Open Worldwide Application Security Project. 2025. A01:2025 - Broken Access Control. In OWASP Top 10:2025. OWASP Foundation.
+> Source: Cybersecurity and Infrastructure Security Agency. 2021. Cybersecurity Incident and Vulnerability Response Playbooks: Operational Procedures for Planning and Conducting Cybersecurity Incident and Vulnerability Response Activities in FCEB Information Systems. CISA, Washington, DC, USA.
 >
 > Retrieved: 2026-09-08
 

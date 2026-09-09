@@ -12,17 +12,6 @@ BASE_DIR = os.path.dirname(
 
 
 # ============================================================
-# MODEL
-# ============================================================
-
-MODEL_PATH = os.path.join(
-    BASE_DIR,
-    "models",
-    "rf.pkl"
-)
-
-
-# ============================================================
 # CASE OUTPUT
 # ============================================================
 
@@ -50,15 +39,6 @@ os.makedirs(
 # A run that crashed hard enough to skip both cleanup paths leaves its
 # workspace behind with a flow table in it. Nothing else would remove it.
 sweep_orphans()
-
-# Where a case goes if the investigator chooses to keep it. Nothing is
-# written here automatically -- keeping evidence is a decision, and so is
-# discarding it.
-CASE_ARCHIVE_DIR = os.path.join(
-    BASE_DIR,
-    "ForenXAI_Cases"
-)
-
 
 # ============================================================
 # CICFLOWMETER V4 CONFIGURATION

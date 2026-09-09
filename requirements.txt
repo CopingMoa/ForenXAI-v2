@@ -11,6 +11,18 @@ seaborn>=0.13
 shap>=0.44
 tkinterdnd2>=0.3
 
+# PCAP fallback used when CICFlowMeter v4 is not installed
+cicflowmeter>=0.2
+scapy>=2.7
+
+# Narration and the cited-source corpus
+# requests talks to the local Ollama server; pypdf re-extracts a PDF when the
+# extracted-text cache is absent, which is what source_guard verifies quotes
+# against. Both are required, not optional: without them panel 3 falls back and
+# every quoted passage fails verification.
+requests>=2.31
+pypdf>=4.0
+
 # Development notebooks: data ingestion and model training/evaluation
 pyarrow>=14
 optuna>=3.5

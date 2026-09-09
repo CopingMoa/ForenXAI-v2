@@ -18,3 +18,11 @@ my_tkinter_app/knowledge/_sources/.cache/
 # Case output. Now written to a per-run temp workspace and deleted on exit;
 # these are leftovers from before that change.
 my_tkinter_app/ForenXAI_Cases/
+
+# Built handoff bundle. 156 MB with sources, 77 MB with --no-sources; both are
+# reproduced by `python my_tkinter_app/make_handoff.py`. Ships on Drive.
+ForenXAI_UI_Handoff/
+
+# Clone of github.com/OWASP/Top10, 564 MB, kept only so fetch_knowledge.py can
+# re-derive knowledge/_sources/OWASP_Top10_2025_FULL/. Re-clone, don't commit.
+my_tkinter_app/Top10/

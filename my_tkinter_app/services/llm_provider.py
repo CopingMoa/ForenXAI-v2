@@ -55,7 +55,6 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
 
 # Claude, when the user explicitly opts in to sending evidence off the machine.
 ANTHROPIC_REASONING = "claude-opus-5"
-ANTHROPIC_SUMMARY = "claude-sonnet-5"
 
 # Rough characters-per-token for English prose. Only used to decide when to
 # trim; the real count comes back in `usage` after the call.

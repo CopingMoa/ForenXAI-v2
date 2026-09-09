@@ -3,6 +3,11 @@
 
 ForenXAI is a digital forensics and network anomaly detection tool for analyzing user-supplied PCAP / PCAPNG evidence. It combines machine learning, calibrated prediction, and post-hoc explainability to support forensic review of suspicious network flows.
 
+> **Setting up?** The trained model ships in this repository. The cited-source
+> corpus does not — it is 99 MB of downloaded PDFs. See
+> [DRIVE_CONTENTS.md](DRIVE_CONTENTS.md) for what to take from Drive, what is
+> already here, and the five setup steps.
+
 The current design uses a **single primary training dataset** and **two external validation datasets**:
 
 - **TII-SSRC-23** — primary training dataset

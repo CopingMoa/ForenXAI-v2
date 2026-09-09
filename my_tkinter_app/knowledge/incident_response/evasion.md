@@ -5,9 +5,9 @@
 > evasion as one procedure. Every claim traces to a cited section; where the
 > sources do not cover something, this file says so.
 >
-> Source: G. Ziemba, D. Reed and P. Traina, "Security considerations for IP fragment filtering," RFC 1858, §3–§4, Oct. 1995, doi: 10.17487/RFC1858.
-> Source: I. Miller, "Protection against a variant of the tiny fragment attack," RFC 3128, Jun. 2001, doi: 10.17487/RFC3128.
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, controls SI-4 and SC-7, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
+> Source: G. Ziemba, D. Reed, and P. Traina. 1995. Security Considerations for IP Fragment Filtering. RFC 1858. Internet Engineering Task Force, Sections 3-4. https://doi.org/10.17487/RFC1858
+> Source: I. Miller. 2001. Protection Against a Variant of the Tiny Fragment Attack. RFC 3128. Internet Engineering Task Force. https://doi.org/10.17487/RFC3128
+> Source: Joint Task Force. 2025. Security and Privacy Controls for Information Systems and Organizations. NIST Special Publication 800-53, Revision 5, Release 5.2.0. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-53r5, Controls SI-4 and SC-7.
 >
 > Retrieved: 2026-09-08
 
@@ -61,6 +61,20 @@ record describes is not what the endpoint received. A classification of any
 other flow in the same capture is correspondingly less reliable.
 
 ## 3. Containment
+
+**Enforce a minimum fragment offset** on the filtering device, so the
+transport header can never arrive inside a non-zero-offset fragment. RFC 1858
+§4.2 puts that minimum at sixteen octets for TCP.
+
+**Reassemble fragments at the perimeter device** before inspection, rather
+than at the endpoint. SP 800-53r5 SC-7 places control of communications at
+the external managed interface.
+
+**Verify the reassembly configuration** before treating any downstream
+classification as sound. A detector that inspects fragments independently is
+the condition these attacks exploit.
+
+The sourced basis for each of the three follows.
 
 Discarding TCP fragments at offset 1 is RFC 1858's Indirect Method, and
 RFC 3128 above shows it is not sufficient on its own. The remedy RFC 1858

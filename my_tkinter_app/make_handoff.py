@@ -41,6 +41,19 @@ PAYLOAD = [
     ("services/cicflowmeter_service.py",
      "services/cicflowmeter_service.py", False),
 
+    # Imported by the modules above, and missing until the copy's own suite
+    # was run and stopped at "No module named 'services.session'". The
+    # build's self-test exists for exactly this, but only reports it when
+    # the build gets far enough to run -- see the --no-sources prune below,
+    # which used to abort first.
+    #
+    # source_guard is the one that matters most: it re-verifies every quoted
+    # passage against the PDF it names. A handoff without it renders the
+    # panels with no check behind the quotes.
+    ("services/source_guard.py", "services/source_guard.py", False),
+    ("services/pipeline_service.py", "services/pipeline_service.py", False),
+    ("services/session.py", "services/session.py", False),
+
     # The RAG corpus.
     ("knowledge", "knowledge", True),
 
@@ -49,6 +62,7 @@ PAYLOAD = [
 
     # So they can prove the integration works in their tree.
     ("test_panels_suite.py", "test_panels_suite.py", False),
+    ("smoke_test.py", "smoke_test.py", False),
     ("sample_data", "sample_data", True),
 
     ("requirements.txt", "requirements.txt", False),
@@ -93,10 +107,32 @@ def build(out, include_sources=True):
 
     if not include_sources:
         pdfs = os.path.join(out, "knowledge", "_sources")
+        # Directories as well as files. `_sources` holds an extracted-text
+        # `.cache/` directory alongside the PDFs, and os.remove() on a
+        # directory raises PermissionError on Windows -- which aborted the
+        # whole build, so --no-sources produced nothing and the handoff
+        # folder silently stayed at whatever it was last time.
+        # The manifest and the extracted-text cache STAY. The cache is
+        # 7.2 MB against 98 MB of PDFs and it is what source_guard verifies
+        # quotes against, so keeping it is the difference between a small
+        # build that still checks its quotes and a small build that cannot.
+        keep = {"manifest.json", ".cache"}
         for name in os.listdir(pdfs):
-            if not name.endswith(".json"):
-                os.remove(os.path.join(pdfs, name))
-        print("  pruned  knowledge/_sources/*.pdf (manifest kept)")
+            if name in keep or name.endswith(".json"):
+                continue
+            path = os.path.join(pdfs, name)
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.remove(path)
+        print("  pruned  knowledge/_sources/*.pdf "
+              "(manifest and .cache kept)")
+        print("  NOTE    quotes are verified against the extracted-text "
+              "cache rather than")
+        print("          the PDFs themselves. Panels report the weaker "
+              "provenance. Ship the")
+        print("          full build where the recipient must re-derive the "
+              "text themselves.")
 
     # ForenXAI_Cases/ is created on import by services.config; make it here
     # so the folder does not look like it failed on first run.

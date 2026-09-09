@@ -1,8 +1,8 @@
 # Data exfiltration — response
 
-> Source: Joint Task Force, "Security and privacy controls for information systems and organizations," NIST SP 800-53r5, control SC-7, rel. 5.2.0, Aug. 2025, doi: 10.6028/NIST.SP.800-53r5.
-> Source: K. Kent, S. Chevalier, T. Grance and H. Dang, "Guide to integrating forensic techniques into incident response," NIST SP 800-86, Aug. 2006, doi: 10.6028/NIST.SP.800-86.
-> Source: K. Paine, O. Whitehouse, J. Sellwood and A. Shaw, "Indicators of compromise (IoCs) and their role in attack defence," RFC 9424, Aug. 2023, doi: 10.17487/RFC9424.
+> Source: Joint Task Force. 2025. Security and Privacy Controls for Information Systems and Organizations. NIST Special Publication 800-53, Revision 5, Release 5.2.0. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-53r5, Control SC-7.
+> Source: Karen Kent, Suzanne Chevalier, Tim Grance, and Hung Dang. 2006. Guide to Integrating Forensic Techniques into Incident Response. NIST Special Publication 800-86. National Institute of Standards and Technology, Gaithersburg, MD, USA. https://doi.org/10.6028/NIST.SP.800-86
+> Source: K. Paine, O. Whitehouse, J. Sellwood, and A. Shaw. 2023. Indicators of Compromise (IoCs) and Their Role in Attack Defence. RFC 9424. Internet Engineering Task Force. https://doi.org/10.17487/RFC9424
 >
 > Retrieved: 2026-09-08
 

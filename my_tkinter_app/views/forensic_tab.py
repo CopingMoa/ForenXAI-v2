@@ -157,8 +157,7 @@ class ForensicTab:
         # ----------------------------------------------------
         # SCROLLABLE FORENSIC PAGE
         # ----------------------------------------------------
-        # Progress/loading controls are built by
-        # _build_progress_toolbar() and hosted by MainWindow
+        # Progress/loading controls are built and hosted by MainWindow
         # on the same horizontal line as the custom Notebook tabs.
         # ----------------------------------------------------
         #
@@ -446,14 +445,6 @@ class ForensicTab:
         self.btn_analyze.pack(
             pady=(3, 15)
         )
-
-
-    def _destroy_scroll_bindings(self):
-        """Remove the global mouse-wheel binding before tab destruction."""
-        try:
-            self.scroll_canvas.unbind_all("<MouseWheel>")
-        except Exception:
-            pass
 
 
     # ========================================================
@@ -786,101 +777,6 @@ class ForensicTab:
     # ========================================================
     # PROGRESS / CLEAR TOOLBAR
     # ========================================================
-
-    def _build_progress_toolbar(self, parent):
-        """
-        Build the compact analysis toolbar.
-
-        MainWindow places this frame on the same horizontal row as
-        the custom tabs.  The actual progress animation is controlled
-        by the GUI thread, not by the forensic worker thread.
-        """
-        toolbar = tk.Frame(
-            parent,
-            bg="#BFC0C4",
-            height=32,
-            highlightbackground="#8B8D93",
-            highlightthickness=1
-        )
-        toolbar.pack_propagate(False)
-
-        controls = tk.Frame(toolbar, bg="#BFC0C4")
-        controls.pack(side=tk.RIGHT, fill=tk.Y, padx=5)
-
-        self.progress_status = tk.StringVar(value="Ready")
-        self.progress_var = tk.DoubleVar(value=0.0)
-
-        tk.Label(
-            controls,
-            text="Analysis:",
-            font=("Segoe UI", 8, "bold"),
-            bg="#BFC0C4",
-            fg="#1F2937"
-        ).pack(side=tk.LEFT, padx=(2, 4))
-
-        self.lbl_progress_status = tk.Label(
-            controls,
-            textvariable=self.progress_status,
-            font=("Segoe UI", 8),
-            bg="#BFC0C4",
-            fg="#1F2937",
-            width=17,
-            anchor="w"
-        )
-        self.lbl_progress_status.pack(side=tk.LEFT, padx=(0, 5))
-
-        style = ttk.Style()
-        try:
-            style.configure(
-                "ForenXAI.Horizontal.TProgressbar",
-                troughcolor="#E5E7EB",
-                background=self.BLUE,
-                bordercolor="#9CA3AF",
-                lightcolor=self.BLUE,
-                darkcolor=self.BLUE
-            )
-        except tk.TclError:
-            pass
-
-        self.progress_bar = ttk.Progressbar(
-            controls,
-            orient="horizontal",
-            mode="determinate",
-            maximum=100,
-            variable=self.progress_var,
-            style="ForenXAI.Horizontal.TProgressbar",
-            length=150
-        )
-        self.progress_bar.pack(side=tk.LEFT, padx=(0, 4))
-
-        self.lbl_progress_percent = tk.Label(
-            controls,
-            text="0%",
-            font=("Segoe UI", 8, "bold"),
-            bg="#BFC0C4",
-            fg="#1F2937",
-            width=4,
-            anchor="e"
-        )
-        self.lbl_progress_percent.pack(side=tk.LEFT, padx=(0, 6))
-
-        self.btn_clear = tk.Button(
-            controls,
-            text="Clear",
-            font=("Segoe UI", 8, "bold"),
-            bg="#9CA3AF",
-            fg="#111827",
-            activebackground="#6B7280",
-            activeforeground="white",
-            relief="flat",
-            padx=11,
-            pady=2,
-            cursor="hand2",
-            command=self.clear_analysis
-        )
-        self.btn_clear.pack(side=tk.LEFT)
-
-        return toolbar
 
     def _start_gui_progress_animation(self):
         """

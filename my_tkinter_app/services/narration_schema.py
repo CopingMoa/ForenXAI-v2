@@ -134,12 +134,35 @@ _ADJECTIVE = re.compile(
     r"|wide|narrow)(?![a-z])", re.I)
 
 
+# Nouns that are not feature magnitudes. An adjective on one of these is
+# not a judgement about a measured value -- it is a statement about the
+# model's own certainty, and the panel prints that figure too. Cutting
+# "low" out of "low confidence" leaves "confidence", asserting the opposite
+# of what the model wrote.
+_PROTECTED_NOUN = re.compile(
+    r"\s*(confidence|certainty|reliability|severity|probability|precision"
+    r"|recall|accuracy|score|f1|support|risk|priority|quality|margin"
+    r"|variance|correlation)\b", re.I)
+
+
 # Verbs that assert a feature backs the prediction. Used only to test
 # a NEGATIVE attribution, where such a verb contradicts the direction
 # the model was given.
 _SUPPORTS = re.compile(
     r"support|indicat|consistent with|typical of|characteristic of"
     r"|points to|evidence (?:for|of)|confirms|suggests", re.I)
+
+
+# Verbs that present a class as the one the model settled on, and words
+# that claim the decision was close. Used only against the chosen class
+# and the runner-up, which the panel supplies.
+_CHOSE = re.compile(
+    r"chose|chosen|selected|identified|classified as|top choice"
+    r"|most likely|primary|settled on|predicted|the answer is", re.I)
+
+_UNDECIDED = re.compile(
+    r"uncertain|undecided|not sure|close call|nearly tied|too close"
+    r"|could be either|ambiguous between|hard to separate", re.I)
 
 
 _MARKUP = re.compile(r"[*_`#>]+")
@@ -220,21 +243,42 @@ def neutralise_magnitude(text):
 
     Applied to the SHAP panel only: that is the panel where the comparison
     is supplied, so the adjective is always avoidable there.
+
+    TWO POSITIONS WHERE THE CUT IS NOT SAFE, AND SO IS NOT MADE
+    An adjective in predicate position carries the sentence, and an
+    adjective on a noun that is not a feature magnitude is not a magnitude
+    judgement at all. Both are left in place for check() to flag instead:
+    flagging a sentence is always better than rewriting it into a different
+    claim.
     """
+    text = text or ""
     removed = []
 
     def cut(m):
+        after = text[m.end():]
+        # Predicative position: nothing follows but punctuation or the end.
+        # "the gaps were unusually short." would become "the gaps were" --
+        # not a weaker claim, a broken sentence.
+        if not re.match(r"\s*[A-Za-z]", after):
+            return m.group(0)
+        # Modifying the model's own certainty, not a measurement.
+        if _PROTECTED_NOUN.match(after):
+            return m.group(0)
         removed.append(m.group(0).strip())
         return ""
 
-    out = _ADJECTIVE.sub(cut, text or "")
+    out = _ADJECTIVE.sub(cut, text)
     if not removed:
         return text, []
 
     # Tidy the seams: doubled spaces, a space before punctuation, and "an"
     # left in front of what is now a consonant.
     out = re.sub(r"[ 	]{2,}", " ", out)
-    out = re.sub(r"\s+([,.;:])", r"", out)
+    # The captured punctuation is restored. This held a literal
+    # 0x01 byte instead of the \1 backreference, so every space
+    # before a comma or full stop became an invisible control
+    # character and the sentences ran together on screen.
+    out = re.sub(r"\s+([,.;:])", r"\1", out)
     out = re.sub(r"(?<![a-z])an\s+(?=[bcdfghjklmnpqrstvwxyz])", "a ",
                  out, flags=re.I)
     return out.strip(), removed
@@ -242,7 +286,7 @@ def neutralise_magnitude(text):
 
 def check(narrative, prompt, sources_supplied, grounding_text=None,
           strict_mechanism=False, valid_references=None,
-          attributions=None):
+          attributions=None, decision=None):
     """
     Compare a narration against the input that produced it.
 
@@ -461,6 +505,65 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
                             "against'. The explanation is inverted.",
             })
 
+    # 9. The decision itself: which class the model chose, and how close it
+    #    was. Check 8 reads a feature's sign; this reads the framing sentence
+    #    around it, and nothing did before.
+    #
+    #    Measured on this corpus, one paragraph, no findings raised: "with
+    #    DoS being the top choice for 100% of the flows" on a finding whose
+    #    chosen class was Slowloris at 0.9999 and DoS the runner-up at
+    #    0.0001, and in the same paragraph "the model's classification is
+    #    uncertain between these two attack classes". The chosen class and
+    #    the runner-up swapped, and a decision made at a margin of 0.9998
+    #    described as uncertain. Both are inversions of a field supplied in
+    #    the prompt, both would mislead an investigator about what was
+    #    detected, and a feature-level check cannot see either.
+    if decision:
+        low = _flatten(text)
+        chosen = _flatten(decision.get("predicted") or "")
+        runner = _flatten(decision.get("runner_up") or "")
+
+        # The runner-up named as what the model settled on.
+        if runner and runner != chosen:
+            for m in re.finditer(re.escape(runner), low):
+                before = low[max(0, m.start() - 60):m.start()]
+                after = low[m.end():m.end() + 60]
+                if _CHOSE.search(before) or _CHOSE.search(after):
+                    findings.append({
+                        "check": "decision",
+                        "severity": "high",
+                        "detail": f"presents {decision['runner_up']!r} as the "
+                                  f"class the model settled on. It was the "
+                                  f"runner-up; the model chose "
+                                  f"{decision['predicted']!r}.",
+                    })
+                    break
+
+        # Uncertainty asserted on a decision that was not close. The margin
+        # is the number the prompt supplies; 0.15 is the same threshold the
+        # panel uses to decide whether to call a decision close at all.
+        # Not flagged when the finding is ambiguous ACROSS ITS GROUP. The
+        # representative row can lead by 0.9998 while the runner-up takes
+        # second place on every one of the finding's flows, and in that case
+        # the prompt itself instructs the model to call the pair uncertain.
+        # Reading the row's margin alone scored the model as inverting a
+        # field when it was following an instruction -- the check was
+        # comparing against the wrong scope.
+        conf = decision.get("confidence")
+        runner_conf = decision.get("runner_up_confidence")
+        if (conf is not None and runner_conf is not None
+                and not decision.get("group_ambiguous")):
+            margin = float(conf) - float(runner_conf)
+            if margin >= 0.15 and _UNDECIDED.search(low):
+                findings.append({
+                    "check": "decision",
+                    "severity": "high",
+                    "detail": f"calls the decision uncertain or close, but "
+                              f"the chosen class leads the runner-up by "
+                              f"{margin:.4f}. Nothing in the input says the "
+                              f"model was undecided.",
+                })
+
     in_text = _mechanisms_in(text)
     in_input = _mechanisms_in(prompt)
 
@@ -505,6 +608,81 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
                              else "medium" if findings else "none"),
     }
     return findings, stats
+
+
+# What each check means to a reader, rather than to the person who wrote it.
+#
+# The panel used to print the machinery: a fixed withholding paragraph, then
+# the verdict line, then one row per finding tagged "[high] anchors:" with a
+# count and a quoted fragment, then a provenance line carrying a token count
+# and a prompt hash. Five overlapping statements of one fact, in the
+# vocabulary of the checker rather than of the investigation -- and they
+# could contradict each other on their face, because the verdict counts
+# CLAIMS while the findings count steps and anchors.
+#
+# An investigator needs one sentence: what is missing, why, and whether the
+# rest of the panel can be trusted. The counts, severities, check names and
+# hashes stay on the panel for the saved case.
+_PLAIN = {
+    "anchors": "quoted wording that is not in the playbook it was given",
+    "citation": "named a source document it was never shown",
+    "figures": "stated a figure that is not in the capture",
+    "reference": "cited a reference number that does not exist",
+    "direction": "described evidence as pointing the opposite way to the "
+                 "measurement",
+    "mechanism": "named a protocol or behaviour it was not given",
+    "units": "expressed a contribution as a percentage, which SHAP values "
+             "are not",
+    "magnitude": "judged a quantity as large or small, where the measured "
+                 "comparison is printed below",
+}
+
+# What the reader can still rely on, per panel. Naming it is the point of the
+# sentence: withholding prose is only tolerable if what remains is complete.
+_REMAINS = {
+    "recommendations": "The steps and sources below are read from the "
+                       "playbook itself, so they are unaffected.",
+    "shap_explanation": "The figures and directions below are measured from "
+                        "the model, so they are unaffected.",
+    "flow_summary": "The counts below are computed from the predictions, so "
+                    "they are unaffected.",
+}
+
+
+def plain_reason(findings, panel_name=None, withheld=False):
+    """One human sentence for what the checks found, or None when clean.
+
+    Returns None if there is nothing to say, so the caller can print nothing
+    at all -- silence is the clean state, and a line saying "no problems" is
+    a line the reader has to process for no benefit.
+    """
+    findings = findings or []
+    if not findings:
+        return None
+
+    high = [f for f in findings if f.get("severity") == "high"]
+    chosen = high or findings
+
+    # Two reasons at most. A third adds length without changing what the
+    # reader does next, which is to read the evidence rather than the prose.
+    reasons, seen = [], set()
+    for f in chosen:
+        phrase = _PLAIN.get(f.get("check"))
+        if phrase and phrase not in seen:
+            seen.add(phrase)
+            reasons.append(phrase)
+        if len(reasons) == 2:
+            break
+    if not reasons:
+        return None
+
+    why = reasons[0] if len(reasons) == 1 else " and ".join(reasons)
+    remains = _REMAINS.get(panel_name, "The evidence below is unaffected.")
+
+    if withheld or high:
+        return ("The local model's summary is not shown, because it " + why
+                + ". " + remains)
+    return "One phrase was removed from the summary: the model " + why + "."
 
 
 def summary_line(stats, findings):
