@@ -818,7 +818,36 @@ class XaiTab:
         # classification can be trusted.
         divider_written = False
 
+        def evidence_blocks():
+            """Why the model chose this class -- shown after the finding.
+
+            Order on this panel is what was found, then why, then what to
+            do. Placed before the finding it read as an answer to a question
+            that had not been asked yet.
+            """
+            if not rec.get("evidence"):
+                return []
+            out = [("\nWHY THE MODEL CHOSE THIS CLASS\n", "h"),
+                   ("  Strongest evidence, in log-odds. Positive supports "
+                    "the class.\n", "muted")]
+            for a in rec["evidence"]:
+                out.append((f"    {a['contribution']:+7.3f}  {a['plain']}\n",
+                            "good" if a["contribution"] > 0 else "bad"))
+                out.append((f"             observed "
+                            f"{a.get('readable', a['raw_value'])}"
+                            f"  --  {a.get('magnitude', '')}\n", "muted"))
+            out.append(("  Full attributions are in Panel 2.\n\n", "muted"))
+            return out
+
+        evidence_pending = bool(rec.get("evidence"))
+
         for s in rec["sections"]:
+            # The evidence goes in once the finding has been stated, and
+            # before any guidance: found -> why -> what to do.
+            if evidence_pending and s.get("source"):
+                evidence_pending = False
+                blocks += evidence_blocks()
+
             if s.get("kind") == "model" and not divider_written:
                 divider_written = True
                 blocks.append((

@@ -1276,6 +1276,25 @@ def _citations_in(text):
     return out
 
 
+def readable_markup(text):
+    """Author's markup out, prose in.
+
+    The knowledge files cross-reference each other with `[[shap-reading]]`
+    wiki links and end with a "Related:" line. Both are navigation for
+    whoever maintains the documents; on screen they are noise, and in a
+    prompt they are something the model will copy into a sentence an
+    investigator then has to decode.
+
+    Links become their own words -- "[[class-ambiguity]]" reads as "class
+    ambiguity" -- and the trailing Related line is dropped entirely.
+    """
+    out = re.sub(r"^\s*Related:.*$", "", text or "", flags=re.M)
+    out = re.sub(r"\[\[([^\]]+)\]\]",
+                 lambda m: m.group(1).replace("-", " ").replace("_", " "),
+                 out)
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
+
+
 def digest_document(text):
     """A document reduced to what a panel should actually show.
 
@@ -1295,6 +1314,7 @@ def digest_document(text):
     The full document stays on disk and is named on screen, so nothing is
     hidden; it is simply not pasted into a text widget.
     """
+    text = readable_markup(text)
     outline, quotes, actions = [], [], []
     current_source = None
 
@@ -1312,12 +1332,22 @@ def digest_document(text):
         if h:
             outline.append(h.group(1))
 
-        # A prescriptive line: bolded lead-in, or an imperative bullet.
-        for line in section.split("\n"):
-            line = line.strip()
-            if re.match(r"^\*\*[A-Z][^*]{3,}\*\*", line) or \
-                    re.match(r"^[-*]\s+\*\*", line):
-                actions.append(re.sub(r"\*\*", "", line).strip("-* ").strip())
+        # A prescriptive statement: bolded lead-in, or an imperative bullet.
+        #
+        # Read as a whole SENTENCE, not a whole line. These documents wrap at
+        # 72 columns, so taking the line gave "Per-connection duration --
+        # long-lived connections carrying almost no" and stopped there.
+        for para in re.split(r"\n\s*\n", section):
+            flat = re.sub(r"\s+", " ", para).strip()
+            if not (re.match(r"^\*\*[A-Z][^*]{3,}\*\*", flat)
+                    or re.match(r"^[-*]\s+\*\*", flat)):
+                continue
+            flat = re.sub(r"\*\*", "", flat).strip("-* ").strip()
+            # The lead-in sentence is the instruction; what follows is
+            # rationale, and it belongs in the document rather than in a
+            # summary line.
+            m = re.match(r"(.+?[.!?])(?:\s|$)", flat)
+            actions.append((m.group(1) if m else flat).strip())
 
     return {"outline": outline, "quotes": quotes, "actions": actions[:8]}
 
@@ -1482,7 +1512,7 @@ def recommend(finding, detections=None, summary=None):
             references += [c for c in cites if c not in references]
             sections.append({
                 "heading": f"Guidance from {path}",
-                "body": text.strip(),
+                "body": readable_markup(text),
                 "source": path,
                 # Attached to the section, so a recommendation and the work
                 # it came from cannot be separated in rendering.
@@ -1531,7 +1561,7 @@ def recommend(finding, detections=None, summary=None):
         model_guidance.append(rule["id"])
         sections.append({
             "heading": rule["heading"],
-            "body": text.strip(),
+            "body": readable_markup(text),
             "source": rule["doc"],
             "citations": cites,
             "digest": digest_document(text),
@@ -1681,6 +1711,13 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
         "recommend": recommend(finding, shap_panel["detections"],
                                summary=summary),
     }
+
+    # Panel 3 carries the evidence its recommendation rests on, so the
+    # reader goes prediction -> why -> what to do without changing tabs.
+    # Taken from panel 2 rather than recomputed, so the two cannot disagree.
+    if result.get("shap") and result.get("recommend"):
+        det = (result["shap"].get("detections") or [{}])[0]
+        result["recommend"]["evidence"] = det.get("attributions", [])[:3]
 
     if narrate_with:
         # Narration runs on every analysis now, which makes this block the
