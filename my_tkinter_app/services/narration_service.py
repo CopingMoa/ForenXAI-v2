@@ -285,7 +285,56 @@ Do not explain what this attack class usually does. The class name is a
 label the model produced, not an observation of what protocol was carried."""
 
 
-def prompt_recommend(panel):
+def _playbook_for_prompt(text):
+    """The playbook with its headings removed.
+
+    Measured failure: the model returned six steps all anchored to
+    "From OWASP.A05.2025" -- a `## From <source>` heading copied straight
+    out of the document it was handed. The anchor check caught it and the
+    paragraph was withheld, which is right for a wrong answer but the wrong
+    thing to keep producing.
+
+    A heading is structure, not instruction, so it is not sent. What remains
+    is the prose and the quoted passages -- all a step can legitimately be
+    anchored to. The model cannot copy what it never saw.
+    """
+    kept = [ln for ln in text.splitlines()
+            if not re.match(r"\s*#{1,6}\s", ln)]
+    joined = chr(10).join(kept)
+    return re.sub(r"(?:\r?\n){3,}", chr(10) * 2, joined).strip()
+
+
+def _evidence_line(finding, shap):
+    """What was actually found, in one short block.
+
+    A recommendation that ignores the finding is generic advice. The class,
+    the confidence and the features that drove it are what make one step
+    matter more than another, so they are supplied -- and marked
+    unanchorable, because steps must still come from the playbook.
+    """
+    if not finding:
+        return ""
+    lines = [f"  class: {finding['class']}",
+             f"  flows: {finding['flow_count']:,} "
+             f"({finding['share_of_capture']:.1%} of the capture)",
+             f"  mean confidence: {finding['confidence_mean']:.2f}"]
+    if finding.get("reliability_f1") is not None:
+        lines.append(f"  held-out F1 for this class: "
+                     f"{finding['reliability_f1']} -- one of the weaker ones")
+    if finding.get("dominant_runner_up"):
+        lines.append(f"  runner-up {finding['dominant_runner_up']} on "
+                     f"{finding.get('dominant_runner_up_share', 0):.0%} of "
+                     f"these flows")
+    det = (shap or {}).get("detections") or []
+    if det:
+        lines.append("  strongest evidence the model used:")
+        for a in det[0].get("attributions", [])[:3]:
+            lines.append(f"    {a['contribution']:+.2f}  {a['plain']} "
+                         f"(observed {a.get('readable', a['raw_value'])})")
+    return chr(10).join(lines)
+
+
+def prompt_recommend(panel, finding=None, shap=None):
     """
     The retrieved playbook is the only source, and every step must show
     where in it the step came from.
@@ -325,8 +374,15 @@ that none should be inferred, and naming the files that are missing:
 
 Do not suggest any action of your own."""
 
-    docs = "\n\n".join(f"=== {s['source']} ===\n{s['body']}"
-                       for s in doc_sections)
+    # No filenames and no headings in the playbook text.
+    #
+    # Twice measured: with headings present the model anchored six steps to
+    # "From OWASP.A05.2025"; with headings stripped it anchored five to
+    # "incident_response/slowloris.md". It reaches for whatever looks like a
+    # label. Nothing structural is sent now -- only prose and quotes, which
+    # is the only thing a step may legitimately be anchored to.
+    docs = "\n\n----\n\n".join(_playbook_for_prompt(s["body"])
+                               for s in doc_sections)
 
     # The numbered references, so a step can point at one. The numbers are
     # the panel's own -- position in `references` -- so [2] in the prose and
@@ -345,7 +401,9 @@ Do not suggest any action of your own."""
     return f"""PLAYBOOK -- the only source you may use
 {docs}
 
-SITUATION -- this decides which of the playbook's steps matter here
+WHAT WAS FOUND -- this decides which of the playbook's steps matter here.
+Do not anchor to any of it; anchors come from the playbook only.
+{_evidence_line(finding, shap)}
 {chr(10).join('  ' + c for c in context)}
 
 TASK
@@ -426,7 +484,8 @@ def attach_references(text, panel):
 BUILDERS = {
     "flow_summary": lambda p, ctx: prompt_flow_summary(p),
     "shap_explanation": lambda p, ctx: prompt_shap(p, ctx["finding"]),
-    "recommendations": lambda p, ctx: prompt_recommend(p),
+    "recommendations": lambda p, ctx: prompt_recommend(
+        p, ctx.get("finding"), ctx.get("shap")),
 }
 
 
@@ -497,9 +556,14 @@ def narrate(panel, provider, context=None):
         #
         # Derived from the built prompt rather than from a second copy of
         # the builder's filter, so it cannot drift away from it.
-        supplied = [s["source"] for s in panel.get("sections", [])
-                    if s.get("source")
-                    and f"=== {s['source']} ===" in evidence]
+        # What the model was actually given. Panel 3 sends the response
+        # playbooks and nothing else; panels 1 and 2 send no documents at
+        # all. This used to be derived by looking for a "=== path ===" marker
+        # in the prompt, which stopped working when the markers were removed
+        # -- the model was anchoring steps to the filenames.
+        supplied = ([s["source"] for s in panel.get("sections", [])
+                     if s.get("source", "").startswith("incident_response/")]
+                    if name == "recommendations" else [])
 
         panel["narration_provenance"] = provenance(panel, prompt, usage,
                                                    supplied)
@@ -609,7 +673,8 @@ def narrate_all(result, provider, panels=DEFAULT_PANELS):
     for key in panels:
         panel = result.get(key)
         if isinstance(panel, dict):
-            narrate(panel, provider, {"finding": finding})
+            narrate(panel, provider,
+                    {"finding": finding, "shap": result.get("shap")})
 
     result["narrated_panels"] = list(panels)
     return result

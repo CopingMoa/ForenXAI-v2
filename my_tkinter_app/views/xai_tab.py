@@ -295,6 +295,58 @@ class XaiTab:
     # ========================================================
 
     @staticmethod
+    def _step_blocks(text):
+        """Lay out the recommendation steps for a reader, not a debugger.
+
+        The model returns markdown bold and an `ANCHOR:` line per step. Both
+        are machinery: the asterisks render literally in a Text widget, and
+        the anchor is provenance rather than instruction. So the step is
+        shown as a numbered sentence with its reference markers, and the
+        anchor is demoted to a quiet line beneath it -- still visible,
+        because it is what makes the step checkable, but no longer competing
+        with the advice for the reader's attention.
+        """
+        import re as _re
+
+        blocks, step = [], 0
+        for para in _re.split(r"\n\s*\n", text.strip()):
+            para = para.strip()
+            if not para:
+                continue
+
+            if para.lower().startswith("not covered"):
+                blocks.append(("\n  Not covered by this playbook\n", "h"))
+                body = para.split(":", 1)[-1].strip()
+                blocks.append((f"    {body}\n", "muted"))
+                continue
+
+            anchor = ""
+            m = _re.search(r"ANCHOR:\s*(.+?)\s*$", para, _re.M | _re.I)
+            if m:
+                anchor = m.group(1).strip()
+                para = para[:m.start()].strip()
+
+            # Markers travel with the sentence, not with the anchor.
+            markers = "".join(_re.findall(r"\[\d{1,2}\]", anchor))
+            anchor = _re.sub(r"\s*\[\d{1,2}\]", "", anchor).strip()
+
+            sentence = _re.sub(r"\*\*|__", "", para).strip()
+            sentence = _re.sub(r"^\s*\d+[.)]\s*", "", sentence).strip()
+            sentence = _re.sub(r"\s+", " ", sentence)
+            if not sentence:
+                continue
+
+            step += 1
+            blocks.append((f"  {step}. {sentence} {markers}\n".rstrip() + "\n",
+                           None))
+            if anchor:
+                blocks.append((f"       from the playbook: \"{anchor}\"\n",
+                               "muted"))
+            blocks.append(("\n", None))
+
+        return blocks
+
+    @staticmethod
     def _narration_blocks(panel):
         """
         The model's paragraph, above the evidence it describes.
@@ -315,7 +367,11 @@ class XaiTab:
         if not text and not withheld:
             return []
 
-        if text:
+        if text and "ANCHOR:" in text.upper():
+            out = [("RECOMMENDED STEPS  (written by a local model from the "
+                    "playbook below)\n\n", "h")]
+            out += XaiTab._step_blocks(text)
+        elif text:
             out = [
                 ("PLAIN ENGLISH  (written by a local model from the figures "
                  "below)\n", "h"),
