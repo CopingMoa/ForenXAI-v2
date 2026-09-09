@@ -134,6 +134,14 @@ _ADJECTIVE = re.compile(
     r"|wide|narrow)(?![a-z])", re.I)
 
 
+# Verbs that assert a feature backs the prediction. Used only to test
+# a NEGATIVE attribution, where such a verb contradicts the direction
+# the model was given.
+_SUPPORTS = re.compile(
+    r"support|indicat|consistent with|typical of|characteristic of"
+    r"|points to|evidence (?:for|of)|confirms|suggests", re.I)
+
+
 _MARKUP = re.compile(r"[*_`#>]+")
 
 
@@ -233,7 +241,8 @@ def neutralise_magnitude(text):
 
 
 def check(narrative, prompt, sources_supplied, grounding_text=None,
-          strict_mechanism=False, valid_references=None):
+          strict_mechanism=False, valid_references=None,
+          attributions=None):
     """
     Compare a narration against the input that produced it.
 
@@ -422,6 +431,35 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
         # verified anchor, so the model is told not to write them -- this
         # check would fire on every correct answer. What stays is the case
         # that still matters: a number that resolves to nothing.
+
+    # 8. Direction. A feature marked "argues against" described as
+    #    supporting the class contradicts a field the model was handed.
+    #    Caught on a sibling implementation: Subflow Bwd Bytes at -1.43,
+    #    direction "argues against", narrated as "typical of Slowloris".
+    #    The sign is in the prompt; reading it backwards is not a wording
+    #    slip, it inverts the explanation.
+    if attributions:
+        low = _flatten(text)
+        flipped = []
+        for a in attributions:
+            if a.get("contribution", 0) >= 0:
+                continue
+            name = _flatten(a.get("plain") or a.get("feature") or "")
+            if not name or name not in low:
+                continue
+            at = low.index(name) + len(name)
+            window = low[at:at + 90]
+            if _SUPPORTS.search(window):
+                flipped.append(a.get("plain") or a.get("feature"))
+        if flipped:
+            findings.append({
+                "check": "direction",
+                "severity": "high",
+                "detail": "describes " + ", ".join(flipped[:3])
+                          + " as supporting the class, but the attribution "
+                            "is negative and was supplied as 'argues "
+                            "against'. The explanation is inverted.",
+            })
 
     in_text = _mechanisms_in(text)
     in_input = _mechanisms_in(prompt)

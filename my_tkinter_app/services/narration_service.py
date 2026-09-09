@@ -156,17 +156,34 @@ MAX_TOKENS = {"flow_summary": 400, "shap_explanation": 700,
 
 def _facts_block(facts):
     """The numbers the model may use, and nothing else."""
-    keep = ("total_flows", "benign_flows", "attack_flows", "attack_share",
-            "distinct_attack_classes", "mean_confidence",
-            "low_confidence_flows", "flow_timeout_warning")
-    lines = [f"  {k}: {facts[k]}" for k in keep if k in facts]
+    # Labels, not field names.
+    #
+    # Two failures come from handing a model a raw key/value dump. It echoes
+    # the key -- "the flow_timeout_warning is true" is not a sentence an
+    # investigator should read -- and a boolean is the easiest thing in the
+    # block to invert, because "flow_timeout_warning: False" contains the
+    # word the model is looking for. A reviewer caught exactly that on a
+    # sibling implementation: a false flag reported as true, telling the
+    # investigator to discard a sound capture.
+    #
+    # So the keys are described, and the flag is not a field at all.
+    LABELS = {
+        "total_flows": "flows in the capture",
+        "benign_flows": "classified benign",
+        "attack_flows": "classified as attack traffic",
+        "attack_share": "attack share of the capture",
+        "distinct_attack_classes": "distinct attack classes present",
+        "mean_confidence": "mean confidence across all flows",
+        "low_confidence_flows": "flows below the 0.60 review threshold",
+    }
+    lines = [f"  {LABELS[k]}: {facts[k]}" for k in LABELS if k in facts]
 
-    # low_confidence_flows is a count against a threshold, and the panel
-    # states that threshold on screen. Supplying the count without it left
-    # the model to name 0.60 from nowhere -- correct prose, scored as an
-    # invented figure, panel withheld.
-    if "low_confidence_flows" in facts:
-        lines.append("  low_confidence_threshold: 0.60")
+    # Stated only when it is TRUE, and stated as a sentence. A flag that is
+    # absent cannot be misread; a flag printed as "False" can.
+    if facts.get("flow_timeout_warning"):
+        lines.append("  WARNING: the longest flow is almost exactly the "
+                     "extractor's default timeout, so every timing feature "
+                     "in this capture may be truncated. Say this.")
 
     w = facts.get("capture_window")
     if w:
@@ -224,7 +241,11 @@ def prompt_shap(panel, finding):
         # rates it high rather than medium, because it was never supplied.
         plain = re.sub(r"\s*\([^)]*\b(?:SSH|HTTP|HTTPS|DNS|FTP|SMTP|TLS)\b"
                        r"[^)]*\)", "", a["plain"])
-        rows.append(f"  {a['contribution']:+.3f}  {plain}")
+        # `direction` is stated, not left to be read off the sign. A
+        # reviewer caught a sibling implementation describing a feature
+        # marked "argues against" as supporting the class -- the sign was
+        # there to be read and the model read it backwards.
+        rows.append(f"  {a['contribution']:+.3f}  [{a['direction']}]  {plain}")
         rows.append(f"           observed: {a.get('readable', a['raw_value'])}"
                     f"  --  {a.get('magnitude', 'no comparison available')}")
         if a.get("caution"):
@@ -592,10 +613,16 @@ def narrate(panel, provider, context=None):
         valid_refs = ([m["n"] for m in panel.get("reference_map") or []]
                       if name == "recommendations" else None)
 
+        # The attributions the SHAP panel showed, so a sentence can be
+        # tested against the direction each one was supplied with.
+        attrs = ((panel.get("detections") or [{}])[0].get("attributions")
+                 if name == "shap_explanation" else None)
+
         findings, stats = check(panel["narrative"], evidence, supplied,
                                 grounding_text=grounding,
                                 strict_mechanism=(name == "shap_explanation"),
-                                valid_references=valid_refs)
+                                valid_references=valid_refs,
+                                attributions=attrs)
         panel["narration_findings"] = findings
         panel["narration_stats"] = stats
         panel["narration_verdict"] = summary_line(stats, findings)
