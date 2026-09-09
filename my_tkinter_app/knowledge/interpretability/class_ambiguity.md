@@ -1,7 +1,7 @@
 # When two classes are indistinguishable
 
-> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
-> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
+> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
+> Source: S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C. Krishna Mohan, Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Cham, Switzerland: Springer Nature, 2025, doi: 10.1007/978-3-031-89327-8.
 >
 > Retrieved: 2026-09-08
 
@@ -35,10 +35,10 @@ them.
 
 ## 3. Why this is a feature-set limit, not a training failure
 
-## From USENIX.dosdonts
+## From Arp.cacm
 
 > Spurious correlations result from artifacts that correlate with the task
-> to solve but are not actually related to it, leading to false
+> to solve but are not actually re - lated to it, leading to false
 > associations.
 
 The mirror of that problem is this one: where two classes share their
@@ -53,21 +53,20 @@ The model separates *statistical patterns in flow records*. The class names
 are labels a human attached to those patterns. Where two attack techniques
 produce one pattern, the label is a distinction the data does not carry.
 
-Rarity makes it worse. A class the model saw little of is the one it
-separates worst:
+Rarity plausibly makes it worse, and that claim is **not** sourced here: it
+is this project's reading of its own per-class F1 figures, and no document
+in `knowledge/_sources` states it. Treat it as a hypothesis about this
+model, not a finding.
 
-## From Arslan.mits
+What the sources do support is why an ambiguous pair is reported rather
+than resolved. An explanation exists so a person can find the model's
+error, not so the model can settle the question:
 
-> Class imbalance is a critical issue in network intrusion detection.
-> Normal traffic is much higher than attack traffic; rare types of attacks
-> are even less represented [17]. This limitation has also been discussed
-> in the literature [73]. This imbalance causes standard machine learning
-> algorithms to gravitate towards the majority class; resulting in low
-> sensitivity for minority classes.
+## From Iyengar.aip
 
-Low sensitivity for a minority class is exactly what an ambiguous pair
-looks like from the analyst's seat: the weaker of the two loses, and it
-loses consistently.
+> By grasping the AI's decisions, forensic experts can pinpoint where the
+> AI might be going wrong. They can identify potential errors in the
+> reasoning and fix them before they cause a wrongful conviction.
 
 ## 5. What to do
 
@@ -83,6 +82,8 @@ loses consistently.
 Neither source gives a threshold for when a runner-up share makes two
 classes "ambiguous" — the margin used by this tool is its own convention.
 Neither addresses how to word a forensic finding covering two candidate
-classes. Both are yours to set.
+classes. Neither states that a rare class is separated worse than a common
+one, which is why §4 above marks that as unsourced. All three are yours to
+set.
 
 Related: [[reliability]], [[confidence]], [[shap-reading]]

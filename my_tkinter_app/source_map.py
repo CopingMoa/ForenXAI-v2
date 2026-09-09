@@ -54,6 +54,19 @@ for folder in ("incident_response", "interpretability", "datasets",
             elif k not in cite_keys:
                 problems.append(f"{folder}/{name}: quotes {k} but does not "
                                 f"cite it in the header")
+        # knowledge/interpretability must draw on knowledge/_sources and
+        # nothing else. A citation there is therefore not allowed to be
+        # decorative: whatever the file cites it must also quote, so that
+        # `fetch_knowledge.py --verify` traces the passage back to the
+        # document. A cited-but-unquoted source is a paraphrase from
+        # somewhere the checker cannot see, which is the case this rule
+        # exists to catch.
+        if folder == "interpretability":
+            for k in sorted(cite_keys - set(keys)):
+                problems.append(f"{folder}/{name}: cites {k} but never "
+                                f"quotes it -- interpretability files may "
+                                f"only draw on _sources")
+
         if not cites and folder != "features":
             problems.append(f"{folder}/{name}: no citation at all")
 

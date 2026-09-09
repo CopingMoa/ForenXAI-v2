@@ -10,3 +10,11 @@ my_tkinter_app/knowledge/_sources/*.txt
 my_tkinter_app/knowledge/_sources/*.html
 my_tkinter_app/knowledge/_sources/*.json
 !my_tkinter_app/knowledge/_sources/manifest.json
+
+# Extracted-text cache for the cited sources. Content-addressed and rebuilt
+# on demand; 5 MB of derived data that must not be reviewed as source.
+my_tkinter_app/knowledge/_sources/.cache/
+
+# Case output. Now written to a per-run temp workspace and deleted on exit;
+# these are leftovers from before that change.
+my_tkinter_app/ForenXAI_Cases/

@@ -57,23 +57,51 @@ class XaiTab:
         # started yet, and a background analysis can finish before it has.
         self._results = queue.Queue()
 
-        # Plain-English narration from a LOCAL model, off until asked for.
-        # The numbers, labels and citations are on screen either way --
-        # narration is additive, so a missing model costs prose, not
-        # evidence.
-        self.narrate = tk.BooleanVar(value=False)
-
-        # Panel 3 is deterministic by default even when narration is on.
-        # It quotes a response playbook verbatim with its source, and a
-        # quote cannot be invented -- asking a model to reword it buys
-        # presentation and risks the guarantee the panel exists to provide.
-        self.narrate_recommend = tk.BooleanVar(value=False)
+        # Narration is part of the pipeline, not a setting.
+        #
+        # It used to be two checkboxes, both off. That made the plain-English
+        # layer something a user had to know to ask for, and it meant the
+        # panels an investigator saw depended on a preference rather than on
+        # the evidence. All three panels are narrated, every run.
+        #
+        # What has NOT changed is that narration is additive: every number,
+        # label, quote and citation is computed and rendered without it, so
+        # an unavailable model costs prose and never evidence. That is now
+        # enforced rather than offered -- see _compute(), which still builds
+        # the panels when the provider cannot be reached.
         self.provider_name = "ollama"
 
         self.frame = tk.Frame(notebook, bg=BG)
         notebook.add(self.frame, text="SHAP & Human Review")
 
         self._build_ui()
+        self._warm_source_cache()
+
+    @staticmethod
+    def _warm_source_cache():
+        """Extract and cache the source PDFs in the background, at start-up.
+
+        Turning 3.7M characters of PDF into text costs about 30 seconds the
+        first time. Left to the first finding, that 30 seconds lands in the
+        middle of an analysis and reads as a hang. Done here it overlaps
+        with the user choosing a capture, and every later verification is a
+        0.2 s disk read.
+
+        Daemon, and failures are swallowed on purpose: a warm cache is an
+        optimisation, and source_guard rebuilds anything missing on demand.
+        """
+        def work():
+            try:
+                from services.source_guard import (normalised_source,
+                                                   raw_source)
+                import fetch_knowledge as fk
+                for key in fk.SOURCES:
+                    normalised_source(key)
+                    raw_source(key)
+            except Exception:
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
 
     # ========================================================
     # UI CONSTRUCTION
@@ -101,30 +129,29 @@ class XaiTab:
         )
         self.lbl_xai_summary.pack(side=tk.LEFT, padx=10, pady=6)
 
-        # [UI CONNECTION: ticking this re-runs the panels with narration.
-        #  It costs about 20 s locally on qwen2.5:3b, so it is opt-in
-        #  rather than automatic.]
-        self.chk_narrate = tk.Checkbutton(
-            bar, text="Explain in plain English (local model)",
-            variable=self.narrate, command=self._on_narrate_toggled,
-            bg=PANEL, fg=MUTED, selectcolor=TEXT_BG,
-            activebackground=PANEL, activeforeground=FG,
-            font=("Segoe UI", 9), relief="flat", bd=0,
-            highlightthickness=0
+        # Narration is stated, not offered. The checkboxes that used to sit
+        # here made the plain-English layer opt-in; it now runs on every
+        # panel, so what belongs in the bar is a label saying which model
+        # wrote the prose and that it is checked before it is shown.
+        self.lbl_narrator = tk.Label(
+            bar, text="Plain English by qwen2.5:3b (local) - every claim "
+                      "checked against the evidence",
+            bg=PANEL, fg=MUTED, font=("Segoe UI", 9)
         )
-        self.chk_narrate.pack(side=tk.RIGHT, padx=(12, 4))
+        self.lbl_narrator.pack(side=tk.RIGHT, padx=(12, 8))
 
-        # Separate, and deliberately harder to reach: rewording a quoted
-        # playbook is a different decision from explaining a number.
-        self.chk_narrate_rec = tk.Checkbutton(
-            bar, text="...including recommendations",
-            variable=self.narrate_recommend,
-            command=self._on_narrate_toggled,
-            bg=PANEL, fg=MUTED, selectcolor=TEXT_BG,
-            activebackground=PANEL, activeforeground=FG,
-            font=("Segoe UI", 8), relief="flat", bd=0, highlightthickness=0
+        # Appears only when a retrieved document's quotes no longer match the
+        # PDF they name. Repair is never automatic: it edits a sourced file,
+        # so it is a decision someone takes and sees the result of.
+        self._quarantined = []
+        self.btn_repair = tk.Button(
+            bar, text="Repair quoted sources", command=self._on_repair,
+            state=tk.DISABLED, bg=PANEL, fg=MUTED,
+            activebackground=TEXT_BG, activeforeground=FG,
+            font=("Segoe UI", 9), relief="flat", bd=0,
+            highlightthickness=0, cursor="hand2"
         )
-        self.chk_narrate_rec.pack(side=tk.RIGHT, padx=(0, 6))
+        self.btn_repair.pack(side=tk.RIGHT, padx=(0, 10))
 
         # The three panels get their own notebook so each has the full
         # width. Stacked vertically none of them is tall enough to read.
@@ -283,17 +310,44 @@ class XaiTab:
             ]
 
         text = panel.get("narrative")
-        if not text:
+        withheld = panel.get("narration_withheld")
+
+        if not text and not withheld:
             return []
 
-        out = [
-            ("PLAIN ENGLISH  (written by a local model from the figures "
-             "below)\n", "h"),
-            (text.strip() + "\n", None),
-        ]
+        if text:
+            out = [
+                ("PLAIN ENGLISH  (written by a local model from the figures "
+                 "below)\n", "h"),
+                (text.strip() + "\n", None),
+            ]
+        else:
+            # A suppressed paragraph used to render as nothing at all, which
+            # is the one outcome the reader must not be left with: it looks
+            # identical to narration being switched off. Withholding is a
+            # RESULT -- the model asserted something that could not be
+            # traced -- so it is reported, with the reason below and the
+            # text itself kept in the case file for audit.
+            out = [
+                ("PLAIN ENGLISH  (withheld)\n", "h"),
+                ("  The local model's paragraph was not displayed because a "
+                 "claim in it could not be traced to what the model was "
+                 "given. The evidence below is unaffected and complete; the "
+                 "withheld text is kept in the saved case.\n", "warn"),
+            ]
 
         if panel.get("narration_note"):
             out.append((f"  {panel['narration_note']}\n", "warn"))
+
+        # An edit to model output must never be silent. Say what was cut and
+        # why; the unedited text is kept on the panel for the saved case.
+        if panel.get("narration_edits"):
+            cut = ", ".join(f'"{w}"' for w in panel["narration_edits"])
+            out.append((
+                f"  Removed from the text above: {cut} -- judgement words "
+                f"about a quantity, where the measured comparison against "
+                f"the training data is given with each value below.\n",
+                "warn"))
 
         # The verdict is the point of the transparency layer: a reader must
         # be able to tell a narration whose every figure traces to the input
@@ -396,8 +450,13 @@ class XaiTab:
         try:
             result = build_panels(
             csv_path, source, finding_index=0,
-            narrate_with=self.provider_name if self.narrate.get() else None,
-            narrate_panels=self._panels_to_narrate())
+            narrate_with=self.provider_name,
+            narrate_panels=self._panels_to_narrate(),
+            # So the flow table can be checked against the capture actually
+            # loaded, not merely against the path the extractor recorded.
+            # The digest is reused from the case rather than recomputed.
+            current_pcap=current_case.get("pcap_path"),
+            current_pcap_sha=current_case.get("pcap_sha256"))
         except Exception as e:                      # never lose a worker crash
             result = {"error": f"{type(e).__name__}: {e}"}
         self._results.put(("all", result))
@@ -415,6 +474,18 @@ class XaiTab:
             return
 
         self.panels = result
+
+        # A model that could not be reached is a fact about the run, not a
+        # detail for a log file: the panels below are the deterministic
+        # ones, and the reader has to know that is all they are.
+        if result.get("narration_unavailable"):
+            self._write(self.txt_summary, [
+                ("PLAIN ENGLISH\n", "h"),
+                (f"  unavailable: {result['narration_unavailable']}\n"
+                 "  The panels below are unchanged -- narration is "
+                 "additive.\n\n", "warn"),
+            ])
+
         self._render_summary(result["summary"])
         self._render_findings(result["findings"])
 
@@ -429,7 +500,7 @@ class XaiTab:
     def _render_summary(self, summary):
         """[UI CONNECTION: facts -> stat lines, lines -> prose]"""
         f = summary["facts"]
-        blocks = [("FLOW SUMMARY\n\n", "h")]
+        blocks = self._narration_blocks(summary) + [("FLOW SUMMARY\n\n", "h")]
 
         for line in summary["lines"]:
             if line.startswith("WARNING"):
@@ -443,6 +514,101 @@ class XaiTab:
             bar = "#" * max(1, int(28 * n / total))
             blocks.append((f"  {cls:<16}{n:>6,}  {bar}\n",
                            "good" if cls == "Benign" else None))
+
+        # The evidence this all came from, in the panel rather than only in
+        # the header labels -- a saved or screenshotted panel has to identify
+        # its own capture.
+        case = self.current_case or {}
+        pcap = case.get("pcap_path")
+        if pcap:
+            blocks.append(("\nEVIDENCE\n", "h"))
+            blocks.append((f"  file      {os.path.basename(pcap)}\n", None))
+            try:
+                size = os.path.getsize(pcap)
+                blocks.append((f"  size      {size:,} bytes "
+                               f"({size / 1e6:,.1f} MB)\n", "muted"))
+            except OSError:
+                pass
+            if case.get("pcap_sha256"):
+                blocks.append((f"  SHA-256   {case['pcap_sha256']}\n",
+                               "muted"))
+            csv_name = os.path.basename(case.get("generated_csv_path") or "-")
+            blocks.append((f"  flow table {csv_name}\n", "muted"))
+
+        # Whether this flow table was made from THIS capture. Every other
+        # figure on the panel is recomputed from the table, so a table from
+        # another capture would satisfy all of them and still be wrong.
+        link = summary.get("capture_link") or {}
+        if link:
+            state = link.get("state")
+            label = {"verified": "VERIFIED against this capture",
+                     "mismatch": "MISMATCH -- NOT from this capture",
+                     "unrecorded": "not recorded"}.get(state, state)
+            tag = {"verified": "good", "mismatch": "bad"}.get(state, "warn")
+            blocks.append((f"  chain     {label}\n", tag))
+            blocks.append((f"            {link.get('detail', '')}\n", "muted"))
+            for name, ok in link.get("checks", []):
+                blocks.append((f"            {'ok  ' if ok else 'FAIL'} "
+                               f"{name}\n", "good" if ok else "bad"))
+
+        inv = f.get("inventory") or {}
+        if inv:
+            blocks.append(("\nNETWORK INVENTORY\n", "h"))
+            blocks.append((
+                f"  hosts         {inv.get('distinct_sources', '-')} source"
+                f"(s), {inv.get('distinct_targets', '-')} target(s)\n"
+                f"  conversations {inv.get('distinct_conversations', '-')} "
+                f"distinct source-to-target pairs\n"
+                f"  ports         {inv.get('distinct_dst_ports', '-')} "
+                f"destination, {inv.get('distinct_src_ports', '-')} source\n",
+                None))
+
+            if inv.get("protocols"):
+                blocks.append(("  protocols     " + ", ".join(
+                    f"{p['name']} {p['flows']:,}"
+                    for p in inv["protocols"]) + "\n", None))
+
+            b, p = inv.get("bytes"), inv.get("packets")
+            if b:
+                blocks.append((
+                    f"  volume        {b['total']:,} bytes "
+                    f"({b['total'] / 1e6:,.2f} MB) -- "
+                    f"{b['forward']:,} forward, {b['backward']:,} backward\n",
+                    None))
+            if p:
+                blocks.append((
+                    f"  packets       {p['total']:,} -- {p['forward']:,} "
+                    f"forward, {p['backward']:,} backward\n", None))
+
+            if inv.get("top_conversations"):
+                blocks.append(("\n  Busiest conversations\n", "muted"))
+                for c in inv["top_conversations"]:
+                    blocks.append((f"    {c['pair']:<34}{c['flows']:>7,} "
+                                   f"flows\n", None))
+
+        # Who is actually implicated. "1,283 attack flows" does not say how
+        # many hosts that involves, which is the first question asked.
+        ai, ae = f.get("attack_inventory") or {}, f.get("attack_endpoints") or {}
+        if ai:
+            blocks.append(("\nHOSTS INVOLVED IN ATTACK FLOWS\n", "h"))
+            blocks.append((
+                f"  {ai.get('flows', 0):,} attack flows across "
+                f"{ai.get('distinct_sources', '-')} source(s) and "
+                f"{ai.get('distinct_targets', '-')} target(s), "
+                f"{ai.get('distinct_conversations', '-')} conversation(s)\n",
+                None))
+            for role, label in (("sources", "Attacking sources"),
+                                ("targets", "Targets")):
+                if ae.get(role):
+                    blocks.append((f"\n  {label}\n", "muted"))
+                    for e in ae[role]:
+                        blocks.append((f"    {e['address']:<24}"
+                                       f"{e['flows']:>7,} flows\n", "warn"))
+            if ae.get("ports"):
+                blocks.append(("\n  Ports targeted\n", "muted"))
+                for e in ae["ports"]:
+                    blocks.append((f"    {e['port']:<24}{e['flows']:>7,} "
+                                   f"flows\n", None))
 
         if "longest_flow_seconds" in f:
             blocks.append(("\nFLOW DURATION\n", "h"))
@@ -470,7 +636,7 @@ class XaiTab:
 
     def _render_shap(self, shap_panel, finding):
         """[UI CONNECTION: attributions -> bars; `plain` is the label]"""
-        blocks = [
+        blocks = self._narration_blocks(shap_panel) + [
             (f"WHY THIS IS {finding['class'].upper()}\n\n", "h"),
             (f"{finding['flow_count']:,} flows, mean confidence "
              f"{finding['confidence_mean']:.2f}\n", None),
@@ -504,7 +670,56 @@ class XaiTab:
             blocks.append((
                 f"predicted {d['predicted']} at {d['confidence']:.3f}; "
                 f"runner-up {d['runner_up']} at "
-                f"{d['runner_up_confidence']:.3f}\n\n", None))
+                f"{d['runner_up_confidence']:.3f}\n", None))
+
+            # 1. WHAT THE MODEL OUTPUT -- before any explanation of it.
+            mo = d.get("model_output") or {}
+            if mo.get("probabilities"):
+                blocks.append(("\n  MODEL OUTPUT  (XGBoost predict_proba, "
+                               "16 classes)\n", "h"))
+                for p in mo["probabilities"]:
+                    mark = " <- predicted" if p["class"] == d["predicted"] \
+                        else ""
+                    blocks.append((
+                        f"    {p['class']:<16}{p['probability']:>12.6f}"
+                        f"{mark}\n",
+                        "good" if mark else "muted"))
+                blocks.append((
+                    f"    {'raw margin':<16}{mo['margin']:>12.6f}   "
+                    f"(log-odds, before softmax)\n", None))
+
+            # 2. DOES THE EXPLANATION RECONSTRUCT IT -- shown, not asserted.
+            sc = d.get("shap_check") or {}
+            if sc:
+                ok = sc["agrees"] and sc["reconstruction_picks_predicted"]
+                blocks.append(("\n  TreeSHAP CONSISTENCY CHECK\n", "h"))
+                blocks.append((
+                    f"    base value           {sc['base_value']:>12.6f}\n"
+                    f"  + sum of all {sc['features_total']} features "
+                    f"{sc['sum_all_features']:>12.6f}\n"
+                    f"  = reconstructed       {sc['reconstructed_margin']:>12.6f}\n"
+                    f"    model margin        {sc['model_margin']:>12.6f}\n",
+                    None))
+                blocks.append((
+                    f"    difference          {sc['additivity_error']:>12.2e}"
+                    f"   {'AGREES' if ok else 'DOES NOT AGREE'}\n",
+                    "good" if ok else "bad"))
+                blocks.append((
+                    f"    reconstruction picks the predicted class: "
+                    f"{'yes' if sc['reconstruction_picks_predicted'] else 'NO'}"
+                    f"\n", "good" if sc["reconstruction_picks_predicted"]
+                    else "bad"))
+                blocks.append((
+                    f"    the {sc['features_shown']} features below carry "
+                    f"{sc['shown_share_of_total']:.1%} of the total "
+                    f"attribution weight\n", "muted"))
+                if not ok:
+                    blocks.append((
+                        "    These attributions do not reconstruct this "
+                        "model's decision. Do not read them as an "
+                        "explanation of it.\n", "bad"))
+
+            blocks.append(("\n  ATTRIBUTIONS\n", "h"))
 
             top = max(abs(a["contribution"]) for a in d["attributions"]) or 1
             for a in d["attributions"]:
@@ -515,8 +730,13 @@ class XaiTab:
                 blocks.append((f"{a['contribution']:+7.3f}  {a['plain']}\n",
                                None))
                 blocks.append((
-                    f"  {'':<19}         value {a['raw_value']:,.4f}\n",
+                    f"  {'':<19}         value {a['raw_value']:,.4f}"
+                    + (f" {a['unit']}" if a.get("unit") else "") + "\n",
                     "muted"))
+                if a.get("caution"):
+                    blocks.append((
+                        f"  {'':<19}         CAUTION: {a['caution']}\n",
+                        "warn"))
 
             if d["class_typical"]:
                 blocks.append((
@@ -527,7 +747,8 @@ class XaiTab:
 
     def _render_recommend(self, rec):
         """[UI CONNECTION: sections -> headed blocks, citations -> sources]"""
-        blocks = [(f"RECOMMENDATIONS -- {rec['class']}\n\n", "h")]
+        blocks = self._narration_blocks(rec) + [
+            (f"RECOMMENDATIONS -- {rec['class']}\n\n", "h")]
 
         # No MITRE ATT&CK line. ATT&CK describes host-observed adversary
         # behaviour; this tool sees flow records, which cannot establish it.
@@ -556,7 +777,30 @@ class XaiTab:
 
             blocks.append((f"{s['heading'].upper()}\n",
                            "warn" if s["heading"] == "Ambiguity" else "h"))
-            blocks.append((s["body"] + "\n\n", None))
+
+            # A retrieved document is shown as its shape, its prescriptive
+            # lines and its verified quotes -- not pasted in full. Nine
+            # documents in full ran to about 30,000 characters, and burying
+            # the two lines that matter inside that is a way of not saying
+            # them. The file is named so it can be opened.
+            dg = s.get("digest")
+            if dg and s.get("source"):
+                if dg["outline"]:
+                    blocks.append(("  sections: " + " | ".join(dg["outline"])
+                                   + "\n", "muted"))
+                for a in dg["actions"]:
+                    blocks.append((f"    - {a}\n", None))
+                for q in dg["quotes"]:
+                    blocks.append((f"\n    quoted from {q['source']}:\n",
+                                   "muted"))
+                    blocks.append((f"      \"{q['text']}\"\n", "good"))
+                blocks.append((f"\n  full document: knowledge/{s['source']}"
+                               f"  ({len(s['body'].split()):,} words, "
+                               f"{s.get('quotes_verified', 0)} quote(s) "
+                               f"verified against source)\n", "muted"))
+                blocks.append(("\n", None))
+            else:
+                blocks.append((s["body"] + "\n\n", None))
 
         # Every recommendation is shown with the work it came from. A
         # response step without its source is an assertion; with the
@@ -576,6 +820,29 @@ class XaiTab:
                     "  No IEEE citation found in the quoted file. Add a "
                     "'> Source:' line to its provenance header.\n", "warn"))
 
+        # A document whose quotes no longer match the PDF it names is a
+        # provenance failure, not a formatting one, and the reader has to be
+        # told which document and why -- it is the only signal that the
+        # evidence chain behind a recommendation has broken.
+        self._quarantined = rec.get("unverified_documents") or []
+        self.btn_repair.config(
+            state=tk.NORMAL if self._quarantined else tk.DISABLED,
+            fg=BAD if self._quarantined else MUTED)
+
+        for u in self._quarantined:
+            blocks.append(("\nWITHHELD -- QUOTES DO NOT MATCH THE SOURCE\n",
+                           "h"))
+            blocks.append((f"  {u['source']} was not shown. Its quoted "
+                           f"passages were checked against the source PDF on "
+                           f"disk and did not match:\n", "bad"))
+            for f in u["verification"]["failures"][:3]:
+                blocks.append((f"    [{f['source']}] {f['why']}\n", "bad"))
+                if f["quote"]:
+                    blocks.append((f"      \"{f['quote']}...\"\n", "muted"))
+            blocks.append(("  Re-run `python fetch_knowledge.py --verify` "
+                           "after fixing the document or restoring the "
+                           "source.\n", "muted"))
+
         if rec["missing_documents"]:
             blocks.append(("\nNOT AVAILABLE\n", "h"))
             for m in rec["missing_documents"]:
@@ -591,31 +858,64 @@ class XaiTab:
     # EVENT HANDLERS
     # ========================================================
 
-    def _panels_to_narrate(self):
-        """Panels 1 and 2 by default; panel 3 only when asked for."""
-        from services.narration_service import DEFAULT_PANELS, ALL_PANELS
-        return ALL_PANELS if self.narrate_recommend.get() else DEFAULT_PANELS
+    def _on_repair(self):
+        """Realign quarantined documents to the sources they quote.
 
-    def _on_narrate_toggled(self):
+        Drift is repaired from the source's own words; a passage that is not
+        in the source is refused, because that is a wrong citation rather
+        than wrong wording and only the author can say what was meant. Both
+        outcomes are reported before anything is re-run.
         """
-        Re-run the current finding with or without narration.
+        from services.source_guard import repair_document
 
-        Nothing is cached between the two states: the panels are cheap to
-        rebuild (20 microseconds per flow to classify, 8.1 ms for the two
-        explained rows) and the language model is the only slow part, so
-        re-running is simpler than holding two versions of every panel.
-        """
-        if not self.current_case.get("generated_csv_path"):
+        if not self._quarantined:
+            return
+        if not messagebox.askyesno(
+                "Repair quoted sources",
+                f"{len(self._quarantined)} document(s) quote passages that no "
+                f"longer match the source PDF.\n\n"
+                f"Passages that have DRIFTED will be rewritten using the "
+                f"source's own words. Passages that are not in the source at "
+                f"all will be refused and left quarantined.\n\n"
+                f"A .bak copy is kept of every file changed. Continue?"):
             return
 
-        if self.narrate.get():
-            self._write(self.txt_summary, [
-                ("Asking the local model...\n", "muted"),
-                ("This takes about 20 seconds. The figures are already "
-                 "correct; the model only adds prose.\n", "muted"),
-            ])
+        repaired, refused = [], []
+        for u in self._quarantined:
+            r = repair_document(u["source"], apply=True)
+            repaired += [(u["source"], x) for x in r["repaired"]]
+            refused += [(u["source"], x) for x in r["refused"]]
 
-        self._on_finding_selected()
+        lines = [f"Repaired {len(repaired)}, refused {len(refused)}.", ""]
+        for src, x in repaired[:6]:
+            lines.append(f"REPAIRED  {src}  ({x['ratio']:.0%} match)")
+            lines.append(f"   now: {x['now'][:70]}...")
+        for src, x in refused[:6]:
+            lines.append(f"REFUSED   {src}")
+            lines.append(f"   {x.get('why_refused', '')[:100]}")
+        if refused:
+            lines += ["", "Refused documents stay withheld. Fix the quote or "
+                          "restore the source, then re-run the analysis."]
+        messagebox.showinfo("Repair complete", "\n".join(lines))
+
+        # Re-run so the panels reflect the repaired documents.
+        if self.current_case:
+            self.update_xai_results(self.current_case)
+
+    @staticmethod
+    def _panels_to_narrate():
+        """All three panels, every run.
+
+        Panel 3 used to be excluded unless a second checkbox was ticked,
+        on the reasoning that rewording a quoted playbook risks the
+        guarantee the panel exists to provide. That risk is now handled
+        where it belongs -- the model's steps must each carry a span copied
+        out of the playbook, the span is verified against the document, and
+        the citation number is derived from it rather than written. The
+        verbatim quotes are still on screen underneath.
+        """
+        from services.narration_service import ALL_PANELS
+        return ALL_PANELS
 
     def _on_finding_selected(self, _event=None):
         """Recompute panels 2 and 3 for the chosen finding."""
@@ -640,8 +940,7 @@ class XaiTab:
             try:
                 result = build_panels(
                 csv_path, source, finding_index=index,
-                narrate_with=(self.provider_name
-                              if self.narrate.get() else None),
+                narrate_with=self.provider_name,
                 narrate_panels=self._panels_to_narrate())
             except Exception as e:
                 result = {"error": f"{type(e).__name__}: {e}"}

@@ -74,7 +74,7 @@
   "OWASP.Top10.2025": {
     "url": "https://owasp.org/Top10/2025/",
     "landing": "https://owasp.org/Top10/2025/",
-    "citation": "Open Worldwide Application Security Project, \"OWASP Top 10:2025 \u2014 web application security risks,\" OWASP Foundation, 2025.",
+    "citation": "Open Worldwide Application Security Project, \"OWASP Top 10:2025 — web application security risks,\" OWASP Foundation, 2025.",
     "file": "OWASP.Top10.2025.html",
     "bytes": 25877,
     "sha256": "37db8253029a5a6afd4f8383cda997a0a482e45766110591bf8f5a3b0d423857",
@@ -88,15 +88,6 @@
     "bytes": 1946127,
     "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
     "retrieved": "2026-09-08T17:00:03"
-  },
-  "USENIX.dosdonts": {
-    "url": "https://www.usenix.org/system/files/sec22-arp.pdf",
-    "landing": "https://www.usenix.org/conference/usenixsecurity22/presentation/arp",
-    "citation": "D. Arp et al., \"Dos and don'ts of machine learning in computer security,\" in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.",
-    "file": "USENIX.dosdonts.pdf",
-    "bytes": 1055756,
-    "sha256": "fd71f39c2cd0f9532859c6bb5f2e3b94be97eec50b43f97aaa916e43f3f4acdb",
-    "retrieved": "2026-09-08T17:00:07"
   },
   "SommerPaxson.closedworld": {
     "url": "https://www.icir.org/robin/papers/oakland10-ml.pdf",
@@ -128,7 +119,7 @@
   "OWASP.A01.2025": {
     "url": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
     "landing": "https://owasp.org/Top10/2025/A01_2025-Broken_Access_Control/",
-    "citation": "Open Worldwide Application Security Project, \"A01:2025 \u2014 Broken access control,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "citation": "Open Worldwide Application Security Project, \"A01:2025 — Broken access control,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
     "file": "OWASP.A01.2025.html",
     "bytes": 36881,
     "sha256": "da315070df0ad805417c9b6d5a8715b6211513afc5d70d3cf780d52bb56c5a39",
@@ -137,7 +128,7 @@
   "OWASP.A05.2025": {
     "url": "https://owasp.org/Top10/2025/A05_2025-Injection/",
     "landing": "https://owasp.org/Top10/2025/A05_2025-Injection/",
-    "citation": "Open Worldwide Application Security Project, \"A05:2025 \u2014 Injection,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "citation": "Open Worldwide Application Security Project, \"A05:2025 — Injection,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
     "file": "OWASP.A05.2025.html",
     "bytes": 38472,
     "sha256": "df8f178b38dc4be8099690aee02701d07ad7d2b0dabc0363ea4309265518d6a3",
@@ -146,7 +137,7 @@
   "OWASP.A07.2025": {
     "url": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
     "landing": "https://owasp.org/Top10/2025/A07_2025-Authentication_Failures/",
-    "citation": "Open Worldwide Application Security Project, \"A07:2025 \u2014 Authentication failures,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
+    "citation": "Open Worldwide Application Security Project, \"A07:2025 — Authentication failures,\" in OWASP Top 10:2025, OWASP Foundation, 2025.",
     "file": "OWASP.A07.2025.html",
     "bytes": 37855,
     "sha256": "e5e4c51698ed4c966e5a767fd09db489edc11544cb24da09c76265a9015f8092",
@@ -162,22 +153,30 @@
     "retrieved": "2026-09-08T20:20:26"
   },
   "Chen.xgboost": {
-    "url": "https://arxiv.org/pdf/1603.02754",
-    "landing": "https://arxiv.org/abs/1603.02754",
+    "url": "https://dl.acm.org/doi/pdf/10.1145/2939672.2939785",
+    "landing": "https://dl.acm.org/doi/10.1145/2939672.2939785",
     "citation": "T. Chen and C. Guestrin, \"XGBoost: A scalable tree boosting system,\" in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785.",
     "file": "Chen.xgboost.pdf",
-    "bytes": 944793,
-    "sha256": "52bc282c922a239134ee4d6f4367c58bf920a9bdd53acbb3b2aa3342e2bb7214",
-    "retrieved": "2026-09-08T20:20:30"
+    "bytes": 1438617,
+    "sha256": "87b526dc80c61a18f776474be520cf616f204af863363d615a4e22a254a0a2e4",
+    "retrieved": "2026-09-08T22:09:00"
   },
-  "Arslan.mits": {
-    "url": "https://www.acadlore.com/journals/MITS",
-    "landing": "https://doi.org/10.56578/mits050102",
-    "citation": "R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, \"Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis,\" Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.",
-    "file": "Arslan.mits.pdf",
-    "bytes": 1849673,
-    "sha256": "6a7b09a61b920f1ba426630bc1fdaddb88fe6183f0f4a4c09b1726c102468ac3",
-    "retrieved": "2026-09-08T20:52:17",
-    "supplied_locally": true
+  "Iyengar.aip": {
+    "url": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
+    "landing": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
+    "citation": "S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C. Krishna Mohan, Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Cham, Switzerland: Springer Nature, 2025, doi: 10.1007/978-3-031-89327-8.",
+    "file": "Iyengar.aip.pdf",
+    "bytes": 32841364,
+    "sha256": "dd84822d0f207c0dac4d34eea4f601d95604c9589ad076a13b7f083ba04f5b24",
+    "retrieved": "2026-09-08T22:09:00"
+  },
+  "Arp.cacm": {
+    "url": "https://dl.acm.org/doi/pdf/10.1145/3643456",
+    "landing": "https://dl.acm.org/doi/10.1145/3643456",
+    "citation": "D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, \"Pitfalls in machine learning for computer security,\" Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.",
+    "file": "Arp.cacm.pdf",
+    "bytes": 1189895,
+    "sha256": "a30c5d3c6e998fd4608199860968a5d70013030c8957337203147daef4559eee",
+    "retrieved": "2026-09-09T07:11:45"
   }
 }

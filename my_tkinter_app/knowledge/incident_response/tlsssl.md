@@ -32,8 +32,14 @@ responses differ.
 Record the destination service, the negotiated protocol version and cipher
 suite, and the certificate presented.
 
-SP 800-52r2 requires TLS 1.2 with FIPS-based cipher suites as a minimum for
-government servers and clients, and support for TLS 1.3 from 1 January 2024.
+SP 800-52r2 sets the baseline a negotiated version is measured against:
+
+## From NIST.SP.800-52r2
+
+> it requires that TLS 1.2 be configured with cipher suites using NIST-
+> approved schemes and algorithms as the minimum appropriate secure
+> transport protocol and requires support for TLS 1.3 by January 1, 2024.
+
 A negotiated version below that is a finding in itself, independent of any
 attack.
 
@@ -50,11 +56,25 @@ suites below it.
 **If exploitation is suspected:** treat it as a vulnerability response, not
 a configuration change. The CISA Vulnerability Response Playbook applies:
 identify the affected software version, determine exposure, and patch.
+
+## From CISA.playbooks
+
+> A standardized response process ensures that agencies, including CISA,
+> can understand the impact of these critical and dangerous
+> vulnerabilities across the federal government.
 Heartbleed in particular requires assuming key material was disclosed —
 rotate certificates and private keys, not only patch.
 
 SP 800-53r5 SC-8 (Transmission Confidentiality and Integrity) and SC-23
-(Session Authenticity) are the controls a finding here should cite.
+(Session Authenticity) are the controls a finding here should cite. SC-8
+reads:
+
+## From NIST.SP.800-53r5
+
+> Protect the [Selection (one or more): confidentiality; integrity] of
+> transmitted information. Discussion: Protecting the confidentiality and
+> integrity of transmitted information applies to internal and external
+> networks as well as any system components that can transmit information
 
 ## 4. What would make this a false positive
 

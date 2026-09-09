@@ -24,6 +24,7 @@ environments is not established -- see knowledge/datasets/scope.md.
 import os
 import json
 import re
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,8 @@ import pandas as pd
 from services.config import BASE_DIR
 from services.flow_intake import (IntakeError, read_flows, to_matrix,
                                   describe, identity_columns,
-                                  capture_window, endpoints)
+                                  capture_window, endpoints,
+                                  inventory)
 
 
 # ============================================================
@@ -368,6 +370,17 @@ MODEL_GUIDANCE = [
         "when": lambda f, s: True,
     },
     {
+        # Every panel uses these terms -- confidence, margin, log-odds, base
+        # value, macro F1, spurious correlation -- and until this entry
+        # existed the file defining them was the ONE knowledge document no
+        # finding could ever reach. Twenty sourced definitions, invisible.
+        # Retrieved with the guidance that uses the vocabulary.
+        "id": "glossary",
+        "doc": "interpretability/glossary.md",
+        "heading": "What these terms mean in this interface",
+        "when": lambda f, s: True,
+    },
+    {
         "id": "reliability",
         "doc": "interpretability/reliability.md",
         "heading": "How reliable this class is",
@@ -651,6 +664,16 @@ def summarise_capture(flows, names, proba, source_name="capture.pcap"):
     if ends:
         facts["endpoints"] = ends
 
+    # WHO and WHAT, for the whole capture and for the attack flows alone.
+    # The second is the forensically useful half: "1,283 attack flows" does
+    # not say how many hosts are implicated, and that is the first question
+    # asked of any capture.
+    facts["inventory"] = inventory(flows)
+    attack_mask = np.asarray(names) != "Benign"
+    if attack_mask.any():
+        facts["attack_inventory"] = inventory(flows, attack_mask)
+        facts["attack_endpoints"] = endpoints(flows, attack_mask)
+
     # Flow-duration facts, only where the extractor supplied the column.
     if "Flow Duration" in flows.columns:
 
@@ -768,6 +791,95 @@ def read_extraction_record(csv_path):
     return record
 
 
+def verify_capture_link(csv_path, pcap_path=None, known_sha256=None):
+    """Does this flow table actually describe this capture?
+
+    WHAT WAS BEING VERIFIED BEFORE, AND WHAT WAS NOT
+    Every other check in this project recomputes a panel figure from the
+    flow TABLE. That proves the panels agree with the CSV. It proves nothing
+    about whether the CSV describes the PCAP in front of the investigator --
+    a stale table, or one extracted from a different capture, would pass
+    every one of those checks while describing other traffic.
+
+    This closes that. The extraction record now carries the capture's
+    SHA-256, so the chain PCAP -> CSV -> panels can be checked end to end
+    rather than assumed at its first link.
+
+    Returns a dict with `state`:
+      verified     the digest recorded at extraction matches this capture
+      mismatch     it does not -- the flow table is not from this PCAP
+      unrecorded   extracted before digests were recorded, or CSV supplied
+                   directly. Reported as unknown, never as verified.
+    """
+    out = {"state": "unrecorded", "checks": []}
+    record = read_extraction_record(csv_path)
+    if not record:
+        out["detail"] = ("No extraction record beside the flow table, so the "
+                         "table cannot be tied to a capture.")
+        return out
+
+    recorded = record.get("capture_sha256")
+    pcap = pcap_path or record.get("capture")
+
+    if not recorded:
+        out["detail"] = ("This flow table was extracted before capture "
+                         "digests were recorded. Re-extract to bind it to "
+                         "the PCAP.")
+        return out
+
+    actual = known_sha256
+    if not actual and pcap and os.path.isfile(pcap):
+        h = hashlib.sha256()
+        try:
+            with open(pcap, "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+            actual = h.hexdigest()
+        except OSError:
+            actual = None
+
+    if not actual:
+        out["detail"] = ("The capture named by the extraction record is not "
+                         "readable, so the link cannot be checked.")
+        return out
+
+    out["recorded_sha256"] = recorded
+    out["capture_sha256"] = actual
+    out["state"] = "verified" if actual.lower() == recorded.lower() \
+        else "mismatch"
+    out["checks"].append(("capture digest", out["state"] == "verified"))
+
+    # Size is redundant when the digest matches and useful when it does not:
+    # it separates "a different capture" from "the same capture, truncated".
+    if pcap and os.path.isfile(pcap) and record.get("capture_bytes"):
+        same = os.path.getsize(pcap) == record["capture_bytes"]
+        out["checks"].append(("capture size", same))
+
+    # Modification time, only when the digest did NOT settle it. A matching
+    # digest proves the table came from these bytes; mtime after that is
+    # noise -- copying a file rewrites it -- and a red line under a VERIFIED
+    # result reads as a contradiction.
+    if out["state"] != "verified":
+        try:
+            if pcap and os.path.isfile(pcap) and os.path.isfile(csv_path):
+                fresh = os.path.getmtime(csv_path) >= os.path.getmtime(pcap) - 1
+                out["checks"].append(
+                    ("flow table not older than capture", fresh))
+        except OSError:
+            pass
+
+    if out["state"] == "mismatch":
+        out["detail"] = ("The flow table was extracted from a DIFFERENT "
+                         "capture than the one loaded. Every figure in these "
+                         "panels describes that other capture. Re-extract "
+                         "before relying on anything here.")
+    else:
+        out["detail"] = ("The flow table was extracted from this exact "
+                         "capture; the digest recorded at extraction matches "
+                         "the file on disk.")
+    return out
+
+
 def _engine_lines(extraction):
     """One line naming the extractor, plus a caveat when it is the fallback."""
 
@@ -875,7 +987,88 @@ def aggregate(names, proba, k, bundle, flows=None):
 # PANEL 2 -- SHAP EXPLANATION
 # ============================================================
 
-def explain_detections(X, proba, k, names, bundle, rows, top=6):
+# Features whose value depends on how long the extractor kept a flow open.
+# When the capture was extracted with a default timeout these are not
+# comparable with the model's training data, and they are exactly the
+# features this class of model leans on hardest.
+_TIMING_FEATURE = re.compile(r"IAT|Duration|Active|Idle|/s\b", re.I)
+
+
+# What a feature's raw value is MEASURED IN. CICFlowMeter reports timings in
+# microseconds and sizes in bytes, and the column name says neither.
+#
+# Measured consequence of leaving it out: given "Flow IAT Min (observed
+# value 1,169,002)" the narration wrote "the shortest gap observed at
+# 1,169,002 bytes". The figure traced to the input, so every grounding check
+# passed and the sentence was still wrong. Supplying the unit is the
+# cheapest fix for a whole class of wrong sentence, and it is cheaper than
+# any instruction telling the model not to guess.
+#
+# Order matters: "Flow Bytes/s" is a rate, not a size, so rates match first.
+_UNITS = [
+    (re.compile(r"IAT|Duration|Active |Idle ", re.I), "microseconds"),
+    (re.compile(r"Bytes/s", re.I), "bytes per second"),
+    (re.compile(r"Packets/s", re.I), "packets per second"),
+    (re.compile(r"Bulk Rate", re.I), "bytes per second"),
+    (re.compile(r"Variance", re.I), "bytes squared"),
+    (re.compile(r"Ratio", re.I), "ratio"),
+    (re.compile(r"Port", re.I), "port number"),
+    (re.compile(r"Protocol", re.I), "IP protocol number"),
+    (re.compile(r"Flag|Flags|Packet/Bulk|Subflow \w+ Packets"
+                r"|Total (Fwd|Bwd) [Pp]acket", re.I), "count"),
+    (re.compile(r"Length|Size|Bytes|Win Bytes", re.I), "bytes"),
+]
+
+
+def _unit_of(feature):
+    """The unit of a feature's raw value, or None when it is a bare count."""
+    for pattern, unit in _UNITS:
+        if pattern.search(feature):
+            return unit
+    return None
+
+
+def _readable(raw, unit):
+    """The value as a person would say it, unit included.
+
+    A microsecond figure is unreadable at scale -- 1,169,002 microseconds is
+    1.17 seconds, and a reader who has to do that division will not do it.
+    The model will not do it either: told only the raw figure it called
+    1,169,002 microseconds a "very short gap", which is wrong by three
+    orders of magnitude.
+    """
+    if unit == "microseconds" and abs(raw) >= 1000:
+        secs = raw / 1e6
+        return (f"{raw:,.0f} microseconds ({secs:,.2f} seconds)" if secs >= 1
+                else f"{raw:,.0f} microseconds ({raw / 1000:,.1f} ms)")
+    if unit:
+        return f"{raw:,.4f} {unit}".replace(".0000 ", " ")
+    return f"{raw:,.4f}".replace(".0000", "")
+
+
+def _magnitude(z):
+    """How unusual this value is, against the distribution the model learnt.
+
+    The scaled matrix IS the z-score -- StandardScaler centred each feature
+    on the training mean and divided by its standard deviation -- so this
+    costs nothing to compute and it is the comparison the model kept trying
+    to make with an adjective and getting wrong.
+
+    Supplying the comparison is what makes "do not describe a value as large
+    or small" a followable instruction rather than a prohibition with no
+    alternative.
+    """
+    a = abs(z)
+    where = "above" if z > 0 else "below"
+    if a < 1:
+        return "typical for this feature in the training data"
+    if a < 3:
+        return f"{a:.1f} standard deviations {where} the training mean"
+    return (f"{a:.1f} standard deviations {where} the training mean, "
+            f"far outside the usual range")
+
+
+def explain_detections(X, proba, k, names, bundle, rows, top=6, summary=None):
     """
     Why the model decided what it did, for the rows the investigator opened.
 
@@ -892,9 +1085,40 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6):
     to the margin plus the base value, verified to 1.8e-05. A contribution of
     +2.49 means the score rose 2.49 in log-odds -- NOT "added 249%". Never
     render one as a percentage.
+
+    `summary` is the Flow Summary panel. It is optional and used for one
+    thing: when the capture carries a flow-timeout warning, every timing
+    feature in the attribution list is marked with a caution. Without it the
+    panels disagree -- panel 1 says the timing features are not comparable
+    with the training data, and panel 2 goes on ranking them unmarked.
     """
 
+    caution = None
+    if (summary or {}).get("facts", {}).get("flow_timeout_warning"):
+        cap = (summary or {}).get("facts", {}).get("flow_timeout_seconds")
+        caution = (
+            f"Timing feature, and this capture's longest flow is almost "
+            f"exactly the extractor's {cap or 120}-second default timeout. "
+            f"The model was trained on flows extracted with a longer "
+            f"timeout, so this value is not on the same scale as the data "
+            f"the attribution was learned from. See the Flow Summary "
+            f"warning."
+        )
+
     sv = bundle["explainer"].shap_values(X[rows])
+
+    # The model's own output, alongside the explanation of it.
+    #
+    # TreeSHAP explains a margin, and the panel showed only the attributions
+    # -- so a reader had to take on trust that the attributions belonged to
+    # the decision above them. They are computed here so the panel can show
+    # the arithmetic: base value + every contribution == the margin XGBoost
+    # actually produced. If that identity fails the attributions explain a
+    # different decision, and the panel says so instead of drawing bars.
+    margins = np.atleast_2d(bundle["model"].predict(X[rows],
+                                                    output_margin=True))
+    base_values = np.atleast_1d(
+        np.asarray(bundle["explainer"].expected_value, dtype=float))
 
     # SHAP returns (n, features, classes) on current versions and a list of
     # per-class arrays on older ones.
@@ -919,10 +1143,49 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6):
         # an investigator, "3.87 z-score" does not.
         raw_row = bundle["scaler"].inverse_transform(X[r:r + 1])[0]
 
+        # What the MODEL said, before any explanation of it.
+        order_p = np.argsort(proba[r])[::-1][:5]
+        model_output = {
+            "predicted": cls,
+            "confidence": round(float(proba[r, cls_i]), 4),
+            "margin": round(float(margins[j, cls_i]), 6),
+            "probabilities": [
+                {"class": str(bundle["encoder"].inverse_transform([c])[0]),
+                 "probability": round(float(proba[r, c]), 6)}
+                for c in order_p],
+        }
+
+        # Whether the explanation reconstructs it. The sum is over ALL 74
+        # features, not the six the panel draws -- additivity is a property
+        # of the whole attribution vector, and checking only the visible
+        # rows would always fail.
+        total = float(contrib.sum())
+        recon = float(base_values[cls_i]) + total
+        shown = float(np.abs(contrib[order]).sum())
+        allabs = float(np.abs(contrib).sum()) or 1.0
+        shap_check = {
+            "base_value": round(float(base_values[cls_i]), 6),
+            "sum_all_features": round(total, 6),
+            "reconstructed_margin": round(recon, 6),
+            "model_margin": round(float(margins[j, cls_i]), 6),
+            "additivity_error": round(abs(recon - float(margins[j, cls_i])), 9),
+            "agrees": bool(abs(recon - float(margins[j, cls_i])) < 1e-3),
+            "features_shown": len(order),
+            "features_total": len(bundle["features"]),
+            "shown_share_of_total": round(shown / allabs, 4),
+            # The strongest form: does the reconstruction pick the class the
+            # model picked? A vector can sum correctly and still be sliced
+            # against the wrong class axis.
+            "reconstruction_picks_predicted": bool(
+                int(np.argmax(sv[j].sum(0) + base_values)) == cls_i),
+        }
+
         detections.append({
             "row": int(r),
             "predicted": cls,
             "confidence": round(float(proba[r, cls_i]), 4),
+            "model_output": model_output,
+            "shap_check": shap_check,
             "runner_up": str(bundle["encoder"].inverse_transform([runner])[0]),
             "runner_up_confidence": round(float(proba[r, runner]), 4),
 
@@ -932,10 +1195,20 @@ def explain_detections(X, proba, k, names, bundle, rows, top=6):
                     "plain": glossary.get(bundle["features"][i],
                                           bundle["features"][i]),
                     "raw_value": round(float(raw_row[i]), 4),
+                    "unit": _unit_of(bundle["features"][i]),
+                    # Pre-rendered so neither the reader nor the model has to
+                    # convert, and so the comparison the model kept getting
+                    # wrong is supplied rather than left to it.
+                    "readable": _readable(float(raw_row[i]),
+                                          _unit_of(bundle["features"][i])),
+                    "magnitude": _magnitude(float(X[r, i])),
                     "contribution": round(float(contrib[i]), 6),
                     "direction": (
                         "supports" if contrib[i] > 0 else "argues against"
                     ),
+                    **({"caution": caution}
+                       if caution and _TIMING_FEATURE.search(
+                           bundle["features"][i]) else {}),
                 }
                 for i in order
             ],
@@ -1001,6 +1274,67 @@ def _citations_in(text):
             # The retrieval line belongs to the citation above it.
             out[-1] += "  [" + line.split(">", 1)[1].strip() + "]"
     return out
+
+
+def digest_document(text):
+    """A document reduced to what a panel should actually show.
+
+    Panel 3 rendered every retrieved file in full -- up to 30,000 characters
+    across nine documents. Nobody reads that, and burying the two lines that
+    matter inside it is a way of not saying them.
+
+    So the panel gets three things instead of the whole file:
+
+      outline  the section headings, so the shape of the document is visible
+      quotes   the `## From` passages verbatim, with the source they name.
+               These are the provenance: verified against the PDF, and the
+               only part that cannot be paraphrased without detection.
+      actions  lines that prescribe something, taken from the containment
+               and detection sections -- the operational half
+
+    The full document stays on disk and is named on screen, so nothing is
+    hidden; it is simply not pasted into a text widget.
+    """
+    outline, quotes, actions = [], [], []
+    current_source = None
+
+    for section in re.split(r"\n(?=#{1,6} )", text):
+        head = section.split("\n", 1)[0].strip()
+        m = re.match(r"#{1,6}\s+From\s+([\w.\-]+)\s*$", head)
+        if m:
+            current_source = m.group(1)
+            for block in _quoted_blocks(section.partition("\n")[2]):
+                if len(block) >= 60:
+                    quotes.append({"source": current_source, "text": block})
+            continue
+
+        h = re.match(r"#{2,6}\s+(.+?)\s*$", head)
+        if h:
+            outline.append(h.group(1))
+
+        # A prescriptive line: bolded lead-in, or an imperative bullet.
+        for line in section.split("\n"):
+            line = line.strip()
+            if re.match(r"^\*\*[A-Z][^*]{3,}\*\*", line) or \
+                    re.match(r"^[-*]\s+\*\*", line):
+                actions.append(re.sub(r"\*\*", "", line).strip("-* ").strip())
+
+    return {"outline": outline, "quotes": quotes, "actions": actions[:8]}
+
+
+def _quoted_blocks(chunk):
+    """Blockquote passages in a section, joined into whole quotes."""
+    lines, blocks, current = chunk.split("\n"), [], []
+    for line in lines:
+        s = line.lstrip()
+        if s.startswith(">"):
+            current.append(s[1:].strip())
+        elif current:
+            blocks.append(" ".join(current).strip())
+            current = []
+    if current:
+        blocks.append(" ".join(current).strip())
+    return [b for b in blocks if b]
 
 
 def recommend(finding, detections=None, summary=None):
@@ -1153,6 +1487,7 @@ def recommend(finding, detections=None, summary=None):
                 # Attached to the section, so a recommendation and the work
                 # it came from cannot be separated in rendering.
                 "citations": cites,
+                "digest": digest_document(text),
             })
     else:
         sections.append({
@@ -1199,17 +1534,40 @@ def recommend(finding, detections=None, summary=None):
             "body": text.strip(),
             "source": rule["doc"],
             "citations": cites,
+            "digest": digest_document(text),
             # Marks this as guidance about the model rather than about the
             # attack, so the tab can group or collapse it separately.
             "kind": "model",
         })
 
+    # Every retrieved document is re-checked against the PDF it quotes,
+    # here, on the file as it is on disk right now -- not on the state it
+    # was in when `--verify` last ran. A document whose quotes no longer
+    # match is quarantined: withheld from the panel and from the model, and
+    # named below so the author can see which one and why.
+    #
+    # 0.20 s for the whole corpus from a content-addressed cache, 0.68 ms
+    # once memoised, so this costs nothing per finding.
+    from services.source_guard import verify_sections
+    sections, unverified = verify_sections(sections)
+
     return {
         "panel": "recommendations",
+        "unverified_documents": unverified,
         "class": cls,
         "ambiguity": ambiguity,
         "sections": sections,
         "citations": list(documents.keys()) + sorted(seen),
+        # Numbered, so a sentence can point at one. The number is the
+        # position in `references`, which is the order the reader sees --
+        # a citation the model writes as [2] and a reader looks up as [2]
+        # must be the same work, or the marker is decoration.
+        "reference_map": [
+            {"n": i + 1, "citation": c,
+             "sources": sorted({s["source"] for s in sections
+                                if c in (s.get("citations") or [])})}
+            for i, c in enumerate(references)],
+
         # [UI CONNECTION: `references` -> the REFERENCES block. Full IEEE
         #  citations lifted from each document's own provenance header, so
         #  no recommendation is ever shown without the work it came from.]
@@ -1225,7 +1583,8 @@ def recommend(finding, detections=None, summary=None):
 # ============================================================
 
 def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
-                 narrate_with=None, narrate_panels=None):
+                 narrate_with=None, narrate_panels=None,
+                 current_pcap=None, current_pcap_sha=None):
     """
     Everything XaiTab needs, from a CICFlowMeter CSV.
 
@@ -1274,6 +1633,12 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
     # Which extractor produced these flows. Two engines segment flows
     # differently, so a timing feature only means something against the one
     # that computed it -- that belongs on screen, not in a log file.
+    # Does this flow table describe THIS capture? Checked, not assumed --
+    # every other figure in these panels is recomputed from the table, so a
+    # table from another capture would satisfy all of them.
+    summary["capture_link"] = verify_capture_link(
+        csv_path, current_pcap, current_pcap_sha)
+
     extraction = read_extraction_record(csv_path)
     if extraction:
         summary["facts"]["flow_engine"] = extraction.get("engine")
@@ -1304,7 +1669,8 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
 
     shap_panel = explain_detections(
         X, proba, k, names, bundle,
-        rows=finding["representative_rows"]
+        rows=finding["representative_rows"],
+        summary=summary
     )
 
     result = {
@@ -1317,20 +1683,35 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
     }
 
     if narrate_with:
-        # Imported here rather than at module load so the panels work with
-        # no language model installed at all.
-        from services.llm_provider import get_provider
-        from services.narration_service import narrate_all
+        # Narration runs on every analysis now, which makes this block the
+        # one place a prose failure could take the evidence down with it.
+        # It could: get_provider() raises on an unknown name, and a model
+        # that dies mid-generation raises out of narrate_all(). Either would
+        # have propagated out of build_panels() and the tab would have shown
+        # "Analysis failed" with no panels at all -- for a paragraph.
+        #
+        # So the whole layer is contained. The deterministic result is
+        # already complete above; anything that goes wrong from here is
+        # reported as narration being unavailable, which is what it is.
+        try:
+            # Imported here rather than at module load so the panels work
+            # with no language model installed at all.
+            from services.llm_provider import get_provider
+            from services.narration_service import narrate_all, ALL_PANELS
 
-        provider = get_provider(narrate_with)
-        ok, detail = provider.available()
+            provider = get_provider(narrate_with)
+            ok, detail = provider.available()
 
-        if ok:
-            from services.narration_service import DEFAULT_PANELS
-            result = narrate_all(result, provider,
-                                 narrate_panels or DEFAULT_PANELS)
-            result["narrated_by"] = f"{provider.name}/{provider.model}"
-        else:
-            result["narration_unavailable"] = detail
+            if ok:
+                result = narrate_all(result, provider,
+                                     narrate_panels or ALL_PANELS)
+                result["narrated_by"] = f"{provider.name}/{provider.model}"
+            else:
+                result["narration_unavailable"] = detail
+        except Exception as e:
+            result["narration_unavailable"] = (
+                f"{type(e).__name__}: {e}. The figures, attributions and "
+                f"quoted guidance below are unaffected."
+            )
 
     return result

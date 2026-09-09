@@ -20,6 +20,16 @@ Organisations are advised to use cyber threat information alongside
 continuous monitoring to identify activity that might otherwise have been
 incorrectly considered benign.
 
+## From NIST.SP.800-61r3
+
+> Anomalies may have benign or malicious foundations. Some incidents are
+> relatively easy to find amid the noise, while others require deep,
+> specialized technical knowledge and experience.
+
+That is why a benign classification is an observation and not a
+conclusion: the same anomaly admits both readings, and the flow record
+alone does not say which.
+
 **An observation is not a conclusion.** Because an event is merely an
 observable occurrence, additional analysis is required to determine whether
 an adverse cybersecurity event is actually an incident.
@@ -29,8 +39,16 @@ an adverse cybersecurity event is actually an incident.
 Separating truly benign anomalies from incidents requires specific
 procedures.
 
-**Tune continuously.** Automated monitoring technologies must be tuned to
-reduce false positives and false negatives to acceptable levels.
+**Tune continuously.** The recommendation is explicit:
+
+## From NIST.SP.800-61r3
+
+> Tune the continuous monitoring technologies to reduce false positives
+> and false negatives to acceptable levels.
+
+For this tool the equivalent of tuning is the confidence threshold at
+which a benign classification is sent for manual review. The default of
+0.60 is this project's, not the source's.
 
 **Correlate across sources.** Event correlation technologies — SIEM, SOAR —
 gather related data captured across multiple sources. Current cyber threat
@@ -87,6 +105,15 @@ not evidence there was none.
 
 **The limit RFC 9424 states.** An indicator that does not match establishes
 that this indicator did not match — not that the activity was absent.
+
+## From RFC9424
+
+> The different IoC types inherently embody a set of trade-offs for
+> defenders between the risk of false positives (misidentifying non-
+> malicious traffic as malicious) and the risk of failing to identify
+> attacks.
+
+The second half of that trade-off is what a benign classification carries.
 Slow-and-low activity is designed to look ordinary at flow level, and
 benign is the expected classification for a well-executed one.
 

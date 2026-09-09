@@ -71,9 +71,21 @@ SOURCES = {
     #      should name the artefact that was actually checked, and quotes
     #      here are checked against the file on disk. Removed on this
     #      basis: Lundberg.shap (NeurIPS 2017), Lundberg.treeshap (Nature
-    #      Machine Intelligence 2020), Chen.xgboost (KDD 2016), and
-    #      SommerPaxson.closedworld (IEEE S&P 2010) -- every one a real
-    #      paper, none of them the published PDF.
+    #      Machine Intelligence 2020) and SommerPaxson.closedworld (IEEE
+    #      S&P 2010) -- every one a real paper, none of them the published
+    #      PDF.
+    #
+    #      Chen.xgboost was removed on the same basis and has been
+    #      RESTORED: the copy now in _sources carries the ACM block on
+    #      page 1 ("Permission to make digital or hard copies...", KDD '16,
+    #      ISBN 978-1-4503-4232-2, DOI 10.1145/2939672.2939785), so it is
+    #      the published proceedings version and not an author copy.
+    #
+    #   3. Peer review is required of the LITERATURE. Arslan.mits, the
+    #      Acadlore journal paper, was removed for failing that test; it
+    #      had been the only citation behind eight quote blocks in
+    #      knowledge/interpretability, and every one of them has been
+    #      re-sourced or withdrawn rather than left standing.
     #
     #   2. Standards bodies count. NIST, CISA, IETF and OWASP publish
     #      through their own review processes and their PDFs ARE the
@@ -244,20 +256,6 @@ SOURCES = {
     # not hold, the SHAP claims are now carried by a reviewed paper that
     # states them and that is about intrusion detection, which is this
     # tool's domain.
-    "Arslan.mits": {
-        "url": "https://www.acadlore.com/journals/MITS",
-        "kind": "pdf",
-        "citation": 'R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, '
-                    '"Cybersecurity in intelligent transportation systems: '
-                    'A comparative study on AI-based anomaly detection and '
-                    'threat analysis," Mechatronics and Intelligent '
-                    'Transportation Systems, vol. 5, no. 1, pp. 11-30, '
-                    '2026, doi: 10.56578/mits050102.',
-        "landing": "https://doi.org/10.56578/mits050102",
-        # Supplied by the user, not fetched. --download will not overwrite
-        # a file that is already present.
-        "local_only": True,
-    },
 
     "NIST.AI.100-1": {
         "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
@@ -269,14 +267,41 @@ SOURCES = {
         "landing": "https://www.nist.gov/itl/ai-risk-management-framework",
     },
 
-    "USENIX.dosdonts": {
-        "url": "https://www.usenix.org/system/files/sec22-arp.pdf",
+    "Chen.xgboost": {
+        "url": "https://dl.acm.org/doi/pdf/10.1145/2939672.2939785",
         "kind": "pdf",
-        "citation": 'D. Arp et al., "Dos and don\'ts of machine learning in '
-                    'computer security," in Proc. 31st USENIX Security '
-                    'Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.',
-        "landing": "https://www.usenix.org/conference/usenixsecurity22/"
-                   "presentation/arp",
+        "citation": 'T. Chen and C. Guestrin, "XGBoost: A scalable tree '
+                    'boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. '
+                    'Knowledge Discovery and Data Mining, San Francisco, CA, '
+                    'USA, Aug. 2016, pp. 785-794, doi: '
+                    '10.1145/2939672.2939785.',
+        "landing": "https://dl.acm.org/doi/10.1145/2939672.2939785",
+    },
+    "Iyengar.aip": {
+        "url": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
+        "kind": "pdf",
+        "citation": 'S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, '
+                    'Prasad HB and C. Krishna Mohan, Artificial Intelligence '
+                    'in Practice: Theory and Application for Cyber Security '
+                    'and Forensics. Cham, Switzerland: Springer Nature, 2025, '
+                    'doi: 10.1007/978-3-031-89327-8.',
+        "landing": "https://link.springer.com/book/10.1007/978-3-031-89327-8",
+    },
+    # The Communications of the ACM Research Highlights version, not the
+    # USENIX Security proceedings paper. Same authors and the same ten
+    # pitfalls, condensed to nine pages -- so it is a DIFFERENT artefact,
+    # and quotes must trace to this one. Three passages the project used to
+    # quote do not exist here; the claims they carried were withdrawn
+    # rather than re-attributed.
+    "Arp.cacm": {
+        "url": "https://dl.acm.org/doi/pdf/10.1145/3643456",
+        "kind": "pdf",
+        "citation": 'D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, '
+                    'F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, '
+                    '"Pitfalls in machine learning for computer security," '
+                    'Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, '
+                    'doi: 10.1145/3643456.',
+        "landing": "https://dl.acm.org/doi/10.1145/3643456",
     },
 
 
@@ -699,12 +724,17 @@ CITATION_CLAIMS = {
     # correct. _norm() collapses whitespace but does not fold those.
     "NIST.SP.800-86": ["Guide to Integrating Forensic",
                        "800-86"],
-    "Arslan.mits": ["Cybersecurity in Intelligent Transportation Systems",
-                    "10.56578/mits050102"],
     "NIST.AI.100-1": ["Artificial Intelligence Risk Management",
                       "NIST AI 100-1"],
-    "USENIX.dosdonts": ["Machine Learning in Computer Security",
-                        "31st USENIX Security Symposium"],
+    "Arp.cacm": ["Pitfalls in Machine Learning for Computer Security",
+                 "10.1145/3643456"],
+
+    # The ACM block on page 1 is what makes this the published artefact
+    # rather than the author copy, so the ISBN is the claim to check.
+    "Chen.xgboost": ["XGBoost: A Scalable Tree Boosting System",
+                     "978-1-4503-4232-2"],
+    "Iyengar.aip": ["Artificial Intelligence in Practice",
+                    "978-3-031-89327-8"],
 }
 
 

@@ -2,6 +2,7 @@ import os
 import glob
 import json
 import shutil
+import hashlib
 import subprocess
 from datetime import datetime, timezone
 
@@ -856,9 +857,27 @@ def _write_extraction_record(case_dir, pcap_path, csv_path, engine, rows):
     interpretable against the engine that computed it.
     """
 
+    # The capture's own digest, not just its name and size.
+    #
+    # Without it nothing binds the flow table to the bytes it was made from.
+    # A path and a size are satisfied by any file of the same length at the
+    # same location, so a re-captured or replaced PCAP would be analysed
+    # through a stale flow table and every panel would agree with itself
+    # while describing different traffic.
+    def _sha256(path):
+        h = hashlib.sha256()
+        try:
+            with open(path, "rb") as fh:
+                for block in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(block)
+        except OSError:
+            return None
+        return h.hexdigest()
+
     record = {
         "capture": os.path.abspath(pcap_path),
         "capture_bytes": os.path.getsize(pcap_path),
+        "capture_sha256": _sha256(pcap_path),
         "flow_csv": os.path.abspath(csv_path),
         "flows": rows,
         "engine": engine,

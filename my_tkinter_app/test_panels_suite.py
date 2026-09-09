@@ -407,8 +407,12 @@ def test_schema():
 
     ns.narrate({"panel": "flow_summary", "facts": {"total_flows": 1},
                 "sections": []}, _Recorder())
+    # Assert the example ITSELF reaches the model, not a particular heading
+    # inside it. The headings change: the concrete "good answer" examples
+    # were replaced by shape-only templates after a 3b was measured copying
+    # their content into real answers.
     check("the worked example is included in the prompt",
-          "EXAMPLE OF A GOOD ANSWER" in seen.get("user", ""))
+          ns.EXAMPLES["flow_summary"].strip() in seen.get("user", ""))
     check("the rejected form is shown alongside it",
           "REJECTED" in seen.get("user", ""))
 
@@ -443,9 +447,11 @@ def test_llm():
 
     # Panel 3 is deterministic by default: its content is a quoted playbook,
     # and a quote cannot be invented.
-    check("panel 3 is not narrated by default",
-          not narr["recommend"].get("narrative"),
-          "recommendations were narrated without being asked for")
+    check("all three panels are narrated -- narration is not optional",
+          all(narr[k].get("narrative") or narr[k].get("narration_withheld")
+              or narr[k].get("narration_error")
+              for k in ("summary", "shap", "recommend")),
+          "a panel was left un-narrated; narration runs on every panel")
     check("only panels 1 and 2 are narrated by default",
           narr.get("narrated_panels") == ["summary", "shap"],
           str(narr.get("narrated_panels")))

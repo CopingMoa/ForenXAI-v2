@@ -929,5 +929,28 @@ class MainWindow:
     def run(
         self
     ):
+        # The session workspace holds everything derived from the capture --
+        # flow table, extraction record, case file, review -- and goes when
+        # the window does. atexit alone is not enough: Tk can tear down
+        # first, and on Windows a closed window with a live interpreter
+        # would leave the flow table on disk.
+        #
+        # The capture itself is never copied, so nothing the user owns is
+        # removed. The knowledge base, cited sources and source cache live
+        # outside this directory and are untouched.
+        from services.session import cleanup
 
-        self.root.mainloop()
+        def on_close():
+            try:
+                cleanup()
+            finally:
+                self.root.destroy()
+
+        self.root.protocol("WM_DELETE_WINDOW", on_close)
+
+        try:
+            self.root.mainloop()
+        finally:
+            # Covers a mainloop that ends without the close handler -- an
+            # unhandled exception, or the window destroyed elsewhere.
+            cleanup()

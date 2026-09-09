@@ -88,26 +88,161 @@ _PERCENT_CONTRIB = re.compile(
     r"(?:contribut\w*|increas\w*|decreas\w*|rais\w*|push\w*)[^.]{0,40}"
     r"\d+(?:\.\d+)?\s*%", re.I)
 
-# Any number with three or more significant digits, which is where an
-# invented figure shows up. Small integers ("two paragraphs", "step 3") are
-# ignored deliberately -- flagging them is noise.
-_NUMBER = re.compile(r"\d[\d,]{2,}(?:\.\d+)?")
+# Every number, decimal or grouped. What to IGNORE is decided in _numbers()
+# rather than by magnitude: the old rule needed three leading digits, so
+# "0.94" never matched, and every confidence, F1 and log-odds value in this
+# interface went unchecked.
+_NUMBER = re.compile(r"(?<![\w.])\d+(?:,\d{3})*(?:\.\d+)?(?![\w])")
+
+# "1." / "2)" at the start of a line is a list marker, not a claim.
+_LIST_MARKER = re.compile(r"^\s*\d+[.)]\s", re.M)
+
+# An address is an identifier, not a quantity. Without this, 192.168.1.77
+# parses as the figures 192.168 and 1.77, and a narration that names the
+# busiest host is accused of inventing them.
+#
+# Word boundaries are written as explicit lookarounds, never as a
+# backslash-b. Twice in this file's history that escape was written
+# through a shell heredoc and arrived as U+0008, which compiles
+# happily and then matches nothing -- this guard and the adjective
+# check were both silently inert. Lookarounds cannot be mangled
+# that way.
+_IPV4 = re.compile(r"(?<![\d.])\d{1,3}(?:\.\d{1,3}){2,3}(?!\.?\d)")
+#
+# Three or four dotted groups, not two: an address may reach the text
+# truncated ("10.0.0"), and a two-group rule would also swallow every
+# real decimal -- 1.17 seconds, 0.9372 confidence -- which are exactly
+# the figures this check exists to verify.
+
+
+# Markdown emphasis, code ticks and heading or quote markers. These are how
+# the playbook is formatted, not words in it, and the model is shown the raw
+# file -- so "**Set a connection timeout** on the server" reaches it as one
+# sentence and comes back without the asterisks. Folding them is the same
+# argument as folding ligatures when tracing a quote to a PDF.
+# Judgement words about a quantity. Every attribution now arrives
+# with a comparison against the training distribution, so an
+# adjective is the model substituting its own sense of scale for
+# the one it was given.
+_ADJECTIVE = re.compile(
+    r"(?<![a-z])(?:very |unusually |extremely |remarkably "
+    r"|exceptionally |fairly |relatively |quite )?"
+    r"(?:short|long|small|large|high|low|rapid|brief|tiny|huge"
+    r"|massive|minimal|negligible|substantial|significant"
+    r"|considerable|excessive|slow|fast|quick|frequent|infrequent"
+    r"|elevated|sharp|steep|dramatic|enormous|modest|slight|heavy"
+    r"|wide|narrow)(?![a-z])", re.I)
+
+
+_MARKUP = re.compile(r"[*_`#>]+")
+
+
+def _flatten(text):
+    """Lowercase, markup dropped, runs of whitespace collapsed.
+
+    Words and their order are NOT folded. An anchor is meant to be a span
+    copied out of the playbook, so a model that paraphrases one should fail
+    this comparison rather than be rescued by it.
+    """
+    return re.sub(r"\s+", " ", _MARKUP.sub("", text or "")).strip().lower()
 
 
 def _numbers(text):
+    """The numbers in `text` that assert something.
+
+    Decimals always count -- there is no innocent reason to write 0.94
+    unless 0.94 was supplied. Integers above ten count. Ten and below are
+    ignored, and list markers are stripped first, because "two short
+    paragraphs" and "the top 6 features" are prose about the answer rather
+    than claims about the evidence. That noise is what the old
+    three-digit rule was avoiding, at the cost of every decimal.
+    """
+    body = _IPV4.sub(" ", _LIST_MARKER.sub(" ", text or ""))
     out = set()
-    for m in _NUMBER.finditer(text or ""):
+    for m in _NUMBER.finditer(body):
         raw = m.group(0).replace(",", "")
         try:
-            out.add(float(raw))
+            value = float(raw)
         except ValueError:
-            pass
+            continue
+        if "." in raw or value > 10:
+            out.add(value)
     return out
 
 
-def check(narrative, prompt, sources_supplied):
+# Protocols, services and named techniques. A flow record carries ports,
+# counts and timings -- it does not carry an application protocol, and the
+# model is given neither. Naming one is an assertion about the evidence,
+# so a token here that is absent from the model's input is treated the same
+# way as an invented figure.
+#
+# Deliberately NOT a general noun list: only terms whose appearance would
+# change what an investigator believes was observed.
+_MECHANISM = (
+    "http", "https", "ftp", "smtp", "imap", "pop3", "ssh", "telnet", "rdp",
+    "smb", "nfs", "ldap", "kerberos", "ntp", "snmp", "sip", "mqtt",
+    "quic", "icmp", "arp", "bgp", "ospf", "dhcp", "tftp", "vpn", "tor",
+    "syn flood", "ack flood", "handshake", "payload", "malware",
+    "ransomware", "botnet", "beacon", "exploit kit", "shellcode",
+)
+
+
+def _mechanisms_in(text):
+    low = _flatten(text)
+    return {t for t in _MECHANISM
+            if re.search(r"(?<![a-z0-9])" + re.escape(t) + r"(?![a-z0-9])",
+                         low)}
+
+
+def neutralise_magnitude(text):
+    """Delete judgement words about quantities. Returns (text, removed).
+
+    Every attribution is supplied with a measured comparison -- "typical for
+    this feature in the training data", "3.9 standard deviations above the
+    training mean". When the model writes "unusually short" instead, the
+    panel shows a sentence that contradicts the figure printed directly
+    beneath it, and a reader who reads prose and skips warnings is misled.
+    Flagging alone does not fix that: the contradiction stays on screen.
+
+    So the word is removed. This edit can only ever REMOVE an unsupported
+    claim -- it never adds, rewords or reorders -- the original is kept on
+    the panel as `narration_original`, and what was cut is recorded in
+    `narration_edits`. "unusually short gaps between packets" becomes "gaps
+    between packets", with the measured comparison one line below it.
+
+    Applied to the SHAP panel only: that is the panel where the comparison
+    is supplied, so the adjective is always avoidable there.
+    """
+    removed = []
+
+    def cut(m):
+        removed.append(m.group(0).strip())
+        return ""
+
+    out = _ADJECTIVE.sub(cut, text or "")
+    if not removed:
+        return text, []
+
+    # Tidy the seams: doubled spaces, a space before punctuation, and "an"
+    # left in front of what is now a consonant.
+    out = re.sub(r"[ 	]{2,}", " ", out)
+    out = re.sub(r"\s+([,.;:])", r"", out)
+    out = re.sub(r"(?<![a-z])an\s+(?=[bcdfghjklmnpqrstvwxyz])", "a ",
+                 out, flags=re.I)
+    return out.strip(), removed
+
+
+def check(narrative, prompt, sources_supplied, grounding_text=None,
+          strict_mechanism=False, valid_references=None):
     """
     Compare a narration against the input that produced it.
+
+    `grounding_text` is the retrieved document text alone, with the
+    instructions and the worked example excluded. Anchors are checked
+    against it rather than against the whole prompt: a model that copies an
+    anchor out of the example has not read the playbook, and checking
+    against the prompt would score that as a pass. Falls back to the prompt
+    when not supplied, which is the weaker check.
 
     Returns (findings, stats). `findings` is a list of dicts, each with a
     `check`, a `detail` and a `severity`:
@@ -148,12 +283,14 @@ def check(narrative, prompt, sources_supplied):
     #    tolerated -- it is arithmetic, not invention -- so only integers and
     #    large values are compared.
     in_prompt = _numbers(prompt)
-    invented = sorted(
-        n for n in _numbers(text)
-        if n not in in_prompt
-        and not any(abs(n - p) < 0.51 for p in in_prompt)   # rounding
-        and n >= 100                                        # ignore small ints
-    )
+
+    # Rounding tolerance scales with the figure. A flat half-unit is right
+    # for a flow count and far too coarse for a confidence -- it would
+    # accept 0.94 as a rounding of the 0.68 actually supplied.
+    def _supplied(n):
+        return any(abs(n - p) <= max(0.005, abs(p) * 0.005) for p in in_prompt)
+
+    invented = sorted(n for n in _numbers(text) if not _supplied(n))
     if invented:
         findings.append({
             "check": "figures",
@@ -164,10 +301,164 @@ def check(narrative, prompt, sources_supplied):
                       f"in what the model was given.",
         })
 
+    # 4. Anchors. A recommendation step must carry a span copied out of the
+    #    playbook it was written from, and that span must really be there.
+    #    This is the check that catches the failure the other three cannot:
+    #    an answer that invents nothing because it says nothing. Measured on
+    #    qwen2.5:3b, six section headings copied from the wrong document
+    #    passed every other check on this page.
+    steps = re.findall(r"^\s*\d+[.)]\s+\S", text, re.M)
+    if steps:
+        anchors = re.findall(r"ANCHOR:\s*(.+?)\s*$", text, re.M | re.I)
+        flat = _flatten(grounding_text if grounding_text is not None
+                        else prompt)
+        unfound = [a for a in anchors if _flatten(a)[:60] not in flat]
+
+        # A heading is structure, not instruction. Anchoring a step to
+        # "3. Containment" shows WHERE in the playbook the step came from,
+        # not what prescribes it -- measured as the failure mode of a
+        # section-scaffolded prompt, which returned five steps anchored to
+        # five headings and nothing else.
+        headings = {_flatten(h) for h in re.findall(
+            r"^#{1,6}\s+(.+?)\s*$", grounding_text or prompt or "", re.M)}
+        as_heading = [a for a in anchors
+                      if any(h and h in _flatten(a) for h in headings)]
+        if as_heading:
+            findings.append({
+                "check": "anchors",
+                "severity": "high",
+                "detail": f"{len(as_heading)} anchor"
+                          f"{'s are' if len(as_heading) != 1 else ' is'} a "
+                          f"section heading rather than a prescribed "
+                          f"action: {as_heading[0][:60]!r}.",
+            })
+        missing = len(steps) - len(anchors)
+
+        if missing > 0:
+            findings.append({
+                "check": "anchors",
+                "severity": "high",
+                "detail": f"{missing} of {len(steps)} steps carry no anchor "
+                          f"back to the playbook, so they cannot be traced "
+                          f"to a prescribed action.",
+            })
+        # An anchor proves the span is in the playbook. It does not prove
+        # the span prescribes THAT step, and the cheapest visible form of
+        # that gap is one anchor pasted under several steps.
+        seen = [_flatten(a) for a in anchors]
+        if len(seen) != len(set(seen)):
+            findings.append({
+                "check": "anchors",
+                "severity": "medium",
+                "detail": f"{len(seen) - len(set(seen))} step"
+                          f"{'s reuse' if len(seen) - len(set(seen)) != 1 else ' reuses'}"
+                          f" an anchor already given for another step, so it "
+                          f"is not shown what prescribes it.",
+            })
+
+        if unfound:
+            findings.append({
+                "check": "anchors",
+                "severity": "high",
+                "detail": f"{len(unfound)} anchor"
+                          f"{'s do' if len(unfound) != 1 else ' does'} not "
+                          f"appear in the playbook supplied, so the step "
+                          f"came from somewhere else: {unfound[0][:60]!r}.",
+            })
+
+    # 5. Mechanism. A protocol or named technique the model was not given.
+    #
+    # `strict_mechanism` drops the comparison entirely, for the SHAP panel:
+    # its prompt carries the feature glossary, and some definitions give
+    # example ports, so comparing against the prompt scored "this was an
+    # HTTP attack" as supported on the strength of a word inside a
+    # definition. Attributions are counts, sizes and timings; naming a
+    # protocol beside them is an assertion in every case.
+    # 6. Magnitude adjectives. Each attribution is supplied with a
+    #    comparison against the training distribution -- "typical for this
+    #    feature", "3.9 standard deviations above the training mean". An
+    #    adjective used INSTEAD of that comparison is the model's own
+    #    judgement of a distribution it cannot see, and it has been measured
+    #    getting it backwards: 1,169,002 microseconds, supplied as typical,
+    #    described as "a very short gap". Flagged, not withheld -- the
+    #    figure beside it is correct and the reader can see the word.
+    if strict_mechanism:
+        adj = _ADJECTIVE.findall(text)
+        if adj:
+            findings.append({
+                "check": "magnitude",
+                "severity": "medium",
+                "detail": "describes a value as "
+                          + ", ".join(sorted({a.lower().strip()
+                                              for a in adj})[:4])
+                          + ". Each value was supplied with a comparison "
+                            "against the training distribution; an adjective "
+                            "is the model's own judgement, not that "
+                            "comparison.",
+            })
+
+    # 7. Reference markers. A step ending in [2] is a claim that reference 2
+    #    supports it, and a number outside the supplied list points the
+    #    reader at nothing -- worse than no marker, because it looks
+    #    checkable. `valid_references` is the set the panel will actually
+    #    print, so a marker either resolves in the REFERENCES block below or
+    #    it is reported here.
+    if valid_references is not None:
+        cited_n = {int(x) for x in re.findall(r"\[(\d{1,2})\]", text or "")}
+        unknown = sorted(cited_n - set(valid_references))
+        if unknown:
+            findings.append({
+                "check": "reference",
+                "severity": "high",
+                "detail": "cites "
+                          + ", ".join(f"[{n}]" for n in unknown)
+                          + ", which "
+                          + ("is" if len(unknown) == 1 else "are")
+                          + " not in the reference list shown with this "
+                            "finding, so the marker resolves to nothing.",
+            })
+        # A step with no marker is NOT a finding any more. Markers are
+        # attached deterministically after these checks, from each step's
+        # verified anchor, so the model is told not to write them -- this
+        # check would fire on every correct answer. What stays is the case
+        # that still matters: a number that resolves to nothing.
+
+    in_text = _mechanisms_in(text)
+    in_input = _mechanisms_in(prompt)
+
+    # Nowhere in the input: invention, and withheld like an invented figure.
+    invented_mech = sorted(in_text - in_input)
+    if invented_mech:
+        findings.append({
+            "check": "mechanism",
+            "severity": "high",
+            "detail": f"names {', '.join(invented_mech)}, which "
+                      f"{'is' if len(invented_mech) == 1 else 'are'} not in "
+                      f"the evidence supplied. A flow record does not "
+                      f"establish an application protocol.",
+        })
+
+    # In the input, but only as an example inside a feature definition. The
+    # SHAP panel is the one place this is always an over-reading: an
+    # attribution is computed over counts, sizes and timings.
+    overread = sorted(in_text & in_input) if strict_mechanism else []
+    if overread:
+        findings.append({
+            "check": "mechanism",
+            "severity": "medium",
+            "detail": f"names {', '.join(overread)}. The word appears in the "
+                      f"feature definitions supplied, not in an observation "
+                      f"-- an attribution is computed over packet counts, "
+                      f"sizes and timings, which do not establish a "
+                      f"protocol. Read it as the model's assumption.",
+        })
+
     stats = {
         "narrative_chars": len(text),
         "numbers_stated": len(_numbers(text)),
         "numbers_unsupported": len(invented),
+        "mechanisms_unsupported": invented_mech,
+        "mechanisms_overread": overread,
         "sources_cited": sorted(cited),
         "sources_supplied": sorted(sources_supplied or []),
         "findings": len(findings),
@@ -190,6 +481,12 @@ def summary_line(stats, findings):
         return (f"UNVERIFIED: {len(high)} claim"
                 f"{'s' if len(high) != 1 else ''} could not be traced to the "
                 f"model's input. Read the figures below, not the prose.")
-    return (f"{len(findings)} presentational issue"
+    # "presentational" is right for a units slip and wrong for a protocol
+    # the model assumed, so the word follows the finding rather than the
+    # severity.
+    kind = ("unsupported assumption"
+            if any(f["check"] == "mechanism" for f in findings)
+            else "presentational issue")
+    return (f"{len(findings)} {kind}"
             f"{'s' if len(findings) != 1 else ''} in the wording; the figures "
             f"below are unaffected.")

@@ -24,15 +24,37 @@ delivering.
 Record the source and destination addresses, and whether the flows are
 fragmented.
 
-RFC 1858 §3 describes the tiny-fragment attack: a first fragment made small
-enough that the TCP header is split across fragments, so a filter examining
-only the first fragment never sees the flags it is filtering on.
+RFC 1858 §3 describes the tiny-fragment attack:
 
-RFC 1858 §4 describes the overlapping-fragment attack: the zero-offset
-fragment carries innocuous data and passes the filter, while a later
-fragment with a non-zero offset overlaps and rewrites the TCP header after
-inspection. RFC 3128 extends this to a variant RFC 1858's original
-recommendation did not catch.
+## From RFC1858
+
+> With many IP implementations it is possible to impose an unusually small
+> fragment size on outgoing packets. If the fragment size is made small
+> enough to force some of a TCP packet's TCP header fields into the second
+> fragment, filter rules that specify patterns for those fields will not
+> match.
+
+A filter examining only the first fragment never sees the flags it is
+filtering on.
+
+RFC 1858 §4 describes the overlapping-fragment attack:
+
+## From RFC1858
+
+> an attacker could construct a series of packets in which the lowest
+> (zero-offset) fragment would contain innocuous data (and thereby be
+> passed by administrative packet filters), and in which some subsequent
+> packet having a non- zero offset would overlap TCP header information
+> (destination port, for instance) and cause it to be modified.
+
+RFC 3128 then shows that RFC 1858's own Indirect Method — rejecting
+fragments at offset 1 — does not catch every variant:
+
+## From RFC3128
+
+> The Indirect Method attempts to solve both Tiny Fragment and Overlapping
+> Fragment attacks, solely by rejecting packets with FO=1. However none of
+> the above fragments have FO=1, so none are rejected.
 
 The consequence for this pipeline: if evasion succeeded, what the flow
 record describes is not what the endpoint received. A classification of any
@@ -40,18 +62,43 @@ other flow in the same capture is correspondingly less reliable.
 
 ## 3. Containment
 
-RFC 1858 §3 prescribes discarding TCP fragments where the fragment offset
-equals 1, which blocks the overlapping variant directly.
+Discarding TCP fragments at offset 1 is RFC 1858's Indirect Method, and
+RFC 3128 above shows it is not sufficient on its own. The remedy RFC 1858
+§4.2 gives for the overlapping attack is a minimum offset, not a single
+rejected value:
 
-SP 800-53r5 SC-7 (Boundary Protection) requires that traffic be monitored
-and controlled at managed interfaces. Fragment reassembly policy belongs at
-that boundary, so the perimeter device — not the endpoint — should
-reassemble before inspection.
+## From RFC1858
+
+> If the router's filtering module enforces a minimum fragment offset for
+> fragments that have non-zero offsets, it can prevent overlaps in filter
+> parameter regions of the transport headers.
+
+For TCP the RFC puts that minimum at sixteen octets, so the flags field can
+never arrive in a non-zero-offset fragment.
+
+SP 800-53r5 SC-7 (Boundary Protection) places this at the perimeter:
+
+## From NIST.SP.800-53r5
+
+> Monitor and control communications at the external managed interfaces to
+> the system and at key internal managed interfaces within the system;
+
+Fragment reassembly policy belongs at that boundary, so the perimeter
+device — not the endpoint — should reassemble before inspection.
 
 SP 800-53r5 SI-4 (System Monitoring) requires detection of attack
-indicators. A detector that inspects fragments independently is the
-condition these attacks exploit, so verify the reassembly configuration
-before treating any downstream classification as sound.
+indicators:
+
+## From NIST.SP.800-53r5
+
+> Monitor the system to detect: 1. Attacks and indicators of potential
+> attacks in accordance with the following monitoring objectives:
+> [Assignment: organization-defined monitoring objectives]; and 2.
+> Unauthorized local, network, and remote connections;
+
+A detector that inspects fragments independently is the condition these
+attacks exploit, so verify the reassembly configuration before treating any
+downstream classification as sound.
 
 ## 4. What would make this a false positive
 

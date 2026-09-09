@@ -26,14 +26,37 @@ MODEL_PATH = os.path.join(
 # CASE OUTPUT
 # ============================================================
 
+# Case output is TEMPORARY. Everything derived from the capture -- the flow
+# table, the extraction record, the case file, the investigator's review --
+# is written into a per-run workspace and deleted when the application
+# exits. The user's own capture is never copied, so nothing of theirs is
+# removed with it.
+#
+# The knowledge base, the cited sources and their extraction cache are NOT
+# here and are never touched by that cleanup: they are the tool's resources,
+# identical for every case, and are what makes a citation checkable.
+from services.session import SESSION_DIR, sweep_orphans
+
 CASE_OUTPUT_DIR = os.path.join(
-    BASE_DIR,
-    "ForenXAI_Cases"
+    SESSION_DIR,
+    "cases"
 )
 
 os.makedirs(
     CASE_OUTPUT_DIR,
     exist_ok=True
+)
+
+# A run that crashed hard enough to skip both cleanup paths leaves its
+# workspace behind with a flow table in it. Nothing else would remove it.
+sweep_orphans()
+
+# Where a case goes if the investigator chooses to keep it. Nothing is
+# written here automatically -- keeping evidence is a decision, and so is
+# discarding it.
+CASE_ARCHIVE_DIR = os.path.join(
+    BASE_DIR,
+    "ForenXAI_Cases"
 )
 
 

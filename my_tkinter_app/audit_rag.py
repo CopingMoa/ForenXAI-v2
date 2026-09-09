@@ -193,13 +193,44 @@ handwritten = [c for c in classes
                    os.path.join(ps.KNOWLEDGE_DIR,
                                 ps.KNOWLEDGE_MAP[c]["doc"]),
                    encoding="utf-8").read()]
-print(f"  note  {len(handwritten)} class documents are hand-written with no "
-      f"machine-checked")
-print(f"        quote block: {', '.join(handwritten)}. Citations are "
-      f"present;")
-print(f"        the prose is the author's, so --verify cannot check it.")
+if handwritten:
+    print(f"  note  {len(handwritten)} class documents are hand-written with "
+          f"no machine-checked")
+    print(f"        quote block: {', '.join(handwritten)}. Citations are "
+          f"present;")
+    print(f"        the prose is the author's, so --verify cannot check it.")
+else:
+    check("every class document carries a machine-checked quote block", True)
 
 # ============================================================
+# Coverage. A knowledge file no finding can reach is a file nobody reads:
+# it passes every citation and extract check and never appears on screen.
+# interpretability/glossary.md was exactly that until it was mapped.
+import glob as _glob
+import itertools as _it
+
+on_disk = {os.path.relpath(p, ps.KNOWLEDGE_DIR).replace("\\", "/")
+           for p in _glob.glob(os.path.join(ps.KNOWLEDGE_DIR, "*", "*.md"))}
+reached = set()
+for cls in classes:
+    for cap in ({"facts": {}},
+                {"facts": {"total_flows": 5000, "flow_engine": "python"}}):
+        for lowconf, weak, share, runner in _it.product(
+                (0, 30), (False, True), (0.02, 0.5), (None, "DoS")):
+            f = finding_for(cls, low_confidence_count=lowconf,
+                            share_of_capture=share, dominant_runner_up=runner,
+                            dominant_runner_up_share=0.4 if runner else 0.0,
+                            reliability_f1=(ps.LOW_CONFIDENCE_CLASSES.get(cls)
+                                            if weak else None))
+            reached |= {s["source"] for s in ps.recommend(f, summary=cap)
+                        ["sections"] if s.get("source")}
+
+# features/glossary.md is read by _load_glossary() for panel 2's feature
+# names, not retrieved as a document, so it is not expected here.
+orphans = sorted(on_disk - reached - {"features/glossary.md"})
+check(f"every knowledge document is reachable by some finding "
+      f"({len(reached)}/{len(on_disk)} retrieved)", not orphans, str(orphans))
+
 print()
 print("=" * 70)
 print("5. UI -- what the widget receives")

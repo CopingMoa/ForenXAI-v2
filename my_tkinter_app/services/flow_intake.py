@@ -387,3 +387,70 @@ def endpoints(df, mask=None, top=5):
                         for p, n in counts.items()]
 
     return out
+
+
+# IANA protocol numbers, for the handful a flow table actually carries. The
+# number alone is not readable in a report -- "Protocol 6" tells an
+# investigator nothing that "TCP" does not tell them immediately.
+PROTOCOL_NAMES = {1: "ICMP", 2: "IGMP", 6: "TCP", 17: "UDP", 41: "IPv6",
+                  47: "GRE", 50: "ESP", 51: "AH", 58: "ICMPv6", 89: "OSPF",
+                  132: "SCTP"}
+
+
+def inventory(df, mask=None):
+    """Everything the flow table says about WHO and WHAT, not how much.
+
+    The summary panel counted flows and named the three busiest hosts. That
+    answers "how big is this capture" and leaves the question an
+    investigator actually opens a capture with -- who is on this network,
+    what were they speaking, and how much moved -- unanswered.
+
+    Every figure here is a count over the identity columns, so a table
+    missing them simply reports less rather than failing.
+    """
+    sub = df if mask is None else df[mask]
+    out = {"flows": int(len(sub))}
+    if not len(sub):
+        return out
+
+    for name, column in (("distinct_sources", "Src IP"),
+                         ("distinct_targets", "Dst IP"),
+                         ("distinct_src_ports", "Src Port"),
+                         ("distinct_dst_ports", "Dst Port")):
+        if column in sub.columns:
+            out[name] = int(sub[column].astype(str).nunique())
+
+    if "Src IP" in sub.columns and "Dst IP" in sub.columns:
+        pairs = sub["Src IP"].astype(str) + " -> " + sub["Dst IP"].astype(str)
+        out["distinct_conversations"] = int(pairs.nunique())
+        out["top_conversations"] = [
+            {"pair": p, "flows": int(n)}
+            for p, n in pairs.value_counts().head(5).items()]
+
+    if "Protocol" in sub.columns:
+        proto = pd.to_numeric(sub["Protocol"], errors="coerce").dropna()
+        out["protocols"] = [
+            {"protocol": int(p),
+             "name": PROTOCOL_NAMES.get(int(p), f"IP proto {int(p)}"),
+             "flows": int(n)}
+            for p, n in proto.astype(int).value_counts().head(6).items()]
+
+    # Volume. Named for what CICFlowMeter measures: payload bytes carried by
+    # the flows in this table, not bytes on the wire.
+    def total(*columns):
+        got = [pd.to_numeric(sub[c], errors="coerce").fillna(0).sum()
+               for c in columns if c in sub.columns]
+        return int(sum(got)) if got else None
+
+    fwd_b = total("Total Length of Fwd Packet")
+    bwd_b = total("Total Length of Bwd Packet")
+    fwd_p = total("Total Fwd Packet")
+    bwd_p = total("Total Bwd packets")
+    if fwd_b is not None or bwd_b is not None:
+        out["bytes"] = {"forward": fwd_b, "backward": bwd_b,
+                        "total": (fwd_b or 0) + (bwd_b or 0)}
+    if fwd_p is not None or bwd_p is not None:
+        out["packets"] = {"forward": fwd_p, "backward": bwd_p,
+                          "total": (fwd_p or 0) + (bwd_p or 0)}
+
+    return out

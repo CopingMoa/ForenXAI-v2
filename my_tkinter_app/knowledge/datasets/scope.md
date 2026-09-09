@@ -1,13 +1,12 @@
 # Scope and claim boundary
 
-> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
-> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
+> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
 >
 > Retrieved: 2026-09-08
 >
 > The measured figures below (952,000 training flows, 280,000 test flows,
 > 0.9337 accuracy, 0.9287 macro F1) are this project's own results, not
-> claims from either work. The two sources are cited for the general point
+> claims from the cited work. Arp et al. is cited for the general point
 > that a score measured inside one environment does not transfer to
 > another -- see [[extraction-validity]] and [[reliability]].
 
@@ -32,6 +31,24 @@ The cause was diagnosed: flow features do not survive a change of capture
 environment. Training flows were extracted with a 120-second timeout;
 TRUSTLab flows run to 15,717 seconds. Twenty-one of the 74 features differ
 by more than three standard deviations between the two.
+
+That is the sampling-bias pitfall, measured rather than assumed:
+
+## From Arp.cacm
+
+> The collected data does not sufficiently represent the true data
+> distribution of the underlying security problem.
+
+and the reason a held-out score inside one environment is not a deployment
+claim:
+
+## From Arp.cacm
+
+> A learning-based system is solely evaluated in a laboratory setting,
+> without discussing its practical limitations.
+
+The figures above are this project's answer to the second: the limitation
+is stated rather than left implicit.
 
 ## What to say in an interface
 

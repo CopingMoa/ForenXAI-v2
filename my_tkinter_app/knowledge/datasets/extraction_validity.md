@@ -1,6 +1,6 @@
 # When the features themselves are not comparable
 
-> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
+> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
 >
 > Retrieved: 2026-09-08
 
@@ -33,10 +33,10 @@ The Flow Summary panel warns when it sees this.
 
 ## 3. Why this is a correctness problem, not a tidiness one
 
-## From USENIX.dosdonts
+## From Arp.cacm
 
 > Spurious correlations result from artifacts that correlate with the task
-> to solve but are not actually related to it, leading to false
+> to solve but are not actually re - lated to it, leading to false
 > associations.
 
 An extraction artefact is exactly such an artefact. If the training capture

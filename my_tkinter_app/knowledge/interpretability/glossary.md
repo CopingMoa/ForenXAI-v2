@@ -1,8 +1,9 @@
 # Machine learning terms used in this interface
 
-> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 > Source: National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.
-> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
+> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
+> Source: T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785.
+> Source: S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C. Krishna Mohan, Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Cham, Switzerland: Springer Nature, 2025, doi: 10.1007/978-3-031-89327-8.
 >
 > Retrieved: 2026-09-08
 
@@ -24,7 +25,12 @@ consistently the same class across a finding, the two may be
 indistinguishable — see [[class-ambiguity]].
 
 **Margin / raw score.** The model's output before the softmax turns it into
-probabilities. SHAP values live here.
+probabilities. SHAP values live here. It is a sum of per-tree scores:
+
+## From Chen.xgboost
+
+> Unlike decision trees, each regression tree contains a continuous score
+> on each of the leaf, we use wi to represent score on i-th leaf.
 
 **Log-odds.** The units of the margin. Not a percentage, and not additive
 with probabilities.
@@ -69,15 +75,11 @@ starting point the attributions move away from. There is one per class.
 **Additivity.** The property that base value plus all SHAP values equals
 the model's margin. Checked at build time; error here is 1.8e-05.
 
-## From Arslan.mits
-
-> Shapley additive explanations (SHAP) calculates feature contributions
-> using Shapley values from game theory [31]. TreeSHAP provides optimized
-> computational power for tree-based models and delivers more accurate
-> values in polynomial time [32].
-
 **TreeSHAP.** The exact algorithm for Shapley values on tree ensembles,
-used here in place of the sampling-based Kernel SHAP.
+used here in place of the sampling-based Kernel SHAP. No document in
+`knowledge/_sources` describes SHAP or TreeSHAP, so the definitions in this
+section describe what the library computes and what this interface shows,
+and carry no citation.
 
 **tree_path_dependent.** The setting that computes expectations by walking
 the trees, using the traversal counts stored in them. It needs no
@@ -87,6 +89,14 @@ background sample and respects correlations present in the training data.
 panel shows. *Global* summarises the whole model, as in the mean absolute
 SHAP values in `shap_global.json`. A feature that matters globally may
 matter not at all for the flow in front of you.
+
+**Explainability.** What a model can be made to say about its own output:
+
+## From Iyengar.aip
+
+> Explainable AI refers to models and systems that can provide humans with
+> understandable explanations of their operations, decisions, or
+> predictions.
 
 **Explainability vs interpretability.** NIST separates these:
 
@@ -108,10 +118,10 @@ data. Measured only within TRUSTLab here — see [[scope]].
 **Spurious correlation.** A pattern the model learned that separates the
 classes for reasons unrelated to the actual task.
 
-## From USENIX.dosdonts
+## From Arp.cacm
 
 > Spurious correlations result from artifacts that correlate with the task
-> to solve but are not actually related to it, leading to false
+> to solve but are not actually re - lated to it, leading to false
 > associations.
 
 **Sampling bias.** A difference between the data the model was fitted on
@@ -130,7 +140,9 @@ feature — see [[extraction-validity]].
 
 None of these documents defines these terms for network forensics
 specifically, and none states what weight any of these figures should carry
-in a report. The numeric values quoted above (0.9337, 0.9287, 0.6703,
+in a report. None of them describes SHAP, Shapley values or TreeSHAP at
+all, which is why those entries are unsourced definitions of what this
+interface shows. The numeric values quoted above (0.9337, 0.9287, 0.6703,
 1.8e-05) are this project's own measurements, not claims from the cited
 works.
 

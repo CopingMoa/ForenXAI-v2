@@ -191,11 +191,9 @@ the document's **own title page**, not from a publisher's landing page.
 | 1 | D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988. | Base rate fallacy (P8), inappropriate performance measures (P7), spurious correlations (P4), sampling bias | Open access at usenix.org/conference/usenixsecurity22/presentation/arp. Check §3 pitfall descriptions |
 | 5 | National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1. | Explainability vs interpretability | nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf, §3.5 |
 
-
 ## Which document answers which question
 
 | Document | Retrieved when |
-|---|---|
 | `interpretability/shap_reading.md` | Always — every finding has attributions |
 | `interpretability/caveats.md` | Always — the limits to quote alongside them |
 | `datasets/scope.md` | Always — where the model has been shown to work |
@@ -240,19 +238,19 @@ prose, so every draft that quoted it produced headings and nothing
 actionable. The per-category pages carry the real "How to prevent" guidance.
 
 **Files in `_sources/` that are NOT registered cannot be quoted.** Several
-PDFs sit there unregistered — the RMF FAQ set, FIPS 200, SP 800-18r2, the
-Privacy Framework, and a Springer volume. Nothing cites them, and nothing
-may until they are added to `SOURCES` in `fetch_knowledge.py` with a
-citation checked against their own title page. An unregistered file is a
-file `--verify` cannot check.
-
+PDFs sit there unregistered — the RMF FAQ set, FIPS 200, SP 800-18r2 and
+the Privacy Framework. Nothing cites them, and nothing may until they are
+added to `SOURCES` in `fetch_knowledge.py` with a citation checked against
+their own title page. An unregistered file is a file `--verify` cannot
+check.
 
 ---
 
-# Withdrawn: the two SHAP preprints
+# Withdrawn: the two SHAP preprints, and their replacement
 
 `Lundberg.shap` and `Lundberg.treeshap` were removed and their PDFs
-deleted. `Arslan.mits` replaces them.
+deleted. `Arslan.mits` replaced them, and has since been withdrawn in
+turn — see the next section. **Nothing registered now describes SHAP.**
 
 **The underlying work is not in question.** "A unified approach to
 interpreting model predictions" is NeurIPS 2017 and the TreeSHAP paper
@@ -262,27 +260,18 @@ preprint** of each, which is not the reviewed artefact. A citation should
 name the thing that was actually checked, and this project checks quotes
 against the file on disk.
 
-Rather than cite a version we do not hold, the SHAP claims are now carried
-by a reviewed paper that states them and that is about intrusion detection:
+**What this costs, now that Arslan.mits has gone too.** No registered
+document defines SHAP, Shapley values or TreeSHAP. Those definitions
+survive in `interpretability/glossary.md` and `shap_reading.md` as
+**unsourced descriptions of what this interface shows**, and both files say
+so in their own text. The mechanism claims that used to lean on a citation
+are now stated as what they are: properties of the `shap` library this
+pipeline calls, with the measurable consequence — an additivity error of
+1.8e-05 — reported instead.
 
-**[14]** R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in
-intelligent transportation systems: A comparative study on AI-based anomaly
-detection and threat analysis," *Mechatronics and Intelligent Transportation
-Systems*, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
-
-> Received 15 Dec 2025, revised 16 Feb 2026, accepted 27 Feb 2026. CC BY 4.0.
-> Supplied locally rather than fetched, so its manifest entry is marked
-> `supplied_locally` and records the SHA-256 of the file on disk.
->
-> Used in `interpretability/shap_reading.md`, `glossary.md` and
-> `caveats.md` for what SHAP and TreeSHAP compute, and for the polynomial
-> -time property that makes explaining thousands of flows practical.
-
-**What this costs.** Arslan et al. describe and apply SHAP; they do not
-derive it. For the derivation, the NeurIPS and Nature Machine Intelligence
-papers remain the references to read — they are simply no longer quoted
-here, because the reviewed versions are not the files this repository
-holds.
+For the derivation, the NeurIPS 2017 and Nature Machine Intelligence 2020
+papers remain the references to read. They are not quoted here because the
+reviewed versions are not the files this repository holds.
 
 
 ---
@@ -298,12 +287,17 @@ to be.
 |---|---|---|
 | `Lundberg.shap` | NeurIPS 2017 | arXiv preprint |
 | `Lundberg.treeshap` | Nature Machine Intelligence 2020 | arXiv preprint |
-| `Chen.xgboost` | ACM SIGKDD 2016 | arXiv preprint |
 | `SommerPaxson.closedworld` | IEEE S&P 2010, doi 10.1109/SP.2010.25 | Author's copy from icir.org, no publisher front matter |
 
-All four are real, peer-reviewed papers. None of the files was the
-peer-reviewed artefact. `Chen.xgboost` was registered but never quoted, so
-removing it changed no document.
+All three are real, peer-reviewed papers. None of the files was the
+peer-reviewed artefact.
+
+**`Chen.xgboost` was removed on this rule and has been restored.** The copy
+now in `_sources/` is the published proceedings version, not the preprint:
+page 1 carries the ACM block — "Permission to make digital or hard copies
+…", `KDD '16, August 13-17, 2016, San Francisco, CA, USA`, ISBN
+978-1-4503-4232-2, DOI 10.1145/2939672.2939785. It is registered and
+quoted, and the ISBN is its citation claim.
 
 **How to tell before you add one.** Open the PDF and look for publisher
 front matter on the page itself — a proceedings statement, an ISBN, a DOI.
@@ -311,21 +305,78 @@ front matter on the page itself — a proceedings statement, an ISBN, a DOI.
 31st USENIX Security Symposium … 978-1-939133-31-1". The Sommer and Paxson
 copy carried none; it opens straight into the title and abstract.
 
-**What replaced them.** `Arslan.mits` (peer-reviewed, 2026, intrusion
-detection) now carries the SHAP and TreeSHAP claims, the class-imbalance
-point, and the SOC-explainability point. What it does not do is derive
-SHAP — for the derivation the NeurIPS and Nature Machine Intelligence
-papers remain the references to read, they are simply no longer quoted
-here.
+---
+
+# Withdrawn: the Acadlore journal paper
+
+`Arslan.mits` — *Mechatronics and Intelligent Transportation Systems*, vol.
+5, no. 1, 2026, doi 10.56578/mits050102 — was removed because its peer
+review does not meet the standard the rest of this list is held to. It was
+the sole citation behind **eight quote blocks**, all in
+`knowledge/interpretability`, and the strongest single point of failure in
+the provenance chain: an examiner challenging that one journal would have
+taken the SHAP mechanism, the class-imbalance argument and the
+SOC-explainability point down with it.
+
+Every one of the eight was re-sourced or withdrawn, never left standing:
+
+| Claim it carried | Now |
+|---|---|
+| What SHAP and TreeSHAP compute (×3) | Unsourced by design. The files say so, and report the measured additivity error instead |
+| The model's output is a sum of tree scores | `Chen.xgboost`, the KDD 2016 paper for the algorithm actually in use |
+| Explainability matters in SOC triage | `Iyengar.aip`, on explainability in forensic practice |
+| A rare class is separated worst | **Withdrawn.** No registered document states it; `class_ambiguity.md` now marks it as this project's own unsourced reading |
+| MCC is robust to class skew | Replaced by `USENIX.dosdonts` on ROC vs precision-recall under an imbalanced class ratio, which makes the same point about single-figure measures |
+
+**Two sources were added to absorb the load**, both already sitting
+unregistered in `_sources/`:
+
+**[14]** T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting
+system," in *Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data
+Mining*, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi:
+10.1145/2939672.2939785.
+
+> Peer-reviewed conference proceedings, and the algorithm this pipeline
+> actually runs. Used in `caveats.md`, `glossary.md` and `shap_reading.md`
+> for what the model's margin is — a sum of per-tree leaf scores — which is
+> the quantity SHAP attributions are a share of.
+
+**[15]** S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C.
+Krishna Mohan, *Artificial Intelligence in Practice: Theory and Application
+for Cyber Security and Forensics*. Cham, Switzerland: Springer Nature,
+2025, doi: 10.1007/978-3-031-89327-8.
+
+> Springer Nature monograph, Signals and Communication Technology series,
+> indexed by Scopus and zbMATH. Used in `caveats.md`, `class_ambiguity.md`,
+> `confidence.md`, `glossary.md` and `shap_reading.md` for why an
+> explanation is required in forensic work at all — the black-box problem,
+> the definition of explainable AI, error-finding by the analyst, and
+> evidence admissibility.
+>
+> **What it does not do:** the book contains no occurrence of "SHAP" or
+> "Shapley". It is cited for the forensic case for explainability, never
+> for the mechanism.
 
 **Standards bodies are treated differently and stay.** NIST, CISA, IETF and
 OWASP publish through their own review processes and their PDFs ARE the
 authoritative artefact.
 
-## Registered sources after this change: 16
+**Standards bodies are treated differently and stay.** NIST, CISA, IETF and
+OWASP publish through their own review processes and their PDFs ARE the
+authoritative artefact.
+
+## Registered sources after this change: 17
 
 NIST SP 800-61r3, 800-53r5, 800-52r2, 800-86 · NIST CSWP 29 ·
 NIST AI 100-1 · CISA playbooks · RFC 9424, 1858, 3128 ·
 OWASP Top 10:2025 index + A01, A05, A07 · USENIX Security 2022
-(Arp et al.) · Mechatronics and Intelligent Transportation Systems 2026
-(Arslan et al.)
+(Arp et al.) · ACM SIGKDD 2016 (Chen and Guestrin) ·
+Springer Nature 2025 (Iyengar et al.)
+
+## What `knowledge/interpretability` may draw on
+
+Those files may cite **only** documents in `knowledge/_sources`, and
+`source_map.py` enforces a second rule there that the playbooks are not
+held to: **a source cited in an interpretability file must also be quoted
+in it.** A citation that is never quoted is a paraphrase from somewhere
+`--verify` cannot reach, which is the case the rule exists to catch.

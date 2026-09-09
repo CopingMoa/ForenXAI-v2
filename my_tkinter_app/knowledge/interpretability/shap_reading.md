@@ -1,8 +1,9 @@
 # Reading a SHAP attribution
 
-> Source: R. Arslan, T. Ozseven, M. M. Aydin and Y. Celik, "Cybersecurity in intelligent transportation systems: A comparative study on AI-based anomaly detection and threat analysis," Mechatronics and Intelligent Transportation Systems, vol. 5, no. 1, pp. 11-30, 2026, doi: 10.56578/mits050102.
 > Source: National Institute of Standards and Technology, "Artificial Intelligence Risk Management Framework (AI RMF 1.0)," NIST AI 100-1, Jan. 2023, doi: 10.6028/NIST.AI.100-1.
-> Source: D. Arp et al., "Dos and don'ts of machine learning in computer security," in Proc. 31st USENIX Security Symp., Boston, MA, USA, Aug. 2022, pp. 3971-3988.
+> Source: D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro and K. Rieck, "Pitfalls in machine learning for computer security," Commun. ACM, vol. 67, no. 11, pp. 104-112, Nov. 2024, doi: 10.1145/3643456.
+> Source: T. Chen and C. Guestrin, "XGBoost: A scalable tree boosting system," in Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining, San Francisco, CA, USA, Aug. 2016, pp. 785-794, doi: 10.1145/2939672.2939785.
+> Source: S. S. Iyengar, S. Nabavirazavi, Y. Hariprasad, Prasad HB and C. Krishna Mohan, Artificial Intelligence in Practice: Theory and Application for Cyber Security and Forensics. Cham, Switzerland: Springer Nature, 2025, doi: 10.1007/978-3-031-89327-8.
 >
 > Retrieved: 2026-09-08
 
@@ -12,15 +13,21 @@ Each row of the panel is one feature and one number: that feature's share of
 the distance between the model's baseline output and its output for this
 particular flow.
 
-## From Arslan.mits
+That baseline and that output belong to a sum of trees, which is what the
+attributions are a share of:
 
-> Shapley additive explanations (SHAP) calculates feature contributions
-> using Shapley values from game theory [31]. TreeSHAP provides optimized
-> computational power for tree-based models and delivers more accurate
-> values in polynomial time [32].
+## From Chen.xgboost
 
-The attributions add up. That is the defining property and what makes the
-panel checkable rather than decorative: the pipeline verifies that the
+> Unlike decision trees, each regression tree contains a continuous score
+> on each of the leaf, we use wi to represent score on i-th leaf.
+
+## From Chen.xgboost
+
+> Figure 1: Tree Ensemble Model. The final predic- tion for a given example
+> is the sum of predictions from each tree.
+
+The attributions add up too. That is the defining property and what makes
+the panel checkable rather than decorative: the pipeline verifies that the
 values sum to the model's margin plus the base value, and additivity error
 on this model is 1.8e-05.
 
@@ -49,9 +56,11 @@ which is why no background sample is needed, and why the attributions
 respect correlations present in the training data rather than assuming the
 features are independent.
 
-The polynomial-time property quoted above is what makes this practical: the
-panel explains thousands of flows in seconds, where the model-agnostic
-alternative manages about three per second.
+TreeSHAP runs in time polynomial in the size of the trees, which is what
+makes the panel practical at all — this project measures 8.1 ms per flow
+against 20 microseconds to classify one, which is why only the two
+representative flows of a finding are explained rather than every row. That
+timing is a measurement of this pipeline, not a claim from a cited work.
 
 ## 4. What an attribution does NOT establish
 
@@ -60,10 +69,10 @@ as that feature is introduced. It describes the model, not the network. If
 the model learned an artefact, SHAP will faithfully report the artefact as
 important.
 
-## From USENIX.dosdonts
+## From Arp.cacm
 
 > Spurious correlations result from artifacts that correlate with the task
-> to solve but are not actually related to it, leading to false
+> to solve but are not actually re - lated to it, leading to false
 > associations.
 
 **It is not the only explanation.** Correlated features share credit. If
@@ -76,6 +85,12 @@ the model gave, including when that answer is wrong. A confidently wrong
 flow gets a confident, coherent-looking explanation.
 
 ## 5. What NIST asks you to distinguish
+
+## From Iyengar.aip
+
+> Explainable AI refers to models and systems that can provide humans with
+> understandable explanations of their operations, decisions, or
+> predictions.
 
 ## From NIST.AI.100-1
 
@@ -103,10 +118,11 @@ the analyst's step, and it needs the capture, not the attribution.
 
 ## 7. Not covered by these sources
 
-Arslan et al. apply SHAP to intrusion detection in a vehicular context; they
-do not prescribe how much weight an attribution should carry in a forensic
-report, and neither does NIST AI 100-1, which is a risk-management framework
-rather than a technique. None of the three states a threshold above which an
+None of these documents prescribes how much weight an attribution should
+carry in a forensic report. Chen and Guestrin describe the model, not its
+explanation; NIST AI 100-1 is a risk-management framework rather than a
+technique; Iyengar et al. argue for explainability in forensic practice
+without fixing a threshold. Nothing here states a value above which an
 attribution is "important". That judgement is yours and belongs in your own
 runbook.
 
