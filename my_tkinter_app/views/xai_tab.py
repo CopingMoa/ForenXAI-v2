@@ -368,8 +368,13 @@ class XaiTab:
             return []
 
         if text and "ANCHOR:" in text.upper():
-            out = [("RECOMMENDED STEPS  (written by a local model from the "
-                    "playbook below)\n\n", "h")]
+            # No heading of its own -- panel 3 numbers its own sections, and
+            # two headings for one block reads as a formatting fault. What
+            # is left is the attribution, which must stay: these sentences
+            # are model-written and the reader has to know that.
+            out = [("  Written by a local model from the playbook below. "
+                    "Each step quotes the line that prescribes it.\n\n",
+                    "muted")]
             out += XaiTab._step_blocks(text)
         elif text:
             out = [
@@ -803,8 +808,16 @@ class XaiTab:
 
     def _render_recommend(self, rec):
         """[UI CONNECTION: sections -> headed blocks, citations -> sources]"""
-        blocks = self._narration_blocks(rec) + [
-            (f"RECOMMENDATIONS -- {rec['class']}\n\n", "h")]
+        # Narration is NOT prepended here, unlike panels 1 and 2.
+        #
+        # On those panels the paragraph is a summary and belongs on top. On
+        # this one it is a conclusion: the steps were rendering before the
+        # reader had been told what was found, which read as advice arriving
+        # ahead of its own justification. It is inserted after the evidence
+        # instead -- found, why, then what to do.
+        blocks = [(f"RECOMMENDATIONS -- {rec['class']}\n",
+                   "h"),
+                  ("=" * 58 + "\n\n", "muted")]
 
         # No MITRE ATT&CK line. ATT&CK describes host-observed adversary
         # behaviour; this tool sees flow records, which cannot establish it.
@@ -827,8 +840,7 @@ class XaiTab:
             """
             if not rec.get("evidence"):
                 return []
-            out = [("\nWHY THE MODEL CHOSE THIS CLASS\n", "h"),
-                   ("  Strongest evidence, in log-odds. Positive supports "
+            out = [("  Strongest evidence, in log-odds. Positive supports "
                     "the class.\n", "muted")]
             for a in rec["evidence"]:
                 out.append((f"    {a['contribution']:+7.3f}  {a['plain']}\n",
@@ -840,13 +852,25 @@ class XaiTab:
             return out
 
         evidence_pending = bool(rec.get("evidence"))
+        step = [0]
+
+        def head(title, tag="h"):
+            """A numbered heading, so the panel reads as one document."""
+            step[0] += 1
+            return [(f"\n{step[0]} - {title}\n", tag)]
 
         for s in rec["sections"]:
-            # The evidence goes in once the finding has been stated, and
-            # before any guidance: found -> why -> what to do.
+            # Evidence and the model's steps go in once the finding has been
+            # stated and before any guidance: found -> why -> what to do.
             if evidence_pending and s.get("source"):
                 evidence_pending = False
+                blocks += head("Why the model chose this class")
                 blocks += evidence_blocks()
+                narration = self._narration_blocks(rec)
+                if narration:
+                    blocks += head("Recommended steps")
+                    blocks += narration
+                    blocks.append(("\n", None))
 
             if s.get("kind") == "model" and not divider_written:
                 divider_written = True
@@ -860,8 +884,18 @@ class XaiTab:
                     "reliability for this class, and how the flows were "
                     "extracted. Each carries a citation below.\n\n", "muted"))
 
-            blocks.append((f"{s['heading'].upper()}\n",
-                           "warn" if s["heading"] == "Ambiguity" else "h"))
+            # "GUIDANCE FROM INCIDENT_RESPONSE/SLOWLORIS.MD" is a path
+            # shouted at the reader. The document is named properly on its
+            # own source line below; the heading says what the section is.
+            title = s["heading"]
+            if s.get("source", "").startswith("incident_response/"):
+                stem = os.path.basename(s["source"])[:-3].replace("_", " ")
+                title = f"Response playbook - {stem}"
+            # Model-guidance sections already carry a readable heading of
+            # their own ("How reliable this class is"). Prefixing them with
+            # "Guidance -" only made them longer.
+            blocks += head(title,
+                           "warn" if s["heading"] == "Ambiguity" else "h")
 
             # A retrieved document is shown as its shape, its prescriptive
             # lines and its verified quotes -- not pasted in full. Nine
@@ -870,34 +904,42 @@ class XaiTab:
             # them. The file is named so it can be opened.
             dg = s.get("digest")
             if dg and s.get("source"):
-                if dg["outline"]:
-                    blocks.append(("  sections: " + " | ".join(dg["outline"])
-                                   + "\n", "muted"))
-                for a in dg["actions"]:
-                    blocks.append((f"    - {a}\n", None))
-                for q in dg["quotes"]:
-                    blocks.append((f"\n    quoted from {q['source']}:\n",
+                # The section outline used to print here as a pipe-separated
+                # list of headings. It told the reader the document has
+                # sections, which they could assume, and pushed the two
+                # useful parts down the panel. Dropped.
+                if dg["actions"]:
+                    blocks.append(("\n  What the document prescribes\n",
                                    "muted"))
-                    blocks.append((f"      \"{q['text']}\"\n", "good"))
-                blocks.append((f"\n  full document: knowledge/{s['source']}"
-                               f"  ({len(s['body'].split()):,} words, "
-                               f"{s.get('quotes_verified', 0)} quote(s) "
-                               f"verified against source)\n", "muted"))
-                blocks.append(("\n", None))
+                    for a in dg["actions"]:
+                        blocks.append((f"    - {a}\n", None))
+                for q in dg["quotes"]:
+                    blocks.append((f"\n  Quoted from {q['source']}\n",
+                                   "muted"))
+                    blocks.append((f"    \"{q['text']}\"\n", "good"))
+                n = s.get("quotes_verified", 0)
+                blocks.append((
+                    f"\n  Source: knowledge/{s['source']} - "
+                    f"{len(s['body'].split()):,} words, {n} "
+                    f"{'quote' if n == 1 else 'quotes'} verified against the "
+                    f"cited document.\n", "muted"))
             else:
-                blocks.append((s["body"] + "\n\n", None))
+                blocks.append((s["body"] + "\n", None))
 
         # Every recommendation is shown with the work it came from. A
         # response step without its source is an assertion; with the
         # citation it is something an investigator can check and an auditor
         # can follow.
         if rec.get("references"):
-            blocks.append(("REFERENCES\n", "h"))
+            blocks += head("References")
+            blocks.append(("  The works the documents above cite. The "
+                           "numbers match the markers on each step.\n",
+                           "muted"))
             for i, ref in enumerate(rec["references"], 1):
                 blocks.append((f"  [{i}] {ref}\n", "good"))
 
         if rec["citations"]:
-            blocks.append(("\nFILES QUOTED\n", "h"))
+            blocks += head("Files quoted")
             for c in rec["citations"]:
                 blocks.append((f"  {c}\n", "muted"))
             if not rec.get("references"):
