@@ -54,6 +54,7 @@ GROUPS = (
     ("Tab 2 - TreeSHAP reference", ("xai_tab/artifacts",)),
     ("Tab 2 - knowledge corpus", ("xai_tab/knowledge",)),
     ("Shared - services", ("services",)),
+    ("Tab 2 - exported LLM (optional)", ("xai_tab/models/*.gguf",)),
     ("Shared - sample data", ("sample_data",)),
     ("Shared - tools and docs", ("smoke_test.py", "test_panels_suite.py",
                                  "preflight.py", "model_ab.py", "audit_rag.py",
@@ -72,6 +73,12 @@ def inventory(out, rel):
     without also counting the 100 MB of corpus beneath it -- and without
     a list of filenames that goes stale the moment one is added.
     """
+    if rel.endswith("/*.gguf"):
+        d = os.path.join(out, rel[:-7])
+        if not os.path.isdir(d):
+            return []
+        return [(f"{rel[:-7]}/{f}", os.path.getsize(os.path.join(d, f)))
+                for f in sorted(os.listdir(d)) if f.endswith(".gguf")]
     if rel.endswith("/*"):
         d = os.path.join(out, rel[:-2])
         return [(f"{rel[:-2]}/{f}", os.path.getsize(os.path.join(d, f)))
@@ -199,6 +206,19 @@ def main():
 
         ok, detail = bundle_available()
         check("the model bundle loads and its manifest verifies", ok, detail)
+
+        # Tab 1 loads a different file from a different folder, and until
+        # this ran nothing proved it could -- section A only checked the
+        # path existed.
+        from services.model_service import discover_models, load_model
+        found = discover_models()
+        check("the forensic tab discovers its model",
+              "ForenXAI-Multiclass" in found, str(list(found)))
+        try:
+            load_model("ForenXAI-Multiclass")
+            check("the forensic tab's model loads", True)
+        except Exception as e:
+            check("the forensic tab's model loads", False, f"{type(e).__name__}: {e}")
 
         # ------------------------------------------------------------
         section("C  SOURCES  quotes verify, and against what")

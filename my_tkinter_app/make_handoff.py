@@ -99,6 +99,7 @@ PAYLOAD = [
     ("audit_rag.py", "audit_rag.py", False),
     ("model_ab.py", "model_ab.py", False),
     ("preflight.py", "preflight.py", False),
+    ("export_model.py", "export_model.py", False),
     ("source_map.py", "source_map.py", False),
     ("verify_panels.py", "verify_panels.py", False),
 ]
@@ -198,13 +199,28 @@ def main():
     ap.add_argument("--out", default=os.path.join(
         os.path.dirname(HERE), "ForenXAI_UI_Handoff"))
     ap.add_argument("--no-sources", action="store_true",
-                    help="skip the source PDFs (~34 MB)")
+                    help="skip the source PDFs (~98 MB)")
+    ap.add_argument("--with-model", action="store_true",
+                    help="also export the local LLM as a .gguf (4.7 GB). Off "
+                         "by default: it is a registry pull for anyone with "
+                         "Ollama, and only a packaged build needs the file.")
     args = ap.parse_args()
 
     out = os.path.abspath(args.out)
     print(f"Building {out}")
     print("-" * 60)
     build(out, include_sources=not args.no_sources)
+
+    # Opt-in, and after the payload: the export is 4.7 GB and only a
+    # packaged build needs it. Anyone with Ollama pulls the same weights
+    # in one command, so shipping it by default would triple the folder
+    # to save them that.
+    if args.with_model:
+        print(f"\nExporting the local model")
+        print("-" * 60)
+        sys.path.insert(0, HERE)
+        from export_model import export
+        export(None, os.path.join(out, "xai_tab", "models"))
 
     size = sum(
         os.path.getsize(os.path.join(r, f))

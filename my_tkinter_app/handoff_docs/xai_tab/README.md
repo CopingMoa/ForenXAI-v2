@@ -208,6 +208,14 @@ it is loaded.
 Shared at the root: `services/` and `sample_data/`. Also needed, and not a
 file: `ollama pull qwen2.5:7b` — see `../OLLAMA.md`.
 
+**Running from source?** The pull is all you need. **Packaging with
+PyInstaller?** `LlamaCppProvider` wants a real `.gguf` path and Ollama
+has no such file — it keeps weights in a content-addressed blob store,
+and a copied store does not register. `python export_model.py` copies
+the blob out under the name the loader derives from `OLLAMA_MODEL`, so
+the export and the loader cannot disagree. 4.7 GB;
+`make_handoff.py --with-model` does it as part of the build.
+
 ## Tools for this tab
 
 All run from the handoff root, not from this folder:
