@@ -331,33 +331,75 @@ def neutralise_magnitude(text):
     text = text or ""
     removed = []
 
-    def cut(m):
+    sep_before = re.compile(r"(?:,\s*(?:and\s+)?|\s+and\s+)$")
+    sep_after = re.compile(r"^(?:,\s*(?:and\s+)?|\s+and\s+)")
+
+    def keep(m):
+        """True when this adjective must be left where it is."""
         after = text[m.end():]
         # Predicative position: nothing follows but punctuation or the end.
         # "the gaps were unusually short." would become "the gaps were" --
         # not a weaker claim, a broken sentence.
+        #
+        # A LIST SEPARATOR IS NOT THE END OF A PHRASE, though, and reading it
+        # as one left "small, consistent packet sizes" untouched while cutting
+        # the same word elsewhere in the same paragraph. "small" there is
+        # attributive; what follows the comma is another adjective, not a
+        # new clause.
         if not re.match(r"\s*[A-Za-z]", after):
-            return m.group(0)
+            nxt = sep_after.match(after)
+            if not (nxt and _ADJECTIVE.match(after[nxt.end():])):
+                return True
         # Modifying the model's own certainty, not a measurement.
         if _PROTECTED_NOUN.match(after):
-            return m.group(0)
+            return True
         # The measured comparison is in this very sentence. Cutting the word
         # would leave the figure and delete the plain-English reading of it,
         # which is the whole job of this panel.
         start = text.rfind(".", 0, m.start()) + 1
         end = text.find(".", m.end())
-        if licensed_scale(text[start:end if end != -1 else len(text)]):
-            return m.group(0)
-        removed.append(m.group(0).strip())
-        return ""
+        return licensed_scale(text[start:end if end != -1 else len(text)])
 
-    out = _ADJECTIVE.sub(cut, text)
+    # A COORDINATED LIST LOSES ITS SEPARATOR WITH THE WORD.
+    #
+    # This ran as a plain re.sub for a long time and the seam it left was
+    # reported as invisible. It was not. "characterized by infrequent, large
+    # gaps between packets" became "characterized by infrequent, gaps between
+    # packets" -- a dangling comma and an orphaned adjective, on screen, in
+    # the panel this function exists to protect.
+    #
+    # Removing a word from a list means removing the separator that joined
+    # it, so the span is widened before it is cut: backwards over a preceding
+    # ", " or " and " when another adjective sits behind it, forwards over a
+    # following one when another adjective sits ahead.
+    pieces, last = [], 0
+    for m in _ADJECTIVE.finditer(text):
+        if m.start() < last or keep(m):
+            continue
+        start, end = m.start(), m.end()
+
+        before = text[:start]
+        sep = sep_before.search(before)
+        if sep and _ADJECTIVE.search(before[:sep.start()].split(",")[-1]
+                                     or before[:sep.start()][-24:]):
+            start = sep.start()
+        else:
+            nxt = sep_after.match(text[end:])
+            if nxt and _ADJECTIVE.match(text[end + nxt.end():]):
+                end += nxt.end()
+
+        pieces.append(text[last:start])
+        removed.append(m.group(0).strip())
+        last = end
+    pieces.append(text[last:])
+
     if not removed:
         return text, []
+    out = "".join(pieces)
 
     # Tidy the seams: doubled spaces, a space before punctuation, and "an"
     # left in front of what is now a consonant.
-    out = re.sub(r"[ 	]{2,}", " ", out)
+    out = re.sub(r"[ \t]{2,}", " ", out)
     # The captured punctuation is restored. This held a literal
     # 0x01 byte instead of the \1 backreference, so every space
     # before a comma or full stop became an invisible control

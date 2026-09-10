@@ -438,6 +438,20 @@ def test_mechanism_and_scale():
     check("an adjective contradicting a 'typical' claim is cut",
           bool(neutralise_magnitude(contradicted)[1]))
 
+    # The seam this function leaves is on screen, so it is asserted here.
+    # Cutting one word out of "infrequent, large gaps" used to leave
+    # "infrequent, gaps" -- a dangling comma in the panel this function
+    # exists to protect, reported for weeks as invisible to the reader.
+    listed = ("The traffic is characterized by infrequent, large gaps "
+              "between packets.")
+    out, cut = neutralise_magnitude(listed)
+    check("a coordinated list loses its separator with the word",
+          ", gaps" not in out and "  " not in out, out)
+    check("and loses every unlicensed word in it",
+          sorted(cut) == ["infrequent", "large"], str(cut))
+    check("a predicative adjective is still left for the check to flag",
+          not neutralise_magnitude("The gaps were unusually short.")[1])
+
 
 def test_prompt_shape(sample):
     """What reaches the model, and what deliberately does not.
