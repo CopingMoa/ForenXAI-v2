@@ -398,6 +398,47 @@ def test_direction_check():
                     "prediction."))
 
 
+def test_mechanism_and_scale():
+    """Two guards that were quietly failing in opposite directions.
+
+    The mechanism list held "syn flood" and the model wrote "SYN flooding",
+    which the trailing word-boundary rejected -- so the one spelling that
+    mattered was the one it could not see. And an adjective was cut even
+    when the model had quoted the supplied standard-deviation comparison in
+    the same breath, which is the model agreeing with its evidence.
+    """
+    section("T  SCALE  inflections are caught, agreement is not punished")
+    from services.narration_schema import (_mechanisms_in,
+                                           neutralise_magnitude)
+
+    for text, want in (
+            ("indicating potential scanning or SYN flooding activity", True),
+            ("consistent with port scanning", True),
+            ("evidence of data exfiltration", True),
+            ("the server sent data in bursts of 553 bytes", False),
+            ("many connection-open requests with few completions", False)):
+        check(f"mechanism {'caught' if want else 'clean'}: {text[:38]}",
+              bool(_mechanisms_in(text)) == want, str(_mechanisms_in(text)))
+
+    licensed = ("The largest outbound packet was 2,962 bytes, 1.5 standard "
+                "deviations above the training mean, suggesting unusually "
+                "large packets.")
+    paraphrased = licensed.replace("above", "larger than")
+    unlicensed = ("The evidence suggests the traffic involved large gaps "
+                  "between packets.")
+    contradicted = ("The gap of 1.17 seconds is typical for this feature "
+                    "and shows large delays between packets.")
+
+    check("an adjective beside the supplied comparison is kept",
+          not neutralise_magnitude(licensed)[1])
+    check("kept when the model paraphrases 'above' as 'larger than'",
+          not neutralise_magnitude(paraphrased)[1])
+    check("an adjective with no comparison is cut",
+          bool(neutralise_magnitude(unlicensed)[1]))
+    check("an adjective contradicting a 'typical' claim is cut",
+          bool(neutralise_magnitude(contradicted)[1]))
+
+
 def test_prompt_shape(sample):
     """What reaches the model, and what deliberately does not.
 
@@ -448,6 +489,15 @@ def test_prompt_shape(sample):
 
     check("no class name reaches the SHAP prompt",
           (res["selected"].get("class") or "zzz") not in prompt)
+
+    # The prompt used to forbid naming a protocol in a sentence that named
+    # two, and the glossary handed over "indicates scanning or SYN
+    # flooding". Both put the word in the input, so check 5 scored the
+    # model repeating it as MEDIUM rather than HIGH.
+    from services.narration_schema import _mechanisms_in
+    leaked = sorted(_mechanisms_in(prompt))
+    check("no protocol or technique word is in the SHAP prompt",
+          not leaked, str(leaked))
 
 
 def test_progress(sample):
@@ -625,6 +675,7 @@ def main():
     test_prompt_examples()
     test_magnitude_check()
     test_direction_check()
+    test_mechanism_and_scale()
     test_prompt_shape(sample)
     test_progress(sample)
     test_layout()

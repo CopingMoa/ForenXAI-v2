@@ -192,6 +192,38 @@ _ABOUT_TRAINING = re.compile(
     r"(?:data|distribution|set|mean|values)?", re.I)
 
 
+# A comparison the PROMPT supplied, quoted back by the model. Panel 2 gives
+# each attribution either "typical for this feature in the training data" or
+# "N standard deviations above/below the training mean", and a sentence
+# carrying the second one has already told the reader the scale -- measured,
+# in the units the panel prints. "2,962 bytes, 1.5 standard deviations above
+# the training mean, suggesting unusually large packets" is the model
+# agreeing with its evidence, not substituting for it.
+# The panel supplies "above"/"below"; the model paraphrases. Measured on
+# qwen2.5:7b: "1.5 standard deviations larger than the training data mean",
+# which is the supplied comparison in the model's own words and was not
+# recognised as one, so the adjective beside it was cut.
+_SUPPLIED_SD = re.compile(
+    r"\d+(?:\.\d+)?\s+standard\s+deviations?\s+"
+    r"(?:above|below|larger|smaller|higher|lower|greater|less|more)", re.I)
+
+_SAYS_TYPICAL = re.compile(r"typical|normal|within the (?:usual|expected)",
+                           re.I)
+
+
+def licensed_scale(sentence):
+    """Does this sentence carry the measured comparison for its own claim?
+
+    An adjective is a fault because it puts the model's sense of scale where
+    a measured one was supplied. When the measured one is right there in the
+    same sentence, that reasoning does not apply -- and cutting the word
+    then makes the prose worse for no gain in accuracy. A sentence that says
+    the value is typical licenses nothing: an adjective there contradicts it.
+    """
+    low = sentence or ""
+    return bool(_SUPPLIED_SD.search(low)) and not _SAYS_TYPICAL.search(low)
+
+
 _MARKUP = re.compile(r"[*_`#>]+")
 
 
@@ -242,14 +274,32 @@ _MECHANISM = (
     "quic", "icmp", "arp", "bgp", "ospf", "dhcp", "tftp", "vpn", "tor",
     "syn flood", "ack flood", "handshake", "payload", "malware",
     "ransomware", "botnet", "beacon", "exploit kit", "shellcode",
+    # Techniques, not protocols, and the same rule applies: a flow record
+    # carries counts, sizes and timings, so naming one is an inference.
+    # These were missing while the panel's own class name is withheld,
+    # which is what makes any of them an assertion the model reached for
+    # on its own. Measured on qwen2.5:7b: "indicating potential scanning or
+    # SYN flooding activity" from a count of connection-open requests.
+    "scan", "port scan", "brute force", "bruteforce", "credential stuffing",
+    "exfiltration", "tunnel", "spoof", "injection", "phishing", "flood",
+    "denial of service", "ddos", "man in the middle", "slowloris",
 )
+
+# "syn flood" was in the list above and "SYN flooding" walked past it: the
+# trailing guard rejected the inflection, so the one word the check most
+# needed to catch was the one spelling it could not. Terms are matched with
+# their ordinary English endings.
+# Doubled-consonant forms included: "scan" -> "scanning", "tunnel" ->
+# "tunnelling". Without them the base word is in the list and the form
+# a model actually writes is not.
+_INFLECTION = r"(?:s|es|ed|ing|ned|ning|led|ling|ged|ging)?"
 
 
 def _mechanisms_in(text):
     low = _flatten(text)
     return {t for t in _MECHANISM
-            if re.search(r"(?<![a-z0-9])" + re.escape(t) + r"(?![a-z0-9])",
-                         low)}
+            if re.search(r"(?<![a-z0-9])" + re.escape(t) + _INFLECTION
+                         + r"(?![a-z0-9])", low)}
 
 
 def neutralise_magnitude(text):
@@ -290,6 +340,13 @@ def neutralise_magnitude(text):
             return m.group(0)
         # Modifying the model's own certainty, not a measurement.
         if _PROTECTED_NOUN.match(after):
+            return m.group(0)
+        # The measured comparison is in this very sentence. Cutting the word
+        # would leave the figure and delete the plain-English reading of it,
+        # which is the whole job of this panel.
+        start = text.rfind(".", 0, m.start()) + 1
+        end = text.find(".", m.end())
+        if licensed_scale(text[start:end if end != -1 else len(text)]):
             return m.group(0)
         removed.append(m.group(0).strip())
         return ""
@@ -475,7 +532,9 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
     #    described as "a very short gap". Flagged, not withheld -- the
     #    figure beside it is correct and the reader can see the word.
     if strict_mechanism:
-        adj = _ADJECTIVE.findall(text)
+        adj = [a for sent in _SENTENCE.split(text or "")
+               if not licensed_scale(sent)
+               for a in _ADJECTIVE.findall(sent)]
         if adj:
             findings.append({
                 "check": "magnitude",

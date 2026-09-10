@@ -47,7 +47,8 @@ import os
 import re
 
 from services.narration_schema import (provenance, check, summary_line,
-                                       neutralise_magnitude, plain_reason)
+                                       neutralise_magnitude, plain_reason,
+                                       _mechanisms_in)
 
 
 SYSTEM = "\n".join([
@@ -317,6 +318,28 @@ def prompt_shap(panel, finding):
         # rates it high rather than medium, because it was never supplied.
         plain = re.sub(r"\s*\([^)]*\b(?:SSH|HTTP|HTTPS|DNS|FTP|SMTP|TLS)\b"
                        r"[^)]*\)", "", a["plain"])
+        # And the glossary's explanatory clause, when the explanation names
+        # a technique. "connection-open requests -- many with few
+        # completions indicates scanning or SYN flooding" hands the model
+        # its conclusion, and the model returned it almost verbatim:
+        # "indicating potential scanning or SYN flooding activity". That is
+        # not invention, it is obedience -- and the mechanism check then
+        # scored it MEDIUM rather than HIGH, because the words were in the
+        # prompt it was compared against.
+        #
+        # Same argument as stripping the port examples above: a definition
+        # is not an observation. The clause stays on the panel, where the
+        # analyst reads it as the definition it is.
+        # Only the offending CLAUSE, not the whole explanation. Dropping the
+        # tail wholesale cost the model the safe half -- "high means the
+        # server sent far more than it received" -- and it filled the gap
+        # with adjectives of its own, which is a worse trade: magnitude
+        # findings went from 1 in 5 to 4 in 5 while mechanism went to 0.
+        head, sep, tail = plain.partition(" -- ")
+        if sep and _mechanisms_in(tail):
+            kept = [c for c in re.split(r",\s*|\s+and\s+", tail)
+                    if not _mechanisms_in(c)]
+            plain = head + (" -- " + ", ".join(kept) if kept else "")
         # `direction` is stated, not left to be read off the sign. A
         # reviewer caught a sibling implementation describing a feature
         # marked "argues against" as supporting the class -- the sign was
@@ -414,20 +437,15 @@ terms of the counts, sizes and timings you were given -- how much was sent
 each way, how far apart the packets were -- rather than restating each
 figure on its own.
 
-NO CLASS NAME IS GIVEN, and none may be written. Measured over five prompt
-revisions: handed the chosen class, qwen2.5:3b reaches for the protocol
-that class is usually carried over -- "http", "handshake" -- which a flow
-record does not establish, and the paragraph is withheld two runs in three.
-Without the name it stays inside the evidence on every run. Which class was
-chosen is printed above this paragraph by the panel itself.
+NO CLASS NAME IS GIVEN, and none may be written. Which class was chosen is
+printed above this paragraph by the panel itself.
 
 Four things not to do:
   - Do not convert any value to a percentage.
   - Do not claim a feature caused the attack -- the model weighted it,
     which is a different statement.
   - Do not name a protocol, port, service or tool. The evidence above is
-    packet counts, sizes and timings; it does not say what protocol this
-    was, and neither may you.
+    packet counts, sizes and timings; it does not say what carried them.
   - Do not describe an observed value as large, small, short or long, and
     do not convert one. Each value is given already converted, with a
     comparison against the training data on the same line -- use those

@@ -44,8 +44,8 @@ corpus takes 0.68 ms instead of re-parsing PDFs.
    path is `my_tkinter_app/knowledge/_sources/`.
 4. `ollama pull qwen2.5:7b` (4.7 GB — the default; `qwen2.5:3b` is the
    fallback for a slower machine, see `handoff_docs/OLLAMA.md`)
-5. `cd my_tkinter_app && python smoke_test.py` — expect **90/90**.
-   `python smoke_test.py --llm --ui` runs the narration and Tk checks too: **113/113**.
+5. `cd my_tkinter_app && python smoke_test.py` — expect **100/100**.
+   `python smoke_test.py --llm --ui` runs the narration and Tk checks too: **123/123**.
 
 Someone who only needs to *look* at the app can skip 1-3 and take item 2
 instead; it already contains the corpus, the models and the tests.

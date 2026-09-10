@@ -215,9 +215,15 @@ Nothing high-severity fires on the sample capture: both models keep 5/5 on
 panel 2 across five findings. What remains is medium, and medium means the
 phrase is cut or reported, never the paragraph withheld.
 
-- **Adjectives.** The model occasionally writes "relatively short" beside a
-  value it was given a comparison for. The neutraliser removes the phrase and
-  says so on the console; the figure and its comparison are printed below
-  regardless. Roughly one finding in three.
-- **Mechanism, rarely.** A protocol name inferred from packet sizes and
-  timings, which a flow record does not establish. Caught and reported.
+- **Adjectives in framing sentences.** The model opens or closes with a
+  summary — "these characteristics indicate infrequent, large gaps" — that
+  names no feature and carries no comparison, so nothing licenses the scale
+  word. The neutraliser cuts it before the panel renders and says so on the
+  console; **the reader never sees it**. An adjective *is* kept when the
+  supplied standard-deviation comparison sits in the same sentence, because
+  there the model is agreeing with its evidence rather than substituting for
+  it. Roughly three findings in five, and not a defect in what is displayed.
+
+Chasing that to zero means suppressing the model's summarising sentences,
+which is worse prose for no gain in accuracy. It is a console diagnostic,
+not an open bug.
