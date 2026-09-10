@@ -302,6 +302,21 @@ def _mechanisms_in(text):
                          + r"(?![a-z0-9])", low)}
 
 
+def _sentence_around(text, at):
+    """The sentence containing offset `at`.
+
+    _SENTENCE requires whitespace after the full stop, so a decimal point
+    inside a figure does not end a sentence.
+    """
+    pos = 0
+    for part in _SENTENCE.split(text or ""):
+        end = pos + len(part)
+        if pos <= at <= end:
+            return part
+        pos = end + 1
+    return text or ""
+
+
 def neutralise_magnitude(text):
     """Delete judgement words about quantities. Returns (text, removed).
 
@@ -331,83 +346,106 @@ def neutralise_magnitude(text):
     text = text or ""
     removed = []
 
-    sep_before = re.compile(r"(?:,\s*(?:and\s+)?|\s+and\s+)$")
-    sep_after = re.compile(r"^(?:,\s*(?:and\s+)?|\s+and\s+)")
+    def keep(m, sentence):
+        """True when this adjective must be left where it is.
 
-    def keep(m):
-        """True when this adjective must be left where it is."""
-        after = text[m.end():]
+        `m` matched inside `sentence`, so "what follows" is what follows in
+        this sentence -- which is what the predicative test actually means.
+        """
+        after = sentence[m.end():]
         # Predicative position: nothing follows but punctuation or the end.
         # "the gaps were unusually short." would become "the gaps were" --
         # not a weaker claim, a broken sentence.
-        #
-        # A LIST SEPARATOR IS NOT THE END OF A PHRASE, though, and reading it
-        # as one left "small, consistent packet sizes" untouched while cutting
-        # the same word elsewhere in the same paragraph. "small" there is
-        # attributive; what follows the comma is another adjective, not a
-        # new clause.
         if not re.match(r"\s*[A-Za-z]", after):
-            nxt = sep_after.match(after)
-            if not (nxt and _ADJECTIVE.match(after[nxt.end():])):
-                return True
+            return True
         # Modifying the model's own certainty, not a measurement.
         if _PROTECTED_NOUN.match(after):
             return True
         # The measured comparison is in this very sentence. Cutting the word
         # would leave the figure and delete the plain-English reading of it,
         # which is the whole job of this panel.
-        start = text.rfind(".", 0, m.start()) + 1
-        end = text.find(".", m.end())
-        return licensed_scale(text[start:end if end != -1 else len(text)])
+        #
+        # Bounds come from the sentence splitter, not the nearest full stop:
+        # a decimal point is a full stop to str.find, so "3.1 standard
+        # deviations above the training mean" ended the sentence at "3" and
+        # the licence -- the rest of that phrase -- was never seen.
+        return licensed_scale(sentence)
 
-    # A COORDINATED LIST LOSES ITS SEPARATOR WITH THE WORD.
+    # ONE WORD IS EDITED OUT; ANYTHING MORE TAKES THE SENTENCE WITH IT.
     #
-    # This ran as a plain re.sub for a long time and the seam it left was
-    # reported as invisible. It was not. "characterized by infrequent, large
-    # gaps between packets" became "characterized by infrequent, gaps between
-    # packets" -- a dangling comma and an orphaned adjective, on screen, in
-    # the panel this function exists to protect.
+    # A lone attributive adjective can be removed cleanly: "large bursts of
+    # data" reads correctly as "bursts of data", and the figure it was
+    # judging is printed directly below either way.
     #
-    # Removing a word from a list means removing the separator that joined
-    # it, so the span is widened before it is cut: backwards over a preceding
-    # ", " or " and " when another adjective sits behind it, forwards over a
-    # following one when another adjective sits ahead.
-    pieces, last = [], 0
-    for m in _ADJECTIVE.finditer(text):
-        if m.start() < last or keep(m):
+    # Nothing else can. Each attempt to edit a more tangled phrase left a
+    # seam on screen, and each fix produced the next one:
+    #
+    #   "infrequent, large gaps"        -> "infrequent, gaps"
+    #   "small, consistent packet sizes" -> untouched, wrongly
+    #   "small to medium-sized"          -> "to medium-sized"
+    #   "ranged from medium to small"    -> "ranged from in size"
+    #
+    # That is a losing trade -- an unbounded set of English constructions
+    # against a regex, with the failures landing in the panel. So the rule
+    # is now structural rather than surgical: a sentence needing more than
+    # one plain removal is dropped whole. It carried a judgement the
+    # evidence does not license and it cannot be repaired without writing
+    # prose, which this function must never do. The figures it was
+    # describing are on the panel regardless.
+    connector = re.compile(r"(?:,|\band\b|\bor\b|\bto\b)\s*$")
+    sentences = _SENTENCE.split(text)
+
+    out = []
+    for sentence in sentences:
+        hits = [m for m in _ADJECTIVE.finditer(sentence)
+                if not keep(m, sentence)]
+
+        if not hits:
+            out.append(sentence)
             continue
-        start, end = m.start(), m.end()
 
-        before = text[:start]
-        sep = sep_before.search(before)
-        if sep and _ADJECTIVE.search(before[:sep.start()].split(",")[-1]
-                                     or before[:sep.start()][-24:]):
-            start = sep.start()
-        else:
-            nxt = sep_after.match(text[end:])
-            if nxt and _ADJECTIVE.match(text[end + nxt.end():]):
-                end += nxt.end()
+        # Adjacency to a connector is the risk, not the count. Two plain
+        # attributives in separate clauses -- "unusually short gaps, then
+        # a large burst" -- come out cleanly one at a time; it is the word
+        # joined to its neighbour that cannot.
+        tangled = any(
+            connector.search(sentence[:m.start()])
+            or re.match(r"\s*(?:,|and(?![a-z])|or(?![a-z])|to(?![a-z]))", sentence[m.end():])
+            for m in hits)
 
-        pieces.append(text[last:start])
-        removed.append(m.group(0).strip())
-        last = end
-    pieces.append(text[last:])
+        if tangled:
+            # The whole sentence goes, so every judgement in it goes --
+            # including any this pass would have left in place. What is
+            # reported has to match what the reader no longer sees.
+            removed.extend(m.group(0).strip()
+                           for m in _ADJECTIVE.finditer(sentence))
+            continue
+
+        # Every clean hit in the sentence, not only the first.
+        edited, last = [], 0
+        for m in hits:
+            edited.append(sentence[last:m.start()])
+            removed.append(m.group(0).strip())
+            last = m.end()
+        edited.append(sentence[last:])
+        out.append("".join(edited))
 
     if not removed:
         return text, []
-    out = "".join(pieces)
 
-    # Tidy the seams: doubled spaces, a space before punctuation, and "an"
-    # left in front of what is now a consonant.
-    out = re.sub(r"[ \t]{2,}", " ", out)
+    joined = " ".join(p for p in out if p.strip())
+
+    # Tidy the seams a single removal can still leave: doubled spaces, a
+    # space before punctuation, and "an" in front of what is now a consonant.
+    joined = re.sub(r"[ \t]{2,}", " ", joined)
     # The captured punctuation is restored. This held a literal
     # 0x01 byte instead of the \1 backreference, so every space
     # before a comma or full stop became an invisible control
     # character and the sentences ran together on screen.
-    out = re.sub(r"\s+([,.;:])", r"\1", out)
-    out = re.sub(r"(?<![a-z])an\s+(?=[bcdfghjklmnpqrstvwxyz])", "a ",
-                 out, flags=re.I)
-    return out.strip(), removed
+    joined = re.sub(r"\s+([,.;:])", r"\1", joined)
+    joined = re.sub(r"(?<![a-z])an\s+(?=[bcdfghjklmnpqrstvwxyz])", "a ",
+                    joined, flags=re.I)
+    return joined.strip(), removed
 
 
 def check(narrative, prompt, sources_supplied, grounding_text=None,

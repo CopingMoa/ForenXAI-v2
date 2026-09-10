@@ -358,6 +358,39 @@ def test_narration(sample):
                   phrase not in text, text[:90])
 
 
+def test_no_control_bytes():
+    """No source file holds a control byte where an escape belongs.
+
+    This has now happened three times in this repository, always the same
+    way: a regex written through a shell heredoc arrives with the escape
+    already interpreted, so `\b` becomes U+0008. It compiles, it never
+    matches, and the rule it belongs to is silently inert.
+
+    The cost the first two times: punctuation restored as an invisible
+    character so sentences ran together on screen, and an invariant that
+    asserted no worked example names a class while searching for a string
+    that cannot occur. Both passed their tests.
+
+    Lookarounds are the fix in the code -- they cannot be mangled -- and
+    this is the fix for the next one nobody thinks to write as a lookaround.
+    """
+    section("V  BYTES  no escape arrived as a control character")
+    import glob as _glob
+
+    bad = []
+    for path in (_glob.glob(os.path.join(HERE, "*.py"))
+                 + _glob.glob(os.path.join(HERE, "services", "*.py"))
+                 + _glob.glob(os.path.join(HERE, "views", "*.py"))):
+        try:
+            text = open(path, encoding="utf-8").read()
+        except OSError:
+            continue
+        for n, line in enumerate(text.split(chr(10)), 1):
+            if any(ord(c) < 9 or 13 < ord(c) < 32 for c in line):
+                bad.append(f"{os.path.basename(path)}:{n}")
+    check("no control byte in any source file", not bad, ", ".join(bad[:5]))
+
+
 def test_direction_check():
     """A negative attribution called supporting -- and nothing else.
 
@@ -451,6 +484,43 @@ def test_mechanism_and_scale():
           sorted(cut) == ["infrequent", "large"], str(cut))
     check("a predicative adjective is still left for the check to flag",
           not neutralise_magnitude("The gaps were unusually short.")[1])
+
+    # ONE removal is edited in place; anything more takes the sentence.
+    # Each attempt to edit a tangled phrase left a seam on screen and each
+    # fix produced the next, so the rule is structural now. These assert the
+    # boundary between the two behaviours, and that neither leaves a seam.
+    lone, lone_cut = neutralise_magnitude(
+        "The traffic shows large bursts of data averaging 3,318 bytes.")
+    check("a lone attributive adjective is edited out in place",
+          lone_cut == ["large"] and lone.startswith("The traffic shows bursts"),
+          lone)
+
+    for phrase, why in (
+            ("This indicates unusually large transfers in short, infrequent "
+             "bursts.", "two adjectives"),
+            ("The traffic consists of small to medium-sized transmissions.",
+             "a range"),
+            ("It shows infrequent, large gaps between packets.", "a list")):
+        out, cut = neutralise_magnitude("Gaps were 1.17 seconds. " + phrase)
+        check(f"a sentence with {why} is dropped, not edited",
+              out.strip() == "Gaps were 1.17 seconds." and bool(cut), out)
+        for seam in (" ,", ", ,", " to ", "  "):
+            check(f"no {seam!r} seam left by the {why} case",
+                  seam not in out, out)
+
+    # Two plain attributives in one sentence still edit in place -- it is
+    # adjacency to a connector that makes a phrase unpickable, not the count.
+    both, both_cut = neutralise_magnitude(
+        "It showed unusually short gaps, then a large burst.")
+    check("two independent attributives are both edited out",
+          sorted(both_cut) == ["large", "unusually short"]
+          and both == "It showed gaps, then a burst.", both)
+
+    # Dropping every sentence must not render a blank panel.
+    empty, _ = neutralise_magnitude(
+        "This indicates unusually large transfers in short, infrequent bursts.")
+    check("a paragraph the edit empties comes back empty, for the "
+          "caller to treat as withheld", not empty.strip(), repr(empty))
 
 
 def test_prompt_shape(sample):
@@ -697,7 +767,8 @@ def test_prompt_examples():
     classes = list(load_bundle()["encoder"].classes_)
     for name, text in EXAMPLES.items():
         hits = [c for c in classes
-                if _re.search(r"" + _re.escape(c) + r"", text)]
+                if _re.search(r"(?<![A-Za-z])" + _re.escape(c)
+                              + r"(?![A-Za-z])", text)]
         check(f"{name}: names no class the model could copy",
               not hits, str(hits))
 
@@ -753,6 +824,7 @@ def main():
     test_ui_contract(result)
     test_prompt_examples()
     test_magnitude_check()
+    test_no_control_bytes()
     test_direction_check()
     test_mechanism_and_scale()
     test_prompt_shape(sample)

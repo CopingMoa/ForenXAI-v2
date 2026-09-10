@@ -26,3 +26,9 @@ ForenXAI_UI_Handoff/
 # Clone of github.com/OWASP/Top10, 564 MB, kept only so fetch_knowledge.py can
 # re-derive knowledge/_sources/OWASP_Top10_2025_FULL/. Re-clone, don't commit.
 my_tkinter_app/Top10/
+
+# Exported model weights. export_model.py writes these, and its default
+# output is inside the tree; 4.7 GB for 7b, 1.9 GB for 3b. They are a copy
+# of what Ollama already holds, reproducible in one command, and far past
+# GitHub's 100 MB file limit.
+*.gguf

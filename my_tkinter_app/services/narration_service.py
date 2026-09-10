@@ -1050,10 +1050,18 @@ def narrate(panel, provider, context=None):
         # audit, and what was removed is named on screen.
         if name == "shap_explanation" and panel["narrative"]:
             cleaned, removed = neutralise_magnitude(panel["narrative"])
-            if removed:
+            # An edit that empties the paragraph is not an edit. Every
+            # sentence carried a judgement the evidence does not license,
+            # so there was never a grounded paragraph here -- fall back and
+            # say so, rather than render nothing.
+            if removed and cleaned.strip():
                 panel["narration_original"] = panel["narrative"]
                 panel["narration_edits"] = removed
                 panel["narrative"] = cleaned
+            elif removed:
+                panel["narration_original"] = panel["narrative"]
+                panel["narration_edits"] = removed
+                panel["narrative"] = ""
 
         # The numbers the panel will print beneath the prose. A marker the
         # model writes must resolve to one of them.
@@ -1112,8 +1120,14 @@ def narrate(panel, provider, context=None):
         #
         # Kept under narration_withheld rather than dropped, so a saved case
         # can still be audited for what the model actually said.
-        if stats.get("highest_severity") == "high":
-            panel["narration_withheld"] = panel["narrative"]
+        # An empty paragraph is a withheld paragraph. The neutraliser drops
+        # a sentence it cannot edit without writing prose, and if it drops
+        # every sentence there was no grounded paragraph to show -- rendering
+        # the blank would be a panel that silently lost its prose.
+        if stats.get("highest_severity") == "high" or not (
+                panel.get("narrative") or "").strip():
+            panel["narration_withheld"] = (panel.get("narration_original")
+                                           or panel["narrative"])
             # The model's words go to the case file; the panel gets the same
             # paragraph written from the figures instead. A reader should
             # never be shown an explanation of why there is no explanation.
