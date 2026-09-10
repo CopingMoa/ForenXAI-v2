@@ -358,6 +358,46 @@ def test_narration(sample):
                   phrase not in text, text[:90])
 
 
+def test_direction_check():
+    """A negative attribution called supporting -- and nothing else.
+
+    This check withholds the whole paragraph, so a false positive costs the
+    reader every sentence on that finding. It had one: a fixed-width window
+    ran past the full stop and matched "consistent with the training data"
+    in the NEXT sentence, which is a claim about the distribution, not about
+    the class. Both halves are asserted here -- the inversion still fires,
+    the two correct sentences no longer do.
+    """
+    section("S  DIRECTION  an inverted sign fires, a distribution claim does not")
+    from services.narration_schema import check as grounding
+
+    attrs = [{"plain": "total header bytes in inbound packets",
+              "contribution": -0.63},
+             {"plain": "shortest gap between any two packets",
+              "contribution": 3.60}]
+
+    def fires(text):
+        return any(x["check"] == "direction" for x in
+                   grounding(text, "prompt", [], attributions=attrs)[0])
+
+    check("an inverted sign is caught",
+          fires("Total header bytes in inbound packets, 56, is typical of "
+                "this class."))
+    check("so is 'supports the prediction'",
+          fires("The total header bytes in inbound packets supports the "
+                "prediction."))
+    check("a training-data comparison in the next sentence does not fire",
+          not fires("The total header bytes in inbound packets were typical, "
+                    "at 56 bytes. These characteristics are consistent with "
+                    "the training data used to build the model."))
+    check("nor does one in the same sentence",
+          not fires("The total header bytes in inbound packets is consistent "
+                    "with the training distribution."))
+    check("a positive attribution may support the class",
+          not fires("The shortest gap between any two packets supports the "
+                    "prediction."))
+
+
 def test_prompt_shape(sample):
     """What reaches the model, and what deliberately does not.
 
@@ -584,6 +624,7 @@ def main():
     test_ui_contract(result)
     test_prompt_examples()
     test_magnitude_check()
+    test_direction_check()
     test_prompt_shape(sample)
     test_progress(sample)
     test_layout()

@@ -184,6 +184,14 @@ _IS_TYPICAL = re.compile(
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 
+# What a supporting verb points at. "consistent with THE TRAINING DATA" is
+# the comparison the prompt supplied; "consistent with THIS CLASS" is the
+# inversion check 8 exists to catch. Only the object separates them.
+_ABOUT_TRAINING = re.compile(
+    r"\s*(?:the\s+)?(?:training|reference|baseline)\s*"
+    r"(?:data|distribution|set|mean|values)?", re.I)
+
+
 _MARKUP = re.compile(r"[*_`#>]+")
 
 
@@ -567,19 +575,42 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
     #    direction "argues against", narrated as "typical of Slowloris".
     #    The sign is in the prompt; reading it backwards is not a wording
     #    slip, it inverts the explanation.
+    #    Scoped to the SENTENCE the feature is named in, and it was not.
+    #    A fixed 90-character window ran past the full stop into whatever
+    #    came next, and what usually came next was a closing line about the
+    #    training data. Measured on qwen2.5:7b, finding 0:
+    #
+    #      "The total header bytes in inbound packets were typical, at 56
+    #       bytes. These characteristics are consistent with the training
+    #       data used to build the model."
+    #
+    #    Two correct sentences. The window joined them and matched
+    #    "consistent with" 54 characters past a full stop 26 characters in,
+    #    so the paragraph was withheld and the panel fell back to figures on
+    #    every run of that finding -- for a claim the model never made.
     if attributions:
-        low = _flatten(text)
+        sentences = [_flatten(x) for x in _SENTENCE.split(text or "")]
         flipped = []
         for a in attributions:
             if a.get("contribution", 0) >= 0:
                 continue
-            name = _flatten(a.get("plain") or a.get("feature") or "")
-            if not name or name not in low:
+            name = _flatten((a.get("plain") or a.get("feature") or "")
+                            .split(" -- ")[0])
+            if not name:
                 continue
-            at = low.index(name) + len(name)
-            window = low[at:at + 90]
-            if _SUPPORTS.search(window):
-                flipped.append(a.get("plain") or a.get("feature"))
+            for sent in sentences:
+                if name not in sent:
+                    continue
+                m = _SUPPORTS.search(sent[sent.index(name) + len(name):])
+                #    "consistent with the training data" is a statement about
+                #    the DISTRIBUTION -- the comparison the prompt supplied on
+                #    that very line -- not a claim that the feature backs the
+                #    class. The check is about direction, so it has to read
+                #    what the verb points at.
+                if m and not _ABOUT_TRAINING.match(
+                        sent[sent.index(name) + len(name) + m.end():]):
+                    flipped.append(a.get("plain") or a.get("feature"))
+                    break
         if flipped:
             findings.append({
                 "check": "direction",

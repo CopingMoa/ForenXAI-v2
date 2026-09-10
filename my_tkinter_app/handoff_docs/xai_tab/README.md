@@ -209,9 +209,15 @@ Section **F — INTEGRATION** is the one that matters to a UI: it runs every
 renderer against the real service output, so a field rename on either side
 fails there instead of surfacing as a blank panel at run time.
 
-## Known open item
+## Known open items
 
-On some findings the model describes an attribution marked *argues against*
-as supporting the class. The direction check catches it at high severity, so
-the paragraph is withheld and the panel falls back to figures — the reader is
-never misled, but there is no prose on that finding.
+Nothing high-severity fires on the sample capture: both models keep 5/5 on
+panel 2 across five findings. What remains is medium, and medium means the
+phrase is cut or reported, never the paragraph withheld.
+
+- **Adjectives.** The model occasionally writes "relatively short" beside a
+  value it was given a comparison for. The neutraliser removes the phrase and
+  says so on the console; the figure and its comparison are printed below
+  regardless. Roughly one finding in three.
+- **Mechanism, rarely.** A protocol name inferred from packet sizes and
+  timings, which a flow record does not establish. Caught and reported.
