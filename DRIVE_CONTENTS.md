@@ -51,6 +51,25 @@ corpus takes 0.68 ms instead of re-parsing PDFs.
 Someone who only needs to *look* at the app can skip 1-3 and take item 2
 instead; it already contains the corpus, the models and the tests.
 
+## Zip it — do not upload the folder
+
+```powershell
+Compress-Archive -Path "ForenXAI_UI_Handoff\*" -DestinationPath ForenXAI_UI_Handoff.zip
+```
+
+**155 MB of loose files becomes one 95 MB item**, and one item either
+arrives or does not. A folder upload is 165 separate transfers, and the
+part most likely to be dropped is the one that matters: `_sources/.cache/`
+is a *hidden* directory, and some upload paths skip dot-directories without
+saying so. Losing it quarantines every document in the corpus.
+
+Verified end to end rather than assumed — zipped, extracted, and run from
+the extraction: **165 files both sides, `.cache` intact with its 36 files,
+122/122 smoke checks, zero quarantined documents, and every section
+verified against `"source"`** rather than falling back to the cache.
+
+Tell whoever downloads it to check the zip is ~95 MB before extracting.
+
 ## Before you upload item 2
 
 ```bash

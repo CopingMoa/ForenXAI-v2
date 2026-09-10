@@ -132,5 +132,16 @@ python build_exe.py                             # then package
 | CICFlowMeter v4 + JDK 8 | pip cannot install either. **Optional** — a pure-Python extractor takes over | installers, from the team Drive |
 | Your own PCAPs | test evidence, not code | your captures |
 
+## If you are passing this folder on
+
+Zip it; do not upload it as a folder. 155 MB of loose files becomes one
+95 MB item, and one item either arrives or it does not. The part a folder
+upload is most likely to drop silently is `xai_tab/knowledge/_sources/.cache/`
+— a *hidden* directory, and losing it quarantines every document in the
+corpus.
+
+A zip round-trip was checked, not assumed: 165 files both sides, `.cache`
+intact, 122/122 from the extracted copy, zero quarantined.
+
 `SEND_LIST.md` is the complete file inventory, generated from this folder by
 `preflight.py` rather than written by hand.
