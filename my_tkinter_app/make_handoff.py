@@ -81,6 +81,8 @@ PAYLOAD = [
     ("handoff_docs/xai_tab/README.md", "xai_tab/README.md", False),
     ("handoff_docs/xai_tab/RAG_INTEGRATION.md",
      "xai_tab/RAG_INTEGRATION.md", False),
+    ("handoff_docs/xai_tab/UI_BACKEND_MAP.md",
+     "xai_tab/UI_BACKEND_MAP.md", False),
 
     # So they can prove the integration works in their tree.
     ("test_panels_suite.py", "test_panels_suite.py", False),

@@ -70,6 +70,8 @@ panel, never empties it.
 > Implementing it in your own renderer? **[RAG_INTEGRATION.md](RAG_INTEGRATION.md)**
 > lists the files that must be present, the exact shape retrieval returns,
 > and the five things you must not do to it.
+> **[UI_BACKEND_MAP.md](UI_BACKEND_MAP.md)** is every widget in both tabs
+> against the field behind it.
 
 
 There is no vector store, no embedding step, no chunking. The classifier has

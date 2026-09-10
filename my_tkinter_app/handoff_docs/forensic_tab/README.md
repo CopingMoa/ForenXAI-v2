@@ -95,6 +95,10 @@ the evidence, not a diagnostic.
 
 ## Handing over to Tab 2
 
+> Every widget in this tab against the field behind it:
+> **[../xai_tab/UI_BACKEND_MAP.md](../xai_tab/UI_BACKEND_MAP.md)**.
+
+
 `MainWindow` passes the case straight across:
 
 ```python
