@@ -1,4 +1,6 @@
 import os
+
+from services.utils import resource_dir
 import json
 import joblib
 import numpy as np
@@ -75,9 +77,14 @@ BASE_DIR = os.path.dirname(
     os.path.dirname(__file__)
 )
 
-ARTIFACTS_DIR = os.path.join(
+# Per-tab layout first, flat layout second. The handoff folder keeps this
+# tab's model.joblib and frozen schema inside forensic_tab/; this repository
+# keeps them at the root. See utils.resource_dir.
+ARTIFACTS_DIR = resource_dir(
     BASE_DIR,
-    "artifacts"
+    ("forensic_tab", "artifacts"),
+    "artifacts",
+    env="FORENXAI_ARTIFACTS_DIR",
 )
 
 

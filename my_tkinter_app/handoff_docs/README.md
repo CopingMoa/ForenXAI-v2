@@ -23,11 +23,21 @@ that tab alone.
 **The seam is one field.** Tab 1 writes `current_case["generated_csv_path"]`
 and Tab 2 reads it. Everything else each tab holds itself.
 
-What is *not* in those folders is deliberate: `services/`, `models/`,
-`artifacts/` and `knowledge/` sit at this root and are shared. The corpus
-alone is 100 MB and both tabs load the same classifier, so duplicating them
-per tab would double the folder to prove a point about tidiness. Each tab's
-README lists exactly which of them it needs.
+**Each tab's data is inside its folder.** Tab 1's `model.joblib` and frozen
+schema live in `forensic_tab/artifacts/`; Tab 2's `.pkl` bundle and the
+100 MB knowledge corpus live in `xai_tab/`. Nothing is duplicated by this:
+the two model files are different serialisations and each tab loads exactly
+one of them.
+
+What stays shared at this root is `services/` — 350 KB of code both tabs
+import, where two copies of a module is how they drift — and `sample_data/`,
+a 1.4 MB fixture both suites read.
+
+The code finds either layout. `BUNDLE_DIR`, `KNOWLEDGE_DIR` and
+`ARTIFACTS_DIR` resolve to the per-tab folder when it exists and to the flat
+development layout when it does not, so the same source runs in both.
+`FORENXAI_BUNDLE_DIR`, `FORENXAI_KNOWLEDGE_DIR` and `FORENXAI_ARTIFACTS_DIR`
+override them for a deployment that puts the data somewhere else.
 
 The rest of this document is the reference for both.
 
@@ -141,16 +151,14 @@ its source is an assertion.
 ## 4. Which folder holds what
 
 ```
-models/forenxai/            * the 16-class XGBoost + scaler + encoder,
-                              loaded by panels_service. Do not edit.
-artifacts/ForenXAI-Multiclass/
-                            * the SAME model wrapped as a sklearn Pipeline
-                              for the forensic pipeline. See §5.
-services/                   * all logic. panels_service.py is the entry.
-knowledge/                  * the RAG corpus. See knowledge/README.md for
-                              the folder rules and retrieval map.
-forensic_tab/               * Tab 1: renderer + integration notes.
-xai_tab/                    * Tab 2: renderer + integration notes.
+forensic_tab/               * Tab 1. Renderer, notes, and the sklearn
+                              Pipeline it loads (model.joblib + schema).
+xai_tab/                    * Tab 2. Renderer, notes, the .pkl bundle, and
+                              the RAG corpus. See xai_tab/knowledge/README.md
+                              for the folder rules and retrieval map.
+services/                   * all logic, shared. panels_service.py is the
+                              entry for Tab 2, pipeline_service.py for Tab 1.
+sample_data/                * fixture both suites run against.
 sample_data/                * fixture the test suite runs against.
 ```
 
@@ -158,8 +166,9 @@ sample_data/                * fixture the test suite runs against.
 
 ## 5. The two model copies are the same model
 
-`models/forenxai/XGBoost.pkl` and the estimator inside
-`artifacts/ForenXAI-Multiclass/forensic_tab/model.joblib` are byte-identical
+`xai_tab/models/forenxai/XGBoost.pkl` and the estimator inside
+`forensic_tab/artifacts/ForenXAI-Multiclass/forensic_tab/model.joblib` are
+byte-identical
 (SHA-256 prefix `5c123326d779f600`). The second is wrapped in a Pipeline so
 `.predict()` scales the input itself.
 
@@ -221,7 +230,7 @@ and figures absent from the input. Findings appear in
 
 ## 8. Things that will bite you
 
-**Do not re-order the feature columns.** `models/forenxai/features.pkl` is
+**Do not re-order the feature columns.** `xai_tab/models/forenxai/features.pkl` is
 the exact order the model expects. `flow_intake.to_matrix()` handles it.
 
 **Do not call the model directly on a raw CSV.** `read_flows()` validates

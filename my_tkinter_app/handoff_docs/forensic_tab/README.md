@@ -110,16 +110,36 @@ and `pcap_sha256`. It re-verifies that the flow table describes *this*
 capture rather than trusting the path — `verify_capture_link()` — using the
 hash you already computed, not a fresh one.
 
-## Data this tab needs
+## What is in this folder
 
-| | |
-|---|---|
-| `artifacts/ForenXAI-Multiclass/` | The model this build ships. `discover_models()` scans this folder; drop another dataset's folder in and it appears in the selector. |
-| `models/forenxai/` | The same XGBoost as a plain `.pkl` with its scaler, encoder and feature list. See the root README for which to load. |
-| `sample_data/` | A flow table to develop against without a PCAP. |
+Everything this tab loads, and nothing it does not.
 
-Not needed here: `knowledge/` is Tab 2's corpus, and no language model is
-involved in this tab at all.
+```
+forensic_tab/
+├── forensic_tab.py
+├── README.md                       (this file)
+└── artifacts/ForenXAI-Multiclass/forensic_tab/
+    ├── model.joblib                27 MB  the sklearn Pipeline
+    └── frozen_feature_schema_l2.json      the column order it was fitted on
+```
+
+`model_service.ARTIFACTS_DIR` resolves to `forensic_tab/artifacts` here and
+to `artifacts/` in the development tree, so the same code reads both.
+`discover_models()` scans it — drop another dataset's folder in beside
+`ForenXAI-Multiclass` and it appears in the selector.
+
+**Nothing here is a duplicate of Tab 2's copy.** `model.joblib` is the
+sklearn Pipeline the forensic chain runs; `xai_tab/models/forenxai/
+XGBoost.pkl` is the same estimator serialised without the pipeline, with the
+scaler, encoder and feature list the panels need. Each tab loads one and
+never the other.
+
+Shared at the root, because both tabs use them: `services/` (350 KB of code
+— two copies of a module is how they drift) and `sample_data/` (a flow table
+to develop against without a PCAP).
+
+Not needed here at all: `xai_tab/knowledge/`, and no language model is
+involved in this tab.
 
 ## Check it works
 

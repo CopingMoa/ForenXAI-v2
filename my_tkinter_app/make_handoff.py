@@ -21,9 +21,22 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # (source, destination, is_directory)
 PAYLOAD = [
-    # The two models. Same XGBoost either way -- see README.
-    ("models/forenxai", "models/forenxai", True),
-    ("artifacts/ForenXAI-Multiclass", "artifacts/ForenXAI-Multiclass", True),
+    # DATA GOES WITH ITS TAB.
+    #
+    # The two serialisations of the model are not a duplicate: the forensic
+    # pipeline loads the sklearn Pipeline (model.joblib, 27 MB) and the
+    # panels load the plain estimator with its scaler and encoder
+    # (XGBoost.pkl, 27 MB). Each tab reads one of them and never the other,
+    # so splitting them by tab copies nothing twice -- it just puts each
+    # where the person working on that tab will look.
+    #
+    # services/ stays shared. It is 350 KB of code both tabs import, and two
+    # copies of a module is how they drift.
+    ("artifacts/ForenXAI-Multiclass/forensic_tab",
+     "forensic_tab/artifacts/ForenXAI-Multiclass/forensic_tab", True),
+    ("models/forenxai", "xai_tab/models/forenxai", True),
+    ("artifacts/ForenXAI-Multiclass/xai_tab",
+     "xai_tab/artifacts/ForenXAI-Multiclass/xai_tab", True),
 
     # Everything the three panels import, and nothing else.
     ("services/__init__.py", "services/__init__.py", False),
@@ -54,8 +67,8 @@ PAYLOAD = [
     ("services/pipeline_service.py", "services/pipeline_service.py", False),
     ("services/session.py", "services/session.py", False),
 
-    # The RAG corpus.
-    ("knowledge", "knowledge", True),
+    # The RAG corpus. Tab 2 only -- the forensic pipeline never reads it.
+    ("knowledge", "xai_tab/knowledge", True),
 
     # One folder per tab. The heavy shared data -- knowledge/, models/,
     # artifacts/, services/ -- stays at the root and is NOT duplicated: the
@@ -70,6 +83,8 @@ PAYLOAD = [
     # So they can prove the integration works in their tree.
     ("test_panels_suite.py", "test_panels_suite.py", False),
     ("smoke_test.py", "smoke_test.py", False),
+    # A fixture, not an artifact: both tabs and both suites read it, and it
+    # is 1.4 MB. One copy, at the root.
     ("sample_data", "sample_data", True),
 
     ("requirements.txt", "requirements.txt", False),
@@ -114,7 +129,7 @@ def build(out, include_sources=True):
         print(f"  copied  {dst}")
 
     if not include_sources:
-        pdfs = os.path.join(out, "knowledge", "_sources")
+        pdfs = os.path.join(out, "xai_tab", "knowledge", "_sources")
         # Directories as well as files. `_sources` holds an extracted-text
         # `.cache/` directory alongside the PDFs, and os.remove() on a
         # directory raises PermissionError on Windows -- which aborted the
@@ -133,7 +148,7 @@ def build(out, include_sources=True):
                 shutil.rmtree(path, ignore_errors=True)
             else:
                 os.remove(path)
-        print("  pruned  knowledge/_sources/*.pdf "
+        print("  pruned  xai_tab/knowledge/_sources/*.pdf "
               "(manifest and .cache kept)")
         print("  NOTE    quotes are verified against the extracted-text "
               "cache rather than")

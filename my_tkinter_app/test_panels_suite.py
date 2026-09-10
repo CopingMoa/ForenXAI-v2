@@ -46,6 +46,8 @@ import pandas as pd
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+from services.panels_service import KNOWLEDGE_DIR  # noqa: E402
+
 SAMPLE = os.path.join(HERE, "sample_data", "sample_flows.csv")
 SAMPLE_FULL = os.path.join(HERE, "sample_data", "sample_flows_full.csv")
 
@@ -765,8 +767,11 @@ def test_pcap():
     if not pfe.AVAILABLE:
         return
 
-    features = joblib.load(
-        os.path.join(HERE, "models", "forenxai", "features.pkl"))
+    # Through BUNDLE_DIR, not a path spelled out here: the handoff keeps the
+    # bundle under xai_tab/ and this tree keeps it at the root. Spelling it
+    # out is what made this check fail in the copy but pass in the original.
+    from services.panels_service import BUNDLE_DIR
+    features = joblib.load(os.path.join(BUNDLE_DIR, "features.pkl"))
 
     missing, extra = pfe.check_schema(features)
     check("emits every feature the model requires", not missing,
@@ -994,14 +999,14 @@ def test_digest_shapes():
     from services.panels_service import digest_document
 
     play = digest_document(
-        open(os.path.join(HERE, "knowledge", "incident_response",
+        open(os.path.join(KNOWLEDGE_DIR, "incident_response",
                           "slowloris.md"), encoding="utf-8").read())
     check("a response playbook keeps the playbook shape",
           play["style"] == "playbook", play["style"])
     check("a playbook still yields quotes", len(play["quotes"]) > 0)
 
     expl = digest_document(
-        open(os.path.join(HERE, "knowledge", "interpretability",
+        open(os.path.join(KNOWLEDGE_DIR, "interpretability",
                           "shap_reading.md"), encoding="utf-8").read(),
         style="explainer")
     check("an explanatory document is read as prose",
@@ -1015,7 +1020,7 @@ def test_digest_shapes():
           str(expl["actions"]))
 
     gloss = digest_document(
-        open(os.path.join(HERE, "knowledge", "interpretability",
+        open(os.path.join(KNOWLEDGE_DIR, "interpretability",
                           "glossary.md"), encoding="utf-8").read(),
         style="explainer")
     check("a term list is detected from its shape",
@@ -1033,7 +1038,7 @@ def test_digest_shapes():
     # and must not be caught by the count-and-length rule.
     for name in ("caveats", "reliability", "confidence", "class_ambiguity"):
         d = digest_document(
-            open(os.path.join(HERE, "knowledge", "interpretability",
+            open(os.path.join(KNOWLEDGE_DIR, "interpretability",
                               name + ".md"), encoding="utf-8").read(),
             style="explainer")
         check(f"{name} is not mistaken for a term list",

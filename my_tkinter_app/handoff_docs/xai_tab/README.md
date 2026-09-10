@@ -147,14 +147,44 @@ the capture; the console shows the machinery. Keep that split: an
 investigator reading a report should not be shown the tool arguing with
 itself.
 
-## Data this tab needs
+## What is in this folder
 
-| | |
-|---|---|
-| `knowledge/` | The corpus, 16 playbooks plus interpretability and dataset guidance. |
-| `knowledge/_sources/` | The cited PDFs **and** the `.cache/` beside them. Without these every quote fails verification and its document is quarantined. |
-| `models/forenxai/`, `artifacts/ForenXAI-Multiclass/` | Shared with Tab 1. |
-| A local model | `ollama pull qwen2.5:7b`. See `../OLLAMA.md`. |
+Everything this tab loads, and nothing it does not.
+
+```
+xai_tab/
+├── xai_tab.py
+├── README.md                       (this file)
+├── models/forenxai/                28 MB
+│   ├── XGBoost.pkl                 the estimator
+│   ├── scaler.pkl, label_encoder.pkl, features.pkl
+│   ├── manifest.json               hashes, checked BEFORE the first load
+│   └── shap_global.json
+├── artifacts/ForenXAI-Multiclass/xai_tab/
+│   └── treeshap_reference.json
+└── knowledge/                      100 MB
+    ├── incident_response/          16 playbooks, one per class
+    ├── interpretability/  datasets/  analyst/  features/
+    └── _sources/                   the cited PDFs and their .cache/
+```
+
+`BUNDLE_DIR` and `KNOWLEDGE_DIR` resolve here in this folder and to the
+repository root in the development tree, so the same code reads both.
+`FORENXAI_BUNDLE_DIR` and `FORENXAI_KNOWLEDGE_DIR` override either.
+
+**`models/forenxai/` is not a copy of Tab 1's model.** That one is the
+sklearn Pipeline the forensic chain runs; this is the same estimator
+serialised without it, beside the scaler, encoder and feature list these
+panels need. Each tab loads one and never the other.
+
+**`_sources/` is not optional.** Without the PDFs *and* the `.cache/` beside
+them, every quote fails verification and its document is quarantined —
+panel 3 then renders with its citations withheld. `manifest.json` is
+verified before the first `joblib.load`, because a `.pkl` is executed when
+it is loaded.
+
+Shared at the root: `services/` and `sample_data/`. Also needed, and not a
+file: `ollama pull qwen2.5:7b` — see `../OLLAMA.md`.
 
 ## Tools for this tab
 

@@ -35,7 +35,7 @@ sys.path.insert(0, HERE)
 import pandas as pd                                        # noqa: E402
 
 from services.panels_service import (build_panels, load_bundle,   # noqa: E402
-                                     KNOWLEDGE_MAP)
+                                     KNOWLEDGE_MAP, KNOWLEDGE_DIR)
 
 CHECKS = 0
 FAILURES = []
@@ -233,7 +233,7 @@ def test_sources(result):
     check("a published source defines SHAP",
           "NIST.IR.8312" in fk.SOURCES,
           "NISTIR 8312 is the NIST publication that defines SHAP")
-    gloss = open(os.path.join(HERE, "knowledge", "interpretability",
+    gloss = open(os.path.join(KNOWLEDGE_DIR, "interpretability",
                               "glossary.md"), encoding="utf-8").read()
     check("the glossary quotes it rather than asserting",
           "## From NIST.IR.8312" in gloss and "Shapley values" in gloss,
@@ -429,6 +429,40 @@ def test_progress(sample):
           "error" not in blown and bool(blown.get("summary")))
 
 
+def test_layout():
+    """Every data root resolves, in whichever layout this copy is.
+
+    The development tree keeps models/, knowledge/ and artifacts/ at the
+    root; the handoff splits them by tab. A path spelled out in one module
+    instead of taken from these roots passes here and fails in the other
+    copy -- which is exactly how test_panels_suite.py came to load
+    features.pkl from a directory the handoff does not have.
+    """
+    section("R  LAYOUT  the data roots resolve in this copy")
+    from services.panels_service import BUNDLE_DIR, KNOWLEDGE_DIR
+    from services.model_service import ARTIFACTS_DIR, discover_models
+    import fetch_knowledge as fk
+
+    for name, path, must in (
+            ("the model bundle", BUNDLE_DIR, "XGBoost.pkl"),
+            ("the knowledge corpus", KNOWLEDGE_DIR, "incident_response"),
+            ("the forensic artifacts", ARTIFACTS_DIR, "ForenXAI-Multiclass")):
+        check(f"{name} resolves", os.path.isdir(path), path)
+        check(f"{name} holds {must}",
+              os.path.exists(os.path.join(path, must)), path)
+
+    # source_guard reads every source path through fetch_knowledge, so the
+    # two corpus roots have to be the same directory, not merely both valid.
+    check("fetch_knowledge and panels_service agree on the corpus",
+          os.path.normcase(os.path.abspath(fk.KNOWLEDGE))
+          == os.path.normcase(os.path.abspath(KNOWLEDGE_DIR)),
+          f"{fk.KNOWLEDGE} != {KNOWLEDGE_DIR}")
+
+    check("the forensic tab can discover its model",
+          "ForenXAI-Multiclass" in discover_models(),
+          str(list(discover_models())))
+
+
 def test_magnitude_check():
     """A comparison against the training distribution is verified.
 
@@ -552,6 +586,7 @@ def main():
     test_magnitude_check()
     test_prompt_shape(sample)
     test_progress(sample)
+    test_layout()
 
     if args.llm or args.all:
         test_narration(sample)

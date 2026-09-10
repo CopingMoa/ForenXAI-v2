@@ -45,7 +45,13 @@ from datetime import datetime, timedelta
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-KNOWLEDGE = os.path.join(HERE, "knowledge")
+from services.utils import resource_dir
+
+# xai_tab/knowledge in a built handoff, knowledge/ here. source_guard
+# reads every source path through this module, so it has to agree with
+# panels_service.KNOWLEDGE_DIR or quotes verify against nothing.
+KNOWLEDGE = resource_dir(HERE, ("xai_tab", "knowledge"), "knowledge",
+                        env="FORENXAI_KNOWLEDGE_DIR")
 SOURCE_DIR = os.path.join(KNOWLEDGE, "_sources")
 MANIFEST = os.path.join(SOURCE_DIR, "manifest.json")
 

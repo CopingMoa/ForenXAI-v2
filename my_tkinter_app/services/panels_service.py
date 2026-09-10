@@ -30,6 +30,7 @@ import numpy as np
 import pandas as pd
 
 from services.config import BASE_DIR
+from services.utils import resource_dir
 from services.flow_intake import (IntakeError, read_flows, to_matrix,
                                   describe, identity_columns,
                                   capture_window, endpoints,
@@ -40,15 +41,21 @@ from services.flow_intake import (IntakeError, read_flows, to_matrix,
 # PATHS
 # ============================================================
 
-BUNDLE_DIR = os.path.join(
+# Per-tab layout first, flat layout second. See utils.resource_dir: the
+# handoff folder keeps this tab's model bundle and corpus inside xai_tab/,
+# and this repository keeps them at the root. Same code reads both.
+BUNDLE_DIR = resource_dir(
     BASE_DIR,
-    "models",
-    "forenxai"
+    ("xai_tab", "models", "forenxai"),
+    ("models", "forenxai"),
+    env="FORENXAI_BUNDLE_DIR",
 )
 
-KNOWLEDGE_DIR = os.path.join(
+KNOWLEDGE_DIR = resource_dir(
     BASE_DIR,
-    "knowledge"
+    ("xai_tab", "knowledge"),
+    "knowledge",
+    env="FORENXAI_KNOWLEDGE_DIR",
 )
 
 
