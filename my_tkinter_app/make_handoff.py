@@ -71,6 +71,7 @@ PAYLOAD = [
     ("fetch_knowledge.py", "fetch_knowledge.py", False),
     ("deploy_multiclass_model.py", "deploy_multiclass_model.py", False),
     ("audit_rag.py", "audit_rag.py", False),
+    ("model_ab.py", "model_ab.py", False),
     ("source_map.py", "source_map.py", False),
     ("verify_panels.py", "verify_panels.py", False),
 ]

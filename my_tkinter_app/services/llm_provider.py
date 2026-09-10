@@ -32,6 +32,12 @@ it before trusting either. If 3b fails the grounding checks, the fix is a
 larger local model (qwen2.5:7b, 14b) rather than a remote one -- the
 disclosure argument does not change.
 
+That is what happened. 3b passed every check the panels had, and the check
+it needed did not exist yet: a magnitude claim written as a phrase rather
+than an adjective. With that check added (narration_schema, 6b), 3b fails
+panel 2 on every run and 7b on one run in five, so 7b is the default. Both
+still run; neither is trusted.
+
 CONTEXT BUDGET
 qwen2.5:3b has a 32,768-token window and degrades well before filling it. A
 NIST section plus SHAP output plus capture facts can approach that, so
@@ -51,7 +57,13 @@ from pathlib import Path
 
 # Local defaults. Override per call or with the environment.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
+# Measured, not assumed. Panel 2 is where the two sizes separate: over five
+# runs on the same finding, qwen2.5:3b made six magnitude claims the supplied
+# comparison contradicts or never supported, and qwen2.5:7b made one. Panels 1
+# and 3 are a tie at 5/5 for both. The cost is latency -- roughly 20 s a panel
+# against 5 s -- paid once per analysis, on a claim the reader cannot check
+# for themselves. Set OLLAMA_MODEL to go back to 3b on a slower machine.
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
 
 # Claude, when the user explicitly opts in to sending evidence off the machine.
 ANTHROPIC_REASONING = "claude-opus-5"

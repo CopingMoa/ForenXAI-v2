@@ -334,6 +334,49 @@ def test_narration(sample):
                   phrase not in text, text[:90])
 
 
+def test_magnitude_check():
+    """A comparison against the training distribution is verified.
+
+    This is check 6b, and it exists because the checks it sits beside all
+    passed a paragraph saying a value supplied as "typical for this feature"
+    deviates from the training mean. An adjective was caught; the same claim
+    written as a phrase was not. No model needed -- the rule is what is
+    under test, not the prose.
+    """
+    section("O  MAGNITUDE  a claim about the training distribution is checked")
+    from services.narration_schema import check as grounding
+
+    attrs = [{"plain": "total header bytes in inbound packets",
+              "contribution": -0.63,
+              "magnitude": "typical for this feature in the training data"},
+             {"plain": "destination port -- effectively which service",
+              "contribution": 0.69,
+              "magnitude": "1.4 standard deviations above the training mean",
+              "caution": "may have learned the lab's service layout"}]
+
+    def sev(text):
+        f = [x for x in grounding(text, "prompt", [], strict_mechanism=True,
+                                  attributions=attrs)[0]
+             if x["check"] == "magnitude"]
+        return f[0]["severity"] if f else None
+
+    check("contradicting a supplied 'typical' is high severity",
+          sev("The total header bytes in inbound packets are 56, deviating "
+              "from the training mean.") == "high")
+    check("agreeing with what was supplied passes",
+          sev("The total header bytes in inbound packets are 56, typical for "
+              "this feature.") is None)
+    check("comparing a feature whose figure was withheld is medium",
+          sev("The destination port was 62,636, which deviates from the "
+              "training mean.") == "medium")
+    check("a sentence that says typical is not a deviation claim",
+          sev("Total header bytes in inbound packets, 56, is higher than the "
+              "previous flow but typical for this feature.") is None)
+    check("the claim is scoped to the sentence it sits in",
+          sev("The destination port was 62,636. Total header bytes in "
+              "inbound packets are typical.") is None)
+
+
 def test_prompt_examples():
     """No worked example may contain material the prompt withholds.
 
@@ -411,6 +454,7 @@ def main():
     test_sources(result)
     test_ui_contract(result)
     test_prompt_examples()
+    test_magnitude_check()
 
     if args.llm or args.all:
         test_narration(sample)

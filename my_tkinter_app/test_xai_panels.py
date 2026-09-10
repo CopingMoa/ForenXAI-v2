@@ -24,6 +24,7 @@ from tkinter import ttk
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from services.llm_provider import OLLAMA_MODEL         # noqa: E402
 from views.xai_tab import XaiTab                       # noqa: E402
 
 
@@ -48,6 +49,14 @@ def say(text=""):
 
 def body(widget):
     return widget.get("1.0", tk.END).strip()
+
+
+# Narration dominates this test, and its cost is the model's. 120 s was
+# right for qwen2.5:3b at about 5 s a panel; qwen2.5:7b takes about 20 s and
+# overran it on the first run after the default changed. The budget is a
+# guard against a hang, not a performance assertion, so it is set from the
+# model rather than tightened to whatever passes today.
+BUDGET = 300_000 if "7b" in OLLAMA_MODEL or "14b" in OLLAMA_MODEL else 120_000
 
 
 def main():
@@ -162,14 +171,14 @@ def main():
 
     def give_up():
         if state["phase"] != 2:
-            say("FAILED: analysis did not finish within 120 s")
+            say(f"FAILED: analysis did not finish within {BUDGET // 1000} s")
             with open(REPORT, "w", encoding="utf-8") as fh:
                 fh.write("\n".join(lines) + "\n")
             root.quit()
 
     tab.update_xai_results(case, None)
     root.after(300, tick)
-    root.after(120_000, give_up)
+    root.after(BUDGET, give_up)
     root.mainloop()
 
     return 1 if state["failures"] or state["phase"] != 2 else 0

@@ -165,6 +165,25 @@ _UNDECIDED = re.compile(
     r"|could be either|ambiguous between|hard to separate", re.I)
 
 
+# A claim that a value sits away from the training distribution, written as
+# a phrase rather than an adjective. _ADJECTIVE catches "a short gap"; this
+# catches "a gap that deviates from the training mean", which asserts the
+# same thing about the same distribution and passed every check.
+_DEVIATES = re.compile(
+    r"far from|deviat|unusual|atypical|abnormal|outlier|stands out"
+    r"|higher than|lower than|above the|below the|not typical"
+    r"|standard deviation", re.I)
+
+# The same sentence saying the value IS typical. "120 bytes, higher than the
+# smallest but typical for this feature" contains a comparison phrase and is
+# not a deviation claim, so the sentence has to be read as a whole.
+_IS_TYPICAL = re.compile(
+    r"typical|normal|within the (?:usual|typical|expected)|in line with"
+    r"|consistent with the training|no(?:t| ) (?:unusual|remarkable)", re.I)
+
+_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+
+
 _MARKUP = re.compile(r"[*_`#>]+")
 
 
@@ -332,23 +351,35 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
         })
 
     # 3. Figures. Every substantial number in the output should appear in the
-    #    input. Percentages the model derived from two supplied numbers are
-    #    tolerated -- it is arithmetic, not invention -- so only integers and
-    #    large values are compared.
+    #    input.
     in_prompt = _numbers(prompt)
 
     # Rounding tolerance scales with the figure. A flat half-unit is right
     # for a flow count and far too coarse for a confidence -- it would
     # accept 0.94 as a rounding of the 0.68 actually supplied.
+    def _near(n, p):
+        return abs(n - p) <= max(0.005, abs(p) * 0.005)
+
+    # A share is supplied as a fraction and read as a percentage. attack_share
+    # is 0.8553 in the facts, and "85.53% of the total" is that same figure
+    # written the way a reader expects -- arithmetic on one supplied number,
+    # not invention. Without this, a model that converts is accused of
+    # inventing the figure it was given. Measured: qwen2.5:7b writes the
+    # percentage on every run of panel 1 and had its whole summary withheld
+    # for it, while qwen2.5:3b happens to restate the fraction and passes.
+    # Only fractions convert -- 1,283 flows is not 12.83 of anything.
     def _supplied(n):
-        return any(abs(n - p) <= max(0.005, abs(p) * 0.005) for p in in_prompt)
+        return any(_near(n, p) or (p < 1 and _near(n, p * 100))
+                   for p in in_prompt)
 
     invented = sorted(n for n in _numbers(text) if not _supplied(n))
     if invented:
         findings.append({
             "check": "figures",
             "severity": "high",
-            "detail": f"states {', '.join(f'{n:,.0f}' for n in invented[:5])}"
+            # Not %.0f: rounding 85.53 to "86" reports a figure the model
+            # never wrote, and sends the reader looking for the wrong number.
+            "detail": f"states {', '.join(f'{n:,g}' for n in invented[:5])}"
                       f"{'...' if len(invented) > 5 else ''}, which "
                       f"{'does' if len(invented) == 1 else 'do'} not appear "
                       f"in what the model was given.",
@@ -448,6 +479,60 @@ def check(narrative, prompt, sources_supplied, grounding_text=None,
                             "against the training distribution; an adjective "
                             "is the model's own judgement, not that "
                             "comparison.",
+            })
+
+        # 6b. The same judgement written as a phrase. An adjective is only
+        #     the cheapest way to make this claim; "56 bytes, deviating
+        #     from the training mean" makes it about a value the prompt
+        #     supplied as typical, and check 6 sees no adjective at all.
+        #     Measured with the checks as they were: qwen2.5:3b did this on
+        #     5 runs out of 5, qwen2.5:7b on 1 of 5, and every paragraph
+        #     was shown.
+        #
+        #     Scoped per sentence, so a claim counts only against the
+        #     feature it sits beside -- a paragraph naming six features
+        #     would otherwise fail on the first deviation phrase anywhere
+        #     in it.
+        wrong, unsupported = [], []
+        for a in attributions or []:
+            name = a.get("plain") or a.get("feature") or ""
+            name = _flatten(name.split(" -- ")[0])
+            if not name:
+                continue
+            supplied = (a.get("magnitude") or "").lower()
+            for sent in _SENTENCE.split(text or ""):
+                low = _flatten(sent)
+                if name not in low or not _DEVIATES.search(low):
+                    continue
+                if _IS_TYPICAL.search(low):
+                    continue
+                if "typical" in supplied:
+                    wrong.append(a.get("plain", "").split(" -- ")[0])
+                elif a.get("caution"):
+                    # A cautioned feature is shown its caution INSTEAD of
+                    # its standard-deviation figure, so the comparison the
+                    # model is asserting is one it was never handed.
+                    unsupported.append(a.get("plain", "").split(" -- ")[0])
+                break
+        if wrong:
+            findings.append({
+                "check": "magnitude",
+                "severity": "high",
+                "detail": "says " + ", ".join(sorted(set(wrong))[:3])
+                          + " sits away from the training distribution. It "
+                            "was supplied as typical for that feature, so "
+                            "the paragraph tells the reader a value is "
+                            "anomalous when the comparison says it is not.",
+            })
+        if unsupported:
+            findings.append({
+                "check": "magnitude",
+                "severity": "medium",
+                "detail": "compares " + ", ".join(sorted(set(unsupported))[:3])
+                          + " against the training distribution. That "
+                            "feature carries a caution instead of a "
+                            "standard-deviation figure, so the comparison "
+                            "was not supplied and cannot be checked.",
             })
 
     # 7. Reference markers. A step ending in [2] is a claim that reference 2

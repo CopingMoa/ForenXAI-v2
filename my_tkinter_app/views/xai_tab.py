@@ -24,6 +24,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from services.llm_provider import OLLAMA_MODEL
 from services.pipeline_service import save_investigator_review
 from services.panels_service import build_panels, bundle_available
 
@@ -134,7 +135,7 @@ class XaiTab:
         # panel, so what belongs in the bar is a label saying which model
         # wrote the prose and that it is checked before it is shown.
         self.lbl_narrator = tk.Label(
-            bar, text="Plain English by qwen2.5:3b (local) - every claim "
+            bar, text=f"Plain English by {OLLAMA_MODEL} (local) - every claim "
                       "checked against the evidence",
             bg=PANEL, fg=MUTED, font=("Segoe UI", 9)
         )

@@ -14,8 +14,8 @@ analyst's machine for that reason, not for cost.
 
 ```bash
 # 1. Install Ollama:  https://ollama.com/download
-# 2. Pull the model (~2 GB):
-ollama pull qwen2.5:3b
+# 2. Pull the model (~4.7 GB):
+ollama pull qwen2.5:7b
 # 3. Ollama serves on localhost:11434 automatically. Check:
 curl http://localhost:11434/api/tags
 ```
@@ -43,10 +43,20 @@ build_panels(csv_path, name, narrate_with="ollama", narrate_panels=ALL_PANELS)
 | Variable | Default |
 |---|---|
 | `OLLAMA_URL` | `http://localhost:11434` |
-| `OLLAMA_MODEL` | `qwen2.5:3b` |
+| `OLLAMA_MODEL` | `qwen2.5:7b` |
 
-`qwen2.5:7b` gives better prose and takes roughly three times as long.
-Nothing in the code needs changing to swap.
+`qwen2.5:3b` is the fallback for a slower machine: about four times faster
+(5 s a panel against 20 s) and about 2 GB smaller. It costs accuracy on
+panel 2, which is the panel making claims about the training distribution.
+Over five runs on one finding, 3b made six magnitude claims the supplied
+comparison contradicts or never supported; 7b made one. Panels 1 and 3 are a
+tie. Nothing in the code needs changing to swap — set the variable.
+
+Measure it yourself before trusting either:
+
+```bash
+RUNS=5 python model_ab.py qwen2.5:3b qwen2.5:7b
+```
 
 ## Expect it to be slow
 
