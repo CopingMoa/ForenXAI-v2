@@ -7,7 +7,10 @@ import os
 import re
 import sys
 
-APP = r"C:\Users\HOME PC\OneDrive\Desktop\Thesis\Final\ForenXAI-v2\my_tkinter_app"
+# The folder this script is in. It used to be the author's desktop,
+# spelled out -- which ships in the handoff and cannot resolve on
+# anyone else's machine, while a tab README tells the reader to run it.
+APP = os.path.dirname(os.path.abspath(__file__))
 os.chdir(APP)
 sys.path.insert(0, APP)
 

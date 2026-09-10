@@ -8,6 +8,14 @@ place only: `current_case["generated_csv_path"]`.
 
 ---
 
+**The notes in this folder:** this file. The widget-by-field contract for
+this tab lives with the other one, in
+[../xai_tab/UI_BACKEND_MAP.md](../xai_tab/UI_BACKEND_MAP.md), because it
+covers both. Everything this tab loads is in this folder — see
+[../START_HERE.md](../START_HERE.md) for the layout.
+
+**This tab uses no language model** and never opens `xai_tab/knowledge/`.
+
 ## The one call
 
 ```python

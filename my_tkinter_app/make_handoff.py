@@ -93,7 +93,8 @@ PAYLOAD = [
 
     ("requirements.txt", "requirements.txt", False),
     ("handoff_docs/README.md", "README.md", False),
-    ("handoff_docs/OLLAMA.md", "OLLAMA.md", False),
+    ("handoff_docs/START_HERE.md", "START_HERE.md", False),
+    ("handoff_docs/OLLAMA.md", "xai_tab/OLLAMA.md", False),
     ("fetch_knowledge.py", "fetch_knowledge.py", False),
     ("deploy_multiclass_model.py", "deploy_multiclass_model.py", False),
     ("audit_rag.py", "audit_rag.py", False),

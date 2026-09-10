@@ -9,6 +9,10 @@ it was sent: **162/162 passing**.
 
 ---
 
+> **New here? Read [START_HERE.md](START_HERE.md) first.** It is the map:
+> what is in each tab folder, what is shared and why, and which script
+> belongs to which tab. This document is the reference behind it.
+
 ## Start with your tab
 
 The two tabs are separate jobs with one seam between them, so each has its
@@ -220,7 +224,7 @@ panel rather than emptying it.
 result = build_panels(csv_path, source_name, narrate_with="ollama")
 ```
 
-See `OLLAMA.md`. Leave `narrate_with=None` if you are not wiring it up.
+See `xai_tab/OLLAMA.md`. Leave `narrate_with=None` if you are not wiring it up.
 
 Narration is checked before display: `services/narration_schema.py` flags a
 log-odds value written as a percentage, a citation that was never supplied,

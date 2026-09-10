@@ -8,6 +8,13 @@ One call fills all three.
 
 ---
 
+**The notes in this folder:** this file (what the tab does and how),
+[RAG_INTEGRATION.md](RAG_INTEGRATION.md) (what retrieval returns and what
+not to do to it), [UI_BACKEND_MAP.md](UI_BACKEND_MAP.md) (every widget in
+both tabs against its backend field), [OLLAMA.md](OLLAMA.md) (the local
+model). Everything this tab loads is in this folder too — see
+[../START_HERE.md](../START_HERE.md) for the layout.
+
 ## Where the tab is entered
 
 `MainWindow` calls one method when Tab 1 finishes:
@@ -206,7 +213,7 @@ verified before the first `joblib.load`, because a `.pkl` is executed when
 it is loaded.
 
 Shared at the root: `services/` and `sample_data/`. Also needed, and not a
-file: `ollama pull qwen2.5:7b` — see `../OLLAMA.md`.
+file: `ollama pull qwen2.5:7b` — see [OLLAMA.md](OLLAMA.md), in this folder.
 
 **Running from source?** The pull is all you need. **Packaging with
 PyInstaller?** `LlamaCppProvider` wants a real `.gguf` path and Ollama

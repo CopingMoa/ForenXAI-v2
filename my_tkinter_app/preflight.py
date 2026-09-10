@@ -56,12 +56,11 @@ GROUPS = (
     ("Shared - services", ("services",)),
     ("Tab 2 - exported LLM (optional)", ("xai_tab/models/*.gguf",)),
     ("Shared - sample data", ("sample_data",)),
-    ("Shared - tools and docs", ("smoke_test.py", "test_panels_suite.py",
-                                 "preflight.py", "model_ab.py", "audit_rag.py",
-                                 "source_map.py", "verify_panels.py",
-                                 "fetch_knowledge.py", "requirements.txt",
-                                 "deploy_multiclass_model.py",
-                                 "README.md", "OLLAMA.md")),
+    # Every file at the root, not a list of their names. Naming them is how
+    # this manifest has now drifted twice -- once when UI_BACKEND_MAP.md was
+    # added to a tab, once when START_HERE.md was added here and OLLAMA.md
+    # moved out. A count that silently omits a file is worse than no count.
+    ("Shared - tools and docs", ("./*",)),
 )
 
 
@@ -79,6 +78,10 @@ def inventory(out, rel):
             return []
         return [(f"{rel[:-7]}/{f}", os.path.getsize(os.path.join(d, f)))
                 for f in sorted(os.listdir(d)) if f.endswith(".gguf")]
+    if rel == "./*":
+        return [(f, os.path.getsize(os.path.join(out, f)))
+                for f in sorted(os.listdir(out))
+                if os.path.isfile(os.path.join(out, f))]
     if rel.endswith("/*"):
         d = os.path.join(out, rel[:-2])
         return [(f"{rel[:-2]}/{f}", os.path.getsize(os.path.join(d, f)))
@@ -263,6 +266,25 @@ def main():
     # bytecode there -- this script must not fail the build for its own
     # side effect, and must not leave that side effect behind either.
     section("D  HYGIENE  nothing of ours that should not travel")
+    # A developer's own path, shipped. Three tools carried the author's
+    # desktop spelled out -- and a tab README told the reader to run one
+    # of them, so it would have failed on the first machine to open it.
+    import re as _re
+    drive = _re.compile(r"['\"][A-Za-z]:[\\\\/]{1,2}Users[\\\\/]{1,2}")
+    leaked = []
+    for r, ds, fs in os.walk(out):
+        ds[:] = [d for d in ds if d not in ("__pycache__", "_sources")]
+        for f in fs:
+            if not f.endswith((".py", ".md")):
+                continue
+            try:
+                body = open(os.path.join(r, f), encoding="utf-8").read()
+            except OSError:
+                continue
+            if drive.search(body):
+                leaked.append(os.path.relpath(os.path.join(r, f), out))
+    check("no absolute developer path is shipped", not leaked,
+          ", ".join(leaked[:4]))
     for junk in ("__pycache__", "ForenXAI_Cases", ".git"):
         check(f"no {junk}/ in the payload",
               not os.path.exists(os.path.join(out, junk)))
