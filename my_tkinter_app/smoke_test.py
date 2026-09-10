@@ -519,6 +519,71 @@ def test_progress(sample):
           "error" not in blown and bool(blown.get("summary")))
 
 
+def test_reset_on_new_capture(sample):
+    """A second upload clears the first one's panels, and outruns it.
+
+    Narration takes 45-60 s. That is long enough to load another capture
+    while the last is still being explained, and long enough for panels 2
+    and 3 to sit there describing evidence the investigator has moved on
+    from -- under a header naming the new one.
+    """
+    section("U  RESET  a new capture does not inherit the last one's panels")
+    import tkinter as _tk
+    from tkinter import ttk as _ttk
+    XaiTab = load_xai_tab()
+
+    try:
+        root = _tk.Tk()
+        root.geometry("900x600+4000+4000")
+        nb = _ttk.Notebook(root)
+        nb.pack(fill="both", expand=True)
+    except Exception as e:
+        check("a Tk window is available", False, str(e))
+        return
+
+    try:
+        tab = XaiTab(nb, "ForenXAI_Cases")
+        filled = [("stale text from the previous capture", None)]
+        for w in (tab.txt_summary, tab.txt_shap, tab.txt_recommend):
+            tab._write(w, filled)
+        tab.lst_findings.insert(_tk.END, "Slowloris  133 flows")
+        tab.investigator_decision.set("Escalate")
+        tab.txt_investigator_comment.insert("1.0", "looks like a DoS")
+        tab._quarantined = ["dos.md"]
+
+        first = tab._run_id
+        tab._results.put(("all", {"summary": {}}, first))
+        second = tab._reset_panels("Waiting for the analysis to start.")
+
+        for name, w in (("1", tab.txt_summary), ("2", tab.txt_shap),
+                        ("3", tab.txt_recommend)):
+            body = w.get("1.0", _tk.END)
+            check(f"panel {name} no longer shows the previous capture",
+                  "stale text" not in body, body[:60])
+        check("the findings list is emptied",
+              tab.lst_findings.size() == 0)
+        check("the investigator review does not carry over",
+              tab.investigator_decision.get() == "Pending"
+              and not tab.txt_investigator_comment.get("1.0", _tk.END).strip())
+        check("the quarantine banner is cleared", not tab._quarantined)
+        check("a new run id is issued", second != first)
+
+        # The queued result from the outgoing analysis must be dropped, not
+        # painted into the panels that were just cleared.
+        tab._results.put(("all", {"summary": {"lines": ["OLD CAPTURE"]}},
+                          first))
+        tab._poll()
+        body = tab.txt_summary.get("1.0", _tk.END)
+        check("a result from the previous run is not rendered",
+              "OLD CAPTURE" not in body, body[:60])
+        check("the queue is empty afterwards", tab._results.empty())
+    finally:
+        try:
+            root.destroy()
+        except Exception:
+            pass
+
+
 def test_layout():
     """Every data root resolves, in whichever layout this copy is.
 
@@ -684,6 +749,7 @@ def main():
         test_narration(sample)
 
     if args.ui or args.all:
+        test_reset_on_new_capture(sample)
         section("H  WIDGETS  the tab fills without a display error")
         try:
             import tkinter as tk

@@ -120,6 +120,21 @@ holds it five minutes; paying that inside the first analysis costs 14 s of
 what the investigator waits. `xai_tab.py` does this in the same daemon
 thread that warms the source cache.
 
+## Loading a second capture
+
+`update_xai_results` calls `_reset_panels()` **first**, before it relabels
+the header and before either early return. All three panels, the findings
+list, the quarantine banner and the investigator's review are cleared
+together — a decision written about one capture must not appear beside
+another.
+
+Narration takes 45–60 s, which is long enough to upload a second capture
+while the first is still being explained. Each analysis carries a `run_id`;
+`_reset_panels` issues a new one and drains the queue, and `_poll` drops any
+result whose id is no longer current. Without that, a slow worker finishes
+and paints the previous capture's explanation into the panels that were just
+cleared for the new one.
+
 ## What the model is deliberately not told
 
 Each of these was measured, then fixed by changing the **evidence**, not the

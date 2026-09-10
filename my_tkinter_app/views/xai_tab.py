@@ -58,6 +58,12 @@ class XaiTab:
         # started yet, and a background analysis can finish before it has.
         self._results = queue.Queue()
         self._progress_lines = []
+        # Which analysis the panels currently belong to. Narration
+        # takes 45-60 s, which is long enough for a second capture to
+        # be uploaded while the first is still being explained. The
+        # worker carries the id it started under; a result whose id is
+        # no longer current is dropped rather than rendered.
+        self._run_id = 0
 
         # Narration is part of the pipeline, not a setting.
         #
@@ -190,7 +196,11 @@ class XaiTab:
         """Drain finished analyses on the main thread. Tk is not thread-safe."""
         try:
             while True:
-                kind, result = self._results.get_nowait()
+                kind, result, run_id = self._results.get_nowait()
+                # A result from a capture that is no longer loaded. The
+                # worker had no way to know; this is where it is noticed.
+                if run_id != self._run_id:
+                    continue
                 if kind == "status":
                     self._show_progress(result)
                 elif kind == "all":
@@ -200,6 +210,49 @@ class XaiTab:
         except queue.Empty:
             pass
         self.frame.after(120, self._poll)
+
+    def _reset_panels(self, message):
+        """Clear every panel, and stop caring about work already running.
+
+        A new capture must not share the screen with the last one. Panel 1
+        used to be overwritten with "Analysing flows..." while panels 2 and
+        3 kept the PREVIOUS capture's explanation and recommendations --
+        for the 45-60 s narration takes, and permanently on the two paths
+        that return early. The header said one capture; two thirds of the
+        window described another.
+
+        In a forensics tool that is not a cosmetic bug. The recommendation
+        panel names an attack class and cites a playbook, and it would have
+        been describing evidence the investigator was no longer looking at.
+
+        Returns the id this analysis runs under.
+        """
+        self._run_id += 1
+
+        # Anything the outgoing analysis already queued is now about the
+        # wrong capture. _poll would render it into the cleared panels.
+        try:
+            while True:
+                self._results.get_nowait()
+        except queue.Empty:
+            pass
+
+        self._progress_lines = []
+        self.panels = None
+        self._quarantined = []
+        self.btn_repair.config(state=tk.DISABLED)
+        self.lst_findings.delete(0, tk.END)
+
+        for widget in (self.txt_summary, self.txt_shap, self.txt_recommend):
+            self._write(widget, [(message + "\n", "muted")])
+
+        # The review belongs to the case it was written about. Carrying a
+        # decision across to a different capture would attribute it to
+        # evidence the investigator never saw.
+        self.investigator_decision.set("Pending")
+        self.txt_investigator_comment.delete("1.0", tk.END)
+
+        return self._run_id
 
     def _show_progress(self, sentence):
         """One line per stage, in the summary panel, while the work runs.
@@ -485,6 +538,11 @@ class XaiTab:
         CSV using the sixteen-class bundle, which the legacy path does not
         have.
         """
+        # Before anything else, including the two early returns below. The
+        # panels must never describe a capture other than the one named in
+        # the header.
+        run_id = self._reset_panels("Waiting for the analysis to start.")
+
         self.current_case = current_case
 
         self.lbl_case_id.config(
@@ -523,16 +581,16 @@ class XaiTab:
             ])
             return
 
-        self._progress_lines = []
         self._write(self.txt_summary, [("Analysing flows...\n", "muted")])
 
         # Loading the model and computing SHAP takes seconds. On the Tk
         # thread that freezes the window, which reads as a crash.
         threading.Thread(
-            target=self._compute, args=(csv_path, current_case), daemon=True
+            target=self._compute, args=(csv_path, current_case, run_id),
+            daemon=True
         ).start()
 
-    def _compute(self, csv_path, current_case):
+    def _compute(self, csv_path, current_case, run_id):
         source = os.path.basename(current_case.get("pcap_path") or csv_path)
         try:
             result = build_panels(
@@ -543,7 +601,7 @@ class XaiTab:
             # main thread. Narration is 50 s of the ~50 s this takes, and one
             # unchanging "Analysing flows..." over that reads as a hung
             # window rather than a working one.
-            on_progress=lambda m: self._results.put(("status", m)),
+            on_progress=lambda m: self._results.put(("status", m, run_id)),
             # So the flow table can be checked against the capture actually
             # loaded, not merely against the path the extractor recorded.
             # The digest is reused from the case rather than recomputed.
@@ -551,7 +609,7 @@ class XaiTab:
             current_pcap_sha=current_case.get("pcap_sha256"))
         except Exception as e:                      # never lose a worker crash
             result = {"error": f"{type(e).__name__}: {e}"}
-        self._results.put(("all", result))
+        self._results.put(("all", result, run_id))
 
     # ========================================================
     # RENDERERS -- one per panel
@@ -1156,6 +1214,8 @@ class XaiTab:
         index = sel[0]
         self._write(self.txt_shap, [("Computing SHAP...\n", "muted")])
 
+        run_id = self._run_id
+
         def work():
             source = os.path.basename(
                 self.current_case.get("pcap_path") or csv_path
@@ -1167,7 +1227,7 @@ class XaiTab:
                 narrate_panels=self._panels_to_narrate())
             except Exception as e:
                 result = {"error": f"{type(e).__name__}: {e}"}
-            self._results.put(("selected", result))
+            self._results.put(("selected", result, run_id))
 
         threading.Thread(target=work, daemon=True).start()
 
