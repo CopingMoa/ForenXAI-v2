@@ -79,6 +79,8 @@ PAYLOAD = [
     ("handoff_docs/forensic_tab/README.md", "forensic_tab/README.md", False),
     ("views/xai_tab.py", "xai_tab/xai_tab.py", False),
     ("handoff_docs/xai_tab/README.md", "xai_tab/README.md", False),
+    ("handoff_docs/xai_tab/RAG_INTEGRATION.md",
+     "xai_tab/RAG_INTEGRATION.md", False),
 
     # So they can prove the integration works in their tree.
     ("test_panels_suite.py", "test_panels_suite.py", False),
@@ -94,6 +96,7 @@ PAYLOAD = [
     ("deploy_multiclass_model.py", "deploy_multiclass_model.py", False),
     ("audit_rag.py", "audit_rag.py", False),
     ("model_ab.py", "model_ab.py", False),
+    ("preflight.py", "preflight.py", False),
     ("source_map.py", "source_map.py", False),
     ("verify_panels.py", "verify_panels.py", False),
 ]

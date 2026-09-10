@@ -50,6 +50,20 @@ corpus takes 0.68 ms instead of re-parsing PDFs.
 Someone who only needs to *look* at the app can skip 1-3 and take item 2
 instead; it already contains the corpus, the models and the tests.
 
+## Before you upload item 2
+
+```bash
+cd my_tkinter_app
+python make_handoff.py     # build
+python preflight.py        # then prove it survives being sent
+```
+
+`preflight.py` checks the things that break between building a folder and
+someone else unzipping it: a corpus that verifies against nothing because the
+cache was pruned, a model file that never made it, a quote that has drifted
+from its PDF, bytecode that should not travel. It ends in **Ready to send** or
+names what failed. Every check in it failed at least once during development.
+
 ## Keeping Drive current
 
 Re-upload item 1 when `fetch_knowledge.py` gains a source, and item 2 after any

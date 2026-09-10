@@ -48,6 +48,7 @@ The rest of this document is the reference for both.
 ```bash
 pip install -r requirements.txt
 python test_panels_suite.py       # must print 166/166 checks passed
+python preflight.py               # what the sender ran before this reached you
 python smoke_test.py              # 77 checks, end to end
 ```
 
