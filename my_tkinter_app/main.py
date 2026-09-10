@@ -1,3 +1,25 @@
+import sys
+
+# The console this application is started from is cp1252 on a default
+# Windows install, and print() raises UnicodeEncodeError on anything it
+# cannot encode. That is not a theoretical risk: the "no trained models
+# found" message draws a directory tree with box-drawing characters, so
+# the one path that exists to explain a missing model killed the process
+# instead -- and did it inside the error handler, so what the user got was
+# a traceback about a codec.
+#
+# Found by running the packaged build, where the model is not on the
+# usual path and that handler fires. It was equally broken from source.
+#
+# errors="replace" rather than a narrower fix: no diagnostic is worth
+# ending the process for, and the alternative is auditing every print in
+# the application for characters a codepage happens to lack.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError, OSError):
+        pass
+
 from services.config import CASE_OUTPUT_DIR
 
 from views.main_window import MainWindow

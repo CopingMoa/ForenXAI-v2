@@ -512,5 +512,16 @@ pypdf==6.17.0
 # works around that. An older scapy also works. Re-check a newer
 # one against test_panels_suite.py section I.
 
+# ------------------------------------------------------------
+# PACKAGING -- only if you are building the .exe
+# ------------------------------------------------------------
+#
+# build_exe.py encodes the flags. Do not reconstruct them: one of the
+# three failures it works around only appears when a model is loaded,
+# because services/model_input.py is imported by joblib at unpickle time
+# and nothing imports it statically.
+
+pyinstaller==6.22.2
+
 cicflowmeter==0.2.0
 scapy==2.7.0

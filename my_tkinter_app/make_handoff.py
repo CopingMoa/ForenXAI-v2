@@ -100,6 +100,7 @@ PAYLOAD = [
     ("model_ab.py", "model_ab.py", False),
     ("preflight.py", "preflight.py", False),
     ("export_model.py", "export_model.py", False),
+    ("build_exe.py", "build_exe.py", False),
     ("source_map.py", "source_map.py", False),
     ("verify_panels.py", "verify_panels.py", False),
 ]
