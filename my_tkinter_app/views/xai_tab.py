@@ -57,6 +57,7 @@ class XaiTab:
         # "main thread is not in main loop" whenever the loop has not
         # started yet, and a background analysis can finish before it has.
         self._results = queue.Queue()
+        self._progress_lines = []
 
         # Narration is part of the pipeline, not a setting.
         #
@@ -99,6 +100,25 @@ class XaiTab:
                 for key in fk.SOURCES:
                     normalised_source(key)
                     raw_source(key)
+            except Exception:
+                pass
+
+            # Then the model, for the same reason and at a larger saving.
+            # Ollama loads 4.7 GB on the first request and holds it for five
+            # minutes; paying that inside the first analysis costs 30 s of
+            # the 89 s an analyst waits (25 s of 25 s on a 3B model). Loading
+            # it here spends that while they are still choosing a capture.
+            #
+            # One token, not a real prompt: the cost being avoided is
+            # resident weights, and generating anything more would occupy
+            # the model when the analysis wants it.
+            try:
+                from services.llm_provider import get_provider
+                provider = get_provider("ollama")
+                ok, _ = provider.available()
+                if ok:
+                    provider.complete("You are a warm-up.", "Reply: ok",
+                                      max_tokens=1, retries=0)
             except Exception:
                 pass
 
@@ -171,13 +191,28 @@ class XaiTab:
         try:
             while True:
                 kind, result = self._results.get_nowait()
-                if kind == "all":
+                if kind == "status":
+                    self._show_progress(result)
+                elif kind == "all":
                     self._render_all(result)
                 else:
                     self._render_selected(result)
         except queue.Empty:
             pass
         self.frame.after(120, self._poll)
+
+    def _show_progress(self, sentence):
+        """One line per stage, in the summary panel, while the work runs.
+
+        Appended rather than replaced: by the end the analyst has a short
+        account of what was done to their capture, which is worth more than
+        a spinner and is already most of an audit trail. _render_all()
+        overwrites the panel when the real summary arrives.
+        """
+        self._progress_lines.append(sentence)
+        self._write(self.txt_summary,
+                    [(line + "\n", "muted")
+                     for line in self._progress_lines])
 
     def _add_panel(self, title):
         """A scrollable read-only text panel."""
@@ -488,6 +523,7 @@ class XaiTab:
             ])
             return
 
+        self._progress_lines = []
         self._write(self.txt_summary, [("Analysing flows...\n", "muted")])
 
         # Loading the model and computing SHAP takes seconds. On the Tk
@@ -503,6 +539,11 @@ class XaiTab:
             csv_path, source, finding_index=0,
             narrate_with=self.provider_name,
             narrate_panels=self._panels_to_narrate(),
+            # Same queue as the result, so Tk is still touched only from the
+            # main thread. Narration is 50 s of the ~50 s this takes, and one
+            # unchanging "Analysing flows..." over that reads as a hung
+            # window rather than a working one.
+            on_progress=lambda m: self._results.put(("status", m)),
             # So the flow table can be checked against the capture actually
             # loaded, not merely against the path the extractor recorded.
             # The digest is reused from the case rather than recomputed.

@@ -334,6 +334,77 @@ def test_narration(sample):
                   phrase not in text, text[:90])
 
 
+def test_prompt_shape(sample):
+    """What reaches the model, and what deliberately does not.
+
+    Each of these is a failure that was measured, then fixed by changing
+    the evidence rather than the instructions. They are asserted on the
+    PROMPT because that is where the fix lives -- no model needed.
+    """
+    section("P  EVIDENCE  the prompt withholds what the model misreads")
+    from services import narration_service as ns
+
+    res = build_panels(sample, "smoke.pcap")
+    det = (res["shap"].get("detections") or [{}])[0]
+    attrs = det.get("attributions") or []
+
+    seen = {}
+
+    class Spy:
+        name, model = "spy", "spy"
+
+        def available(self):
+            return True, ""
+
+        def complete(self, system, user, *a, **k):
+            seen["user"] = user
+            raise RuntimeError("prompt captured")
+
+    p = dict(res["shap"])
+    ns.narrate(p, Spy(), {"finding": res["selected"], "shap": res.get("shap")})
+    prompt = seen.get("user", "")
+    check("the SHAP prompt was captured", bool(prompt))
+
+    cautioned = [a for a in attrs if a.get("caution")]
+    if cautioned:
+        name = cautioned[0]["plain"].split(" -- ")[0]
+        check("a cautioned feature is not named in the prompt",
+              name.lower() not in prompt.lower(), name)
+        check("its caution text is not in the prompt either",
+              cautioned[0]["caution"][:40].lower() not in prompt.lower())
+    check("the panel still shows every attribution",
+          len(attrs) > len([a for a in attrs if not a.get("caution")]) or
+          not cautioned)
+
+    shown = [a for a in attrs if not a.get("caution")]
+    values = [a.get("readable") for a in shown]
+    if len(values) != len(set(values)):
+        check("features sharing a value say so",
+              "the same observed value as" in prompt, prompt[:200])
+
+    check("no class name reaches the SHAP prompt",
+          (res["selected"].get("class") or "zzz") not in prompt)
+
+
+def test_progress(sample):
+    """The tab can say what it is doing, and cannot be broken by saying it."""
+    section("Q  PROGRESS  stages are reported, and a bad callback is inert")
+    seen = []
+    res = build_panels(sample, "smoke.pcap", on_progress=seen.append)
+    check("progress is reported before narration is even requested",
+          len(seen) >= 3, str(seen))
+    check("a stage names the finding's own figures",
+          any(res["selected"]["class"] in m for m in seen), str(seen))
+
+    # A UI callback must never be able to fail an analysis.
+    def explode(_):
+        raise RuntimeError("callback is broken")
+
+    blown = build_panels(sample, "smoke.pcap", on_progress=explode)
+    check("a raising callback does not fail the analysis",
+          "error" not in blown and bool(blown.get("summary")))
+
+
 def test_magnitude_check():
     """A comparison against the training distribution is verified.
 
@@ -455,6 +526,8 @@ def main():
     test_ui_contract(result)
     test_prompt_examples()
     test_magnitude_check()
+    test_prompt_shape(sample)
+    test_progress(sample)
 
     if args.llm or args.all:
         test_narration(sample)

@@ -273,9 +273,38 @@ does that. Do not speculate about who the attacker is or what they wanted.
 Use only the numbers above.{warn}"""
 
 
+def _shared_note(a, shared):
+    """"...the same value as X" when two features report one observation.
+
+    Empty for a value that appears once, which is the common case, so the
+    line is unchanged for every feature that does not need this.
+    """
+    peers = [p for p in shared.get(a.get("readable", a["raw_value"]), [])
+             if p != a["plain"].split(" -- ")[0]]
+    if not peers:
+        return ""
+    return f"  (the same observed value as {' and '.join(peers[:2])})"
+
+
 def prompt_shap(panel, finding):
     """Attributions are already ranked; the model's job is translation."""
     d = panel["detections"][0]
+
+    # Half the detections in the sample capture (15 of 30) list the same
+    # observed value on two lines -- Slowloris gets 1.17 seconds twice,
+    # PortScan gets 0 bytes twice AND 60 bytes twice. Nothing says they are
+    # the same observation, so the model restates it, and the paragraph
+    # reads as a list of figures rather than a description of traffic.
+    #
+    # They are NOT merged into one attribution. Two features sharing a value
+    # can pull in opposite directions, and a combined contribution is a
+    # number TreeSHAP never produced. The lines stay; they are told they
+    # share a value, which is the fact that lets the model say it once.
+    withheld = []
+    shared = {}
+    for a in d["attributions"]:
+        shared.setdefault(a.get("readable", a["raw_value"]), []).append(
+            a["plain"].split(" -- ")[0])
 
     rows = []
     for a in d["attributions"]:
@@ -292,27 +321,50 @@ def prompt_shap(panel, finding):
         # reviewer caught a sibling implementation describing a feature
         # marked "argues against" as supporting the class -- the sign was
         # there to be read and the model read it backwards.
-        rows.append(f"  {a['contribution']:+.3f}  [{a['direction']}]  {plain}")
         if a.get("caution"):
-            # A cautioned feature gets its caution INSTEAD OF the standard-
-            # deviation comparison, not alongside it. Given both, qwen2.5:3b
-            # read "1.4 standard deviations above the training mean" off the
-            # destination port and wrote "indicating a service that is
-            # unusual or not typical" -- an inference about the service from
-            # a fact about the model, which is precisely what that feature's
-            # caution warns against. Instructing it not to failed twice.
+            # WITHHELD FROM THE MODEL ENTIRELY, and this is the third
+            # attempt at this line.
             #
-            # The distance is a property of the training distribution, and
-            # for a feature we already distrust it is the number most likely
-            # to be over-read. The panel still shows it; the model is given
-            # the limit instead.
-            rows.append(f"           observed: "
-                        f"{a.get('readable', a['raw_value'])}")
-            rows.append(f"           CAUTION: {a['caution']}")
-        else:
-            rows.append(f"           observed: "
-                        f"{a.get('readable', a['raw_value'])}"
-                        f"  --  {a.get('magnitude', 'no comparison available')}")
+            # 1. Caution AND the standard-deviation figure: 3b read the
+            #    figure off the destination port and concluded the SERVICE
+            #    was unusual -- an inference about the world from a fact
+            #    about the model, which is what the caution warns against.
+            # 2. Caution, figure withheld: every other line ends in a
+            #    comparison and this one ended in nothing, so both sizes
+            #    invented one on most findings.
+            # 3. Caution, plus an explicit "no comparison is supplied, do
+            #    not call it unusual": 3b wrote "far from the training
+            #    mean, indicating it is unusual" anyway. The judgement is
+            #    not coming from the prompt -- a 5-digit port number reads
+            #    as unusual to any model that has seen the internet, and no
+            #    instruction outranks that prior at this size.
+            #
+            # So the line goes. The panel still prints the feature, its
+            # contribution, its comparison and its caution, deterministically
+            # and in full; what the model no longer gets is the chance to
+            # editorialise about the one feature we already distrust. This
+            # is the same move that fixed the class name in panel 2 and the
+            # worked examples in panel 3: withhold the material, do not
+            # instruct against it.
+            withheld.append(plain)
+            continue
+
+        rows.append(f"  {a['contribution']:+.3f}  [{a['direction']}]  {plain}")
+        rows.append(f"           observed: "
+                    f"{a.get('readable', a['raw_value'])}"
+                    f"{_shared_note(a, shared)}"
+                    f"  --  {a.get('magnitude', 'no comparison available')}")
+
+    # Console, not the panel. Dropping the top-ranked attribution from
+    # the prompt reads as a bug the first time someone compares the
+    # prose against the figures, so it is stated where whoever runs the
+    # tool can see it and an investigator reading a report is not made to.
+    if withheld:
+        try:
+            print("[narration] shap_explanation: cautioned feature not "
+                  "shown to the model: " + ", ".join(withheld))
+        except Exception:
+            pass
 
     # NO CLASS NAME REACHES THE MODEL, and the ambiguity note is gone with
     # it. The comment below records that the decision SENTENCE was removed
@@ -375,11 +427,7 @@ Four things not to do:
     which is a different statement.
   - Do not name a protocol, port, service or tool. The evidence above is
     packet counts, sizes and timings; it does not say what protocol this
-    was, and neither may you. A port number being far from the training
-    mean says the model found it unusual, NOT that the service behind it
-    is unusual, rare or suspicious -- do not draw that conclusion.
-  - Where a line carries a CAUTION, that caution is the limit of what the
-    feature supports. Do not reason past it.
+    was, and neither may you.
   - Do not describe an observed value as large, small, short or long, and
     do not convert one. Each value is given already converted, with a
     comparison against the training data on the same line -- use those
@@ -1079,7 +1127,7 @@ ALL_PANELS = ("summary", "shap", "recommend")
 DEFAULT_PANELS = ALL_PANELS
 
 
-def narrate_all(result, provider, panels=DEFAULT_PANELS):
+def narrate_all(result, provider, panels=DEFAULT_PANELS, on_progress=None):
     """
     Narrate the requested panels.
 
@@ -1089,10 +1137,35 @@ def narrate_all(result, provider, panels=DEFAULT_PANELS):
     without a check behind it.
     """
     finding = result.get("selected")
+    label = (finding or {}).get("class") or "the selected finding"
+
+    # What each panel is about, in the analyst's terms rather than the
+    # code's. These are the only sentences shown during the wait, and the
+    # wait is almost entirely here, so they name the finding's own figures.
+    det = ((result.get("shap") or {}).get("detections") or [{}])[0]
+    said = {
+        "summary": lambda: (
+            f"Summarising the capture: "
+            f"{(result.get('summary') or {}).get('facts', {}).get('total_flows', 0):,}"
+            f" flows, {len(result.get('findings') or [])} findings"),
+        "shap": lambda: (
+            f"Explaining why {label} was chosen -- "
+            f"{len(det.get('attributions') or [])} attributions, "
+            f"strongest first"),
+        "recommend": lambda: (
+            f"Reading the {label} response playbook for what to do next"
+            if (finding or {}).get("class")
+            else "Reading the response playbook for what to do next"),
+    }
 
     for key in panels:
         panel = result.get(key)
         if isinstance(panel, dict):
+            if on_progress and key in said:
+                try:
+                    on_progress(said[key]())
+                except Exception:
+                    pass
             narrate(panel, provider,
                     {"finding": finding, "shap": result.get("shap")})
 

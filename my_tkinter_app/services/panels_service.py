@@ -1867,7 +1867,8 @@ def recommend(finding, detections=None, summary=None):
 
 def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
                  narrate_with=None, narrate_panels=None,
-                 current_pcap=None, current_pcap_sha=None):
+                 current_pcap=None, current_pcap_sha=None,
+                 on_progress=None):
     """
     Everything XaiTab needs, from a CICFlowMeter CSV.
 
@@ -1882,10 +1883,26 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
      playbook verbatim with its source, and a quote cannot be invented.
      Pass narration_service.ALL_PANELS to include it.]
 
+    [UI CONNECTION: on_progress <- a callable taking one sentence. Called as
+     each stage completes, so the tab can say what it is doing instead of
+     showing one frozen line. Narration is 60 s of the wall time on a 7B
+     model and 15 s on a 3B one, against 0.4 s for everything else, so the
+     stages worth naming are almost all narration. The sentences carry the
+     finding's own figures: an analyst waiting learns something.]
+
     Returns a dict with `summary`, `findings`, `shap` and `recommend`, or
     an `error` string the tab can display verbatim.
     """
 
+    def say(sentence):
+        """A progress callback must never be able to fail the analysis."""
+        if on_progress:
+            try:
+                on_progress(sentence)
+            except Exception:
+                pass
+
+    say("Loading the classifier and its frozen feature schema")
     ok, detail = bundle_available()
 
     if not ok:
@@ -1898,8 +1915,10 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
         # refusal carries a message fit for a dialog box. A file that fails
         # here must not reach the model: it will return confident
         # predictions from a table whose columns mean something else.
+        say(f"Reading flow records from {os.path.basename(csv_path)}")
         flows, intake_report = read_flows(csv_path, bundle["features"])
 
+        say(f"Classifying {len(flows):,} flows across 16 classes")
         X, proba, k, names, matrix_report = classify(flows, bundle)
 
     except IntakeError as e:
@@ -1950,6 +1969,8 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
 
     finding = findings[min(finding_index, len(findings) - 1)]
 
+    say(f"Computing TreeSHAP for {finding.get('class', 'the top finding')} "
+        f"({finding.get('flow_count', 0):,} flows)")
     shap_panel = explain_detections(
         X, proba, k, names, bundle,
         rows=finding["representative_rows"],
@@ -1993,8 +2014,11 @@ def build_panels(csv_path, source_name="capture.pcap", finding_index=0,
             ok, detail = provider.available()
 
             if ok:
+                say(f"Writing plain English with {provider.model} "
+                    f"(local, nothing leaves this machine)")
                 result = narrate_all(result, provider,
-                                     narrate_panels or ALL_PANELS)
+                                     narrate_panels or ALL_PANELS,
+                                     on_progress=say)
                 result["narrated_by"] = f"{provider.name}/{provider.model}"
             else:
                 result["narration_unavailable"] = detail

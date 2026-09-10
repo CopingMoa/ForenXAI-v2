@@ -139,7 +139,12 @@ class LlamaCppProvider:
     weights are identical: point `model_path` at the same GGUF. Ollama keeps
     its copy in a content-addressed blob store, so extract it once:
 
-        cp ~/.ollama/models/blobs/sha256-5ee4f07c* models/qwen2.5-3b-q4.gguf
+        ollama show qwen2.5:7b --modelfile | grep FROM     # find the blob
+        cp ~/.ollama/models/blobs/sha256-<that blob> models/qwen2.5-7b-q4.gguf
+
+    Match the model the Ollama default names. They are the same weights only
+    if you copy the same blob -- a bundle built from the 3B blob while
+    OLLAMA_MODEL says 7b ships something nobody measured.
 
     INSTALLING WITHOUT A COMPILER
     The source build needs a C++ toolchain. Prebuilt CPU wheels avoid that:
@@ -148,7 +153,7 @@ class LlamaCppProvider:
             --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cpu
 
     THE MODEL IS LOADED ONCE
-    Loading 1.93 GB takes seconds. The instance holds it, so construct the
+    Loading 4.7 GB takes tens of seconds. The instance holds it, so construct the
     provider at application start and keep it -- never per request. That is
     also why this class is not picklable and must not be put in deploy/:
     what gets shipped is the GGUF file, not a serialised object.
@@ -160,9 +165,16 @@ class LlamaCppProvider:
                  gpu_layers=0):
         # 8192 rather than the full 32768: KV cache memory grows with the
         # window, and a context this size already fits a NIST section plus a
-        # finding. fit_context() trims to whatever is set here.
+        # finding. fit_context() trims to whatever is set here. 7B has a
+        # wider KV cache per token than 3B, so this matters more, not less.
+        #
+        # The filename tracks OLLAMA_MODEL rather than being written out, so
+        # switching the development default cannot silently leave the shipped
+        # build on the old weights -- which is exactly what happened when 7b
+        # became the default and this line still read qwen2.5-3b-q4.gguf.
+        default_gguf = f"{OLLAMA_MODEL.replace(':', '-')}-q4.gguf"
         self.model_path = Path(model_path or bundled_path(
-            "models", "qwen2.5-3b-q4.gguf"))
+            "models", default_gguf))
         self.context, self.threads, self.gpu_layers = (context, threads,
                                                        gpu_layers)
         self.model = str(self.model_path.name)
