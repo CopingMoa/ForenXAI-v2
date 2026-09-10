@@ -11,6 +11,17 @@ it loads.** Open the one you are working on.
 The two meet at one field. Tab 1 writes `current_case["generated_csv_path"]`
 and Tab 2 reads it.
 
+**Everything both tabs load is in this folder.** Verified on the build, not
+assumed: Tab 1's Pipeline loads and reports 16 classes; Tab 2 builds all
+three panels with no language model at all — 15 findings, TreeSHAP
+additivity 1.2e−06, 14 retrieved sections, every reference resolving, zero
+quarantined and zero missing documents.
+
+**One thing is not a file, and one is optional.** The language model is a
+registry pull (`ollama pull qwen2.5:7b`), and a `.gguf` on disk is needed
+only if you package with PyInstaller. CICFlowMeter v4 is optional. Both are
+covered below.
+
 ---
 
 ## What is in each tab folder

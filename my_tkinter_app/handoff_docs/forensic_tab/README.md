@@ -8,6 +8,34 @@ place only: `current_case["generated_csv_path"]`.
 
 ---
 
+## Quickstart
+
+```bash
+py -3.11 -m pip install -r ../requirements.txt
+cd .. && python smoke_test.py          # expect 122/122
+```
+
+That is the whole setup for this tab. **No language model, no corpus** —
+`ollama` and `xai_tab/knowledge/` are Tab 2's, and nothing here touches
+them.
+
+Everything this tab loads is in this folder already:
+
+| File | What it is |
+|---|---|
+| `artifacts/…/model.joblib` | the classifier, wrapped in a Pipeline that scales its own input |
+| `artifacts/…/frozen_feature_schema_l2.json` | the column order it was fitted on |
+| `forensic_tab.py` | the working renderer — reference, not a requirement |
+
+Then write your renderer against **one call** — `run_forensic_pipeline()`,
+below. Run it off the UI thread; it blocks for tens of seconds.
+
+**Optional:** CICFlowMeter v4 + JDK 8 make PCAP extraction match the
+reference implementation exactly. Without them a pure-Python extractor
+takes over automatically, with the two limits noted under "Two extractors".
+
+---
+
 **The notes in this folder:** this file. The widget-by-field contract for
 this tab lives with the other one, in
 [../xai_tab/UI_BACKEND_MAP.md](../xai_tab/UI_BACKEND_MAP.md), because it

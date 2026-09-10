@@ -8,6 +8,39 @@ One call fills all three.
 
 ---
 
+## Quickstart
+
+```bash
+py -3.11 -m pip install -r ../requirements.txt
+ollama pull qwen2.5:7b                 # 4.7 GB — see OLLAMA.md
+cd .. && python smoke_test.py          # 122/122, no model needed
+python smoke_test.py --llm --ui        # 154/154, adds narration and widgets
+python audit_rag.py                    # retrieval, all 16 classes
+```
+
+Everything this tab loads is in this folder already:
+
+| Path | What it is |
+|---|---|
+| `models/forenxai/` | the classifier, scaler, encoder, feature order, manifest |
+| `artifacts/…/treeshap_reference.json` | the reference TreeSHAP output |
+| `knowledge/` | 26 documents, 16 playbooks, and `_sources/` with the cited PDFs **and the hidden `.cache/`** |
+| `xai_tab.py` | the working renderer — reference, not a requirement |
+
+Then write your renderer against **one call** — `build_panels()`, below. Run
+it off the UI thread: 44 s warm, 58 s cold, against 0.4 s with
+`narrate_with=None`.
+
+**Read [RAG_INTEGRATION.md](RAG_INTEGRATION.md) before rendering panel 3.**
+You do not implement retrieval; it has already happened. That file lists
+what comes back and the five things not to do to it.
+
+**If `_sources/.cache/` is missing**, every quote fails verification, every
+document is quarantined, and panel 3 renders with its citations withheld.
+It is 8 MB. Do not prune it.
+
+---
+
 **The notes in this folder:** this file (what the tab does and how),
 [RAG_INTEGRATION.md](RAG_INTEGRATION.md) (what retrieval returns and what
 not to do to it), [UI_BACKEND_MAP.md](UI_BACKEND_MAP.md) (every widget in
