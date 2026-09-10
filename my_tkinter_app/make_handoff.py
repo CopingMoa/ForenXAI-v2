@@ -57,8 +57,15 @@ PAYLOAD = [
     # The RAG corpus.
     ("knowledge", "knowledge", True),
 
-    # Reference renderer. Not required -- shows the expected wiring.
-    ("views/xai_tab.py", "reference/xai_tab.py", False),
+    # One folder per tab. The heavy shared data -- knowledge/, models/,
+    # artifacts/, services/ -- stays at the root and is NOT duplicated: the
+    # corpus alone is 100 MB and the two tabs load the same classifier. What
+    # is genuinely per-tab is the renderer and the integration notes, and
+    # those are what these folders hold.
+    ("views/forensic_tab.py", "forensic_tab/forensic_tab.py", False),
+    ("handoff_docs/forensic_tab/README.md", "forensic_tab/README.md", False),
+    ("views/xai_tab.py", "xai_tab/xai_tab.py", False),
+    ("handoff_docs/xai_tab/README.md", "xai_tab/README.md", False),
 
     # So they can prove the integration works in their tree.
     ("test_panels_suite.py", "test_panels_suite.py", False),
@@ -156,6 +163,13 @@ def verify(out):
         print("  " + line)
     if result.returncode != 0:
         print("  " + (result.stderr.splitlines() or ["(no stderr)"])[-1])
+
+    # The self-test just wrote bytecode and an empty case folder into the
+    # thing being shipped. Running it is the point; leaving its litter in
+    # someone else's copy is not.
+    for junk in ("__pycache__", "services/__pycache__", "ForenXAI_Cases"):
+        shutil.rmtree(os.path.join(out, junk), ignore_errors=True)
+
     return result.returncode
 
 

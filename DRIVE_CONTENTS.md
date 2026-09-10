@@ -12,7 +12,7 @@ working copy are deliberately **not** wanted on Drive.
 | # | Upload as | From | Size | Why it is not on GitHub |
 |---|-----------|------|------|-------------------------|
 | 1 | `knowledge_sources.zip` | `my_tkinter_app/knowledge/_sources/` (including the hidden `.cache/` inside it) | 99 MB | 17 cited PDFs plus their extracted-text cache. `.gitignore`d: it is downloaded material, not our source, and the PDFs alone are 98 MB. |
-| 2 | `ForenXAI_UI_Handoff.zip` | `ForenXAI_UI_Handoff/` | 155 MB | A self-contained copy of the app, corpus and tests. Rebuilt by `python my_tkinter_app/make_handoff.py`; nothing in it is authored only here. |
+| 2 | `ForenXAI_UI_Handoff.zip` | `ForenXAI_UI_Handoff/` | 155 MB | A self-contained copy of the app, corpus and tests, with a folder per tab — `forensic_tab/` and `xai_tab/`, each holding that tab's renderer and integration notes. Rebuilt by `python my_tkinter_app/make_handoff.py`; nothing in it is authored only here. |
 | 3 | `cicflowmeter_v4/` + `jdk8/` installers | wherever you downloaded them | ~200 MB | pip cannot install either. `my_tkinter_app/requirements.txt` explains both. Optional — the pure-Python PCAP fallback runs without them. |
 | 4 | `sample_captures/` | your `.pcap` / `.pcapng` test files, plus `my_tkinter_app/sample_data/sample_flows_full.csv` | varies | Test input, not code. The 721 KB full flow table is `.gitignore`d; the 653 KB `sample_flows.csv` is already on GitHub. |
 

@@ -252,6 +252,30 @@ def test_sources(result):
 # ============================================================
 # F -- UI READS WHAT THE BACKEND WRITES
 # ============================================================
+def load_xai_tab():
+    """Import XaiTab from the source tree OR from a built handoff.
+
+    In this repository the renderer is views/xai_tab.py. In the folder
+    make_handoff.py builds there is no views package -- the file sits in
+    xai_tab/, beside the notes for that tab. Section F is the check a UI
+    team most needs and it was unrunnable in the copy they are given,
+    because the import only knew the first layout.
+    """
+    try:
+        from views.xai_tab import XaiTab
+        return XaiTab
+    except ModuleNotFoundError:
+        import importlib.util
+        here = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(here, "xai_tab", "xai_tab.py")
+        if not os.path.isfile(path):
+            raise
+        spec = importlib.util.spec_from_file_location("xai_tab_ref", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.XaiTab
+
+
 def test_ui_contract(result):
     """The joint that no unit test covers: renderer against real output.
 
@@ -260,7 +284,7 @@ def test_ui_contract(result):
     surfacing as an empty panel at run time.
     """
     section("F  INTEGRATION  the renderers consume the service's output")
-    from views.xai_tab import XaiTab
+    XaiTab = load_xai_tab()
 
     for name, fn, args in (
             ("panel 1", XaiTab._narration_blocks, (result["summary"],)),
@@ -537,7 +561,7 @@ def main():
         try:
             import tkinter as tk
             from tkinter import ttk
-            from views.xai_tab import XaiTab
+            XaiTab = load_xai_tab()
             root = tk.Tk()
             root.geometry("1200x800+4000+4000")
             nb = ttk.Notebook(root)

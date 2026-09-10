@@ -5,7 +5,31 @@ recommendations panel. No Tkinter required: every function here returns a
 dict, so you can render it in whatever UI you are building.
 
 Built by `make_handoff.py`. The test suite was run inside this folder before
-it was sent: **122/122 passing**.
+it was sent: **162/162 passing**.
+
+---
+
+## Start with your tab
+
+The two tabs are separate jobs with one seam between them, so each has its
+own folder — the renderer to work from, and integration notes written for
+that tab alone.
+
+| | |
+|---|---|
+| **[`forensic_tab/`](forensic_tab/README.md)** | PCAP → flows → prediction → SHAP → case files. One call: `run_forensic_pipeline`. Produces the evidence. |
+| **[`xai_tab/`](xai_tab/README.md)** | Flow table → three explanation panels. One call: `build_panels`. Explains it. |
+
+**The seam is one field.** Tab 1 writes `current_case["generated_csv_path"]`
+and Tab 2 reads it. Everything else each tab holds itself.
+
+What is *not* in those folders is deliberate: `services/`, `models/`,
+`artifacts/` and `knowledge/` sit at this root and are shared. The corpus
+alone is 100 MB and both tabs load the same classifier, so duplicating them
+per tab would double the folder to prove a point about tidiness. Each tab's
+README lists exactly which of them it needs.
+
+The rest of this document is the reference for both.
 
 ---
 
@@ -13,7 +37,8 @@ it was sent: **122/122 passing**.
 
 ```bash
 pip install -r requirements.txt
-python test_panels_suite.py       # must print 122/122 checks passed
+python test_panels_suite.py       # must print 166/166 checks passed
+python smoke_test.py              # 77 checks, end to end
 ```
 
 If the suite passes, integration is a matter of calling one function.
@@ -105,7 +130,7 @@ Render `sections` in order. Each has `kind`:
 - `kind` absent → guidance about the **attack**
 - `kind == "model"` → guidance about **how far to trust the result**
 
-Put a divider before the first `"model"` section. `reference/xai_tab.py`
+Put a divider before the first `"model"` section. `xai_tab/xai_tab.py`
 does this at `_render_recommend()` — copy the approach, not the widgets.
 
 **Every section carries `citations`.** Show them. A recommendation without
@@ -124,7 +149,8 @@ artifacts/ForenXAI-Multiclass/
 services/                   * all logic. panels_service.py is the entry.
 knowledge/                  * the RAG corpus. See knowledge/README.md for
                               the folder rules and retrieval map.
-reference/xai_tab.py        * a working Tkinter renderer. Reference only.
+forensic_tab/               * Tab 1: renderer + integration notes.
+xai_tab/                    * Tab 2: renderer + integration notes.
 sample_data/                * fixture the test suite runs against.
 ```
 
@@ -221,4 +247,4 @@ technique column.
 | Change when model guidance appears | `MODEL_GUIDANCE` in `panels_service.py` |
 | Check a citation is real | `python fetch_knowledge.py --verify` |
 | Rebuild the deployed model | `python deploy_multiclass_model.py --write` |
-| See the expected rendering | `reference/xai_tab.py` |
+| See the expected rendering | `xai_tab/xai_tab.py`, `forensic_tab/forensic_tab.py` |
