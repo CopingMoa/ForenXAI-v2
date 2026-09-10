@@ -32,11 +32,12 @@ it before trusting either. If 3b fails the grounding checks, the fix is a
 larger local model (qwen2.5:7b, 14b) rather than a remote one -- the
 disclosure argument does not change.
 
-That is what happened. 3b passed every check the panels had, and the check
-it needed did not exist yet: a magnitude claim written as a phrase rather
-than an adjective. With that check added (narration_schema, 6b), 3b fails
-panel 2 on every run and 7b on one run in five, so 7b is the default. Both
-still run; neither is trusted.
+That is what happened, and then the measurement corrected itself. 3b passed
+every check the panels had, and the check it needed did not exist yet: a
+magnitude claim written as a phrase rather than an adjective (narration_schema,
+6b). On one finding that check appeared to separate the two sizes decisively.
+It did not reproduce -- see the note on OLLAMA_MODEL below. Both still run;
+neither is trusted.
 
 CONTEXT BUDGET
 qwen2.5:3b has a 32,768-token window and degrades well before filling it. A
@@ -57,12 +58,25 @@ from pathlib import Path
 
 # Local defaults. Override per call or with the environment.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-# Measured, not assumed. Panel 2 is where the two sizes separate: over five
-# runs on the same finding, qwen2.5:3b made six magnitude claims the supplied
-# comparison contradicts or never supported, and qwen2.5:7b made one. Panels 1
-# and 3 are a tie at 5/5 for both. The cost is latency -- roughly 20 s a panel
-# against 5 s -- paid once per analysis, on a claim the reader cannot check
-# for themselves. Set OLLAMA_MODEL to go back to 3b on a slower machine.
+# 7b by a margin narrower than it first looked, and the reason to record that
+# is that the first measurement was wrong.
+#
+# Panel 2 is the only panel where the sizes differ at all; 1 and 3 tie. Five
+# runs on ONE finding said 3b made six unsupported magnitude claims and 7b
+# made one. Repeating it in a later session with the same seed (42) and the
+# same temperature reversed the result -- 7b's panel 2 fell back on every
+# run. The variation is llama.cpp batching, not sampling, and it is enough
+# to flip a borderline paragraph either way.
+#
+# Across four DIFFERENT findings, which is what actually samples the task:
+# both keep 4/4, 3b raises six medium findings and 7b three. Real, small.
+#
+# The cost is not small: 60 s an analysis against 15 s warm, 89 s against 25 s
+# cold. On a slower machine, or a live demo, OLLAMA_MODEL=qwen2.5:3b is a
+# defensible trade and needs no code change.
+#
+# Re-run model_ab.py over several findings before changing this. A single
+# finding is not a measurement.
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
 
 # Claude, when the user explicitly opts in to sending evidence off the machine.

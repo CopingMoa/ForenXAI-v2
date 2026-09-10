@@ -22,7 +22,7 @@ sys.path.insert(0, HERE)
 os.chdir(HERE)
 
 from services.panels_service import build_panels          # noqa: E402
-from services.llm_provider import OllamaProvider          # noqa: E402
+from services.llm_provider import OllamaProvider, OLLAMA_MODEL  # noqa: E402
 from services import narration_service as ns              # noqa: E402
 
 SAMPLE = os.path.join("sample_data", "sample_flows_full.csv")
@@ -83,5 +83,5 @@ def score(model):
 
 
 if __name__ == "__main__":
-    for m in (sys.argv[1:] or ["qwen2.5:3b"]):
+    for m in (sys.argv[1:] or [OLLAMA_MODEL]):
         score(m)

@@ -45,18 +45,32 @@ build_panels(csv_path, name, narrate_with="ollama", narrate_panels=ALL_PANELS)
 | `OLLAMA_URL` | `http://localhost:11434` |
 | `OLLAMA_MODEL` | `qwen2.5:7b` |
 
-`qwen2.5:3b` is the fallback for a slower machine: about four times faster
-(5 s a panel against 20 s) and about 2 GB smaller. It costs accuracy on
-panel 2, which is the panel making claims about the training distribution.
-Over five runs on one finding, 3b made six magnitude claims the supplied
-comparison contradicts or never supported; 7b made one. Panels 1 and 3 are a
-tie. Nothing in the code needs changing to swap — set the variable.
+`qwen2.5:3b` is the fallback for a slower machine, and the margin between
+them is narrow enough that it is a real choice rather than a downgrade.
 
-Measure it yourself before trusting either:
+| | 3b | 7b |
+|---|---|---|
+| Whole analysis, warm | **15 s** | 60 s |
+| Whole analysis, cold | **25 s** | 89 s |
+| Download | **1.9 GB** | 4.7 GB |
+| Panel 2 over four findings | 4/4 kept, 6 medium | 4/4 kept, **3 medium** |
+| Panels 1 and 3 | tie | tie |
+
+Panel 2 is the only panel where they differ — it is the one making claims
+about the training distribution. 7b makes about half as many unsupported
+ones. That is the whole of the difference.
+
+**Measure over several findings, not several runs of one.** With seed 42 and
+temperature 0.2 the sampling is fixed, but llama.cpp batching still varies
+run to run, and it is enough to flip a borderline paragraph. One finding
+measured five times said 7b was decisively better; the next session said the
+opposite. Varying the finding is what samples the task:
 
 ```bash
-RUNS=5 python model_ab.py qwen2.5:3b qwen2.5:7b
+python model_ab.py qwen2.5:3b qwen2.5:7b     # one finding, both models
 ```
+
+Nothing in the code needs changing to swap — set the variable.
 
 ## Expect it to be slow
 
