@@ -107,6 +107,15 @@ def write_manifest(out):
     regenerated from the folder it describes every time that folder is
     cleared to send, so it is either right or the build did not pass.
     """
+    # Create it before taking the inventory, or the manifest cannot count
+    # itself: make_handoff.py rebuilds the folder from scratch, so
+    # SEND_LIST.md does not exist when the walk runs and the total came out
+    # one short of the folder it describes. An exact count is the entire
+    # point of this file.
+    out_path = os.path.join(out, "SEND_LIST.md")
+    if not os.path.exists(out_path):
+        open(out_path, "w", encoding="utf-8").close()
+
     rows, tn, tb = [], 0, 0
     for name, rels in GROUPS:
         files = [f for r in rels for f in inventory(out, r)]
@@ -133,7 +142,7 @@ def write_manifest(out):
         lines += [f for f, _ in sorted(files)]
         lines += ["```", ""]
 
-    with open(os.path.join(out, "SEND_LIST.md"), "w", encoding="utf-8") as fh:
+    with open(out_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines) + "\n")
     return tn, tb
 

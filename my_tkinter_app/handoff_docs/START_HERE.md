@@ -134,6 +134,10 @@ python build_exe.py                             # then package
 
 ## If you are passing this folder on
 
+[TEAM_MESSAGES.md](TEAM_MESSAGES.md) holds three blocks to paste — one for
+everyone, one per tab. They are the chat-window version of these notes.
+
+
 Zip it; do not upload it as a folder. 155 MB of loose files becomes one
 95 MB item, and one item either arrives or it does not. The part a folder
 upload is most likely to drop silently is `xai_tab/knowledge/_sources/.cache/`
