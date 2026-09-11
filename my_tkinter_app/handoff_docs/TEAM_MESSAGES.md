@@ -120,8 +120,11 @@ Four rules you can't guess from a field name:
     collapse them into one tick.
   - Never render a document listed in unverified_documents.
 
-DON'T PRUNE _sources/.cache/ — it's 8 MB. Without it every quote fails
-verification and panel 3 renders with no citations.
+KEEP _sources/ WHOLE — the PDFs and the hidden .cache/. Verification
+needs at least one of the two: with both, quotes verify against the PDF;
+with only the cache, they verify against extracted text and the panel
+says so. Lose BOTH and every document is quarantined. Run preflight.py if
+you want that checked.
 
 Field-by-field widget contract: xai_tab/UI_BACKEND_MAP.md.
 ```

@@ -29,11 +29,21 @@ xai_tab/
 └── models/forenxai/                    the classifier the findings come from
 ```
 
-Without `knowledge/` there is nothing to retrieve. Without `_sources/` —
-**PDFs and the hidden `.cache/` together** — every quote fails verification,
-every document is quarantined, and panel 3 renders with its citations
-withheld. The cache is 8 MB and is what the verifier actually reads; the PDFs
-are 98 MB and are what makes the cache checkable. Ship both.
+Without `knowledge/` there is nothing to retrieve.
+
+`_sources/` holds the cited PDFs and a hidden `.cache/` of extracted text,
+and **verification needs at least one of the two**:
+
+| Present | What happens |
+|---|---|
+| PDFs **and** cache | quotes verify against the PDF — `verified_against: "source"` |
+| cache only | quotes verify against extracted text — `verified_against: "cache"`, the weaker claim, and the panel says so |
+| PDFs only | the cache is rebuilt on demand; verification is unaffected |
+| **neither** | **every document is quarantined and panel 3 renders with its citations withheld** |
+
+Measured, each case. Ship both: the PDFs are what make a quote
+re-derivable by the recipient, and the cache is what makes verification
+fast enough to run on every analysis.
 
 ```
 services/
@@ -138,7 +148,7 @@ not collapse the two into one tick mark.
 ## 5. Prove it works in your tree
 
 ```bash
-python smoke_test.py           # 100 checks, no model needed
+python smoke_test.py           # 122 checks, no model needed
 python smoke_test.py --llm     # adds narration
 python smoke_test.py --ui      # adds the Tk widgets
 python audit_rag.py            # source → retrieval → panel, all 16 classes

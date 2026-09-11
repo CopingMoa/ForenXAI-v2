@@ -239,7 +239,7 @@ def main():
                 if f.lower().endswith(".pdf")]
         has_cache = os.path.isdir(cache) and os.listdir(cache)
         check("the extracted-text cache shipped", bool(has_cache),
-              "without it every quote fails and every document is quarantined")
+              "the PDFs can rebuild it, but a --no-sources build cannot")
         warn("the source PDFs shipped", bool(pdfs),
              "a --no-sources build verifies against the cache only; the "
              "recipient cannot re-derive a quote themselves")

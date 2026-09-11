@@ -35,9 +35,11 @@ it off the UI thread: 44 s warm, 58 s cold, against 0.4 s with
 You do not implement retrieval; it has already happened. That file lists
 what comes back and the five things not to do to it.
 
-**If `_sources/.cache/` is missing**, every quote fails verification, every
-document is quarantined, and panel 3 renders with its citations withheld.
-It is 8 MB. Do not prune it.
+**Keep `_sources/` whole** — the PDFs and the hidden `.cache/`.
+Verification needs at least one of the two: with both, quotes verify
+against the PDF; with only the cache, against extracted text, and the panel
+reports the weaker claim. Losing **both** quarantines every document and
+panel 3 renders with its citations withheld.
 
 ---
 
@@ -239,11 +241,13 @@ sklearn Pipeline the forensic chain runs; this is the same estimator
 serialised without it, beside the scaler, encoder and feature list these
 panels need. Each tab loads one and never the other.
 
-**`_sources/` is not optional.** Without the PDFs *and* the `.cache/` beside
-them, every quote fails verification and its document is quarantined —
-panel 3 then renders with its citations withheld. `manifest.json` is
-verified before the first `joblib.load`, because a `.pkl` is executed when
-it is loaded.
+**`_sources/` needs at least one of its two halves.** With the PDFs and
+the `.cache/` both present, a quote is verified against the PDF. With
+only the cache, against extracted text, and the panel reports the
+weaker claim. With only the PDFs, the cache is rebuilt on demand. Lose
+both and every document is quarantined, and panel 3 renders with its
+citations withheld. `manifest.json` is verified before the first
+`joblib.load`, because a `.pkl` is executed when it is loaded.
 
 Shared at the root: `services/` and `sample_data/`. Also needed, and not a
 file: `ollama pull qwen2.5:7b` — see [OLLAMA.md](OLLAMA.md), in this folder.

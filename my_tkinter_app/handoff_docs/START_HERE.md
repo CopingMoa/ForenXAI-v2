@@ -103,11 +103,12 @@ python smoke_test.py --llm --ui   # 154/154, adds narration and the widgets
 
 Only `xai_tab/` needs the language model. Tab 1 never calls one.
 
-**The one thing that must not be missing:** `xai_tab/knowledge/_sources/`
-holds the cited PDFs *and* a hidden `.cache/`. Without them every quote
-fails verification, every document is quarantined, and panel 3 renders with
-its citations withheld. `preflight.py` refuses to clear a build that lost
-them.
+**Keep `xai_tab/knowledge/_sources/` whole** — the cited PDFs *and* a
+hidden `.cache/` of extracted text. Verification needs **at least one of the
+two**: with both, a quote is checked against the PDF; with only the cache,
+against extracted text, and the panel reports the weaker claim; with only
+the PDFs, the cache is rebuilt on demand. Lose **both** and every document
+is quarantined. `preflight.py` checks it.
 
 ## Where the language model file goes
 
