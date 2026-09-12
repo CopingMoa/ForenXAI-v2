@@ -34,10 +34,29 @@ https://claude.ai/code/artifact/3ecefe1b-9aab-4364-9d66-76c8960a7161
 
 §3.2 and Table 3 report **13,390,249** benign flows in CSE-CIC-IDS2018. That
 number appears in no log, no results file and no run. All five executions of
-`01_prepare_cicids2018.py` logged **13,484,708**. The 95,760 difference falls
-entirely in Benign, Infiltration and Bruteforce and is exactly zero elsewhere,
-which is what row-level cleaning would look like — but no artifact demonstrates
-it. Either find the source or use the logged figure and cite the log.
+`01_prepare_cicids2018.py` logged **13,484,708**.
+
+It is not a cleaning artefact. Script 01 accumulates `label_counts` *after*
+`clean_block`, so the logged figure is already post-cleaning — and the logs
+record how much cleaning removed: **59 rows across the entire dataset**
+(16,233,002 read, 16,232,943 usable, 0.0004%). No cleaning step accounts for a
+95,760-row difference.
+
+The figure therefore came from outside this pipeline — almost certainly a
+secondary source quoting a different redistribution of the dataset. Two ways
+to resolve it, both defensible:
+
+1. **Use the measured figure.** Replace 13,390,249 with 13,484,708 and cite
+   `logs/01_cicids_20260906_020811.log`. Five runs agree; it is reproducible
+   from the raw data.
+2. **Keep the published figure and attribute it.** Cite the paper it came
+   from, then state that this study's own extraction of the same release
+   yielded 13,484,708, and that counts differ between redistributions. This
+   is the stronger option if the source can be found — it shows the number
+   was verified rather than copied.
+
+What is not defensible is leaving an unattributed figure that the project's
+own logs contradict.
 
 ## Before submission
 
