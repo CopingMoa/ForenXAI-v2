@@ -128,6 +128,7 @@ class ForensicTab:
         self.selected_flow_index = None
         self.current_flow_details = []
         self.pinned_detail_fields = set()
+        self.flow_detail_filter = None
 
         # Current dynamic threat data
         self.dynamic_threats = []
@@ -2096,8 +2097,18 @@ class ForensicTab:
             pady=(5, 3)
         )
 
-        self.lbl_selected_flow = tk.Label(
+        detail_toolbar = tk.Frame(
             self.flow_details_frame,
+            bg=self.BG_MAIN
+        )
+        detail_toolbar.pack(
+            fill="x",
+            padx=8,
+            pady=(0, 3)
+        )
+
+        self.lbl_selected_flow = tk.Label(
+            detail_toolbar,
             text="Select a threat flow above to view its details.",
             font=("Segoe UI", 8),
             bg=self.BG_MAIN,
@@ -2106,10 +2117,26 @@ class ForensicTab:
         )
 
         self.lbl_selected_flow.pack(
+            side=tk.LEFT,
             fill="x",
-            padx=8,
-            pady=(0, 3)
+            expand=True
         )
+
+        self.btn_flow_filter = tk.Button(
+            detail_toolbar,
+            text="Filter",
+            command=self._open_flow_filter,
+            font=("Segoe UI", 8, "bold"),
+            bg=self.BLUE,
+            fg="#FFFFFF",
+            activebackground="#2563EB",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            cursor="hand2",
+            padx=10,
+            pady=2
+        )
+        self.btn_flow_filter.pack(side=tk.RIGHT)
 
         # One field/value pair per row keeps each flow attribute readable.
         columns = (
@@ -2243,6 +2270,7 @@ class ForensicTab:
         self.selected_flow_index = None
         self.current_flow_details = []
         self.pinned_detail_fields = set()
+        self.flow_detail_filter = None
         self._hide_detail_actions()
 
         if hasattr(
@@ -2255,6 +2283,152 @@ class ForensicTab:
                     "its details."
                 )
             )
+
+    def _open_flow_filter(self):
+        """Open the field selector for the currently selected flow."""
+        if not self.current_flow_details:
+            messagebox.showinfo(
+                "Flow Filter",
+                "Select a threat flow first to filter its details."
+            )
+            return
+
+        existing = getattr(self, "_flow_filter_window", None)
+        if existing is not None and existing.winfo_exists():
+            existing.lift()
+            return
+
+        window = tk.Toplevel(self.root)
+        self._flow_filter_window = window
+        window.title("Filter Flow Information")
+        window.geometry("430x520")
+        window.minsize(360, 300)
+        window.configure(bg=self.BG_MAIN)
+        window.transient(self.root)
+
+        tk.Label(
+            window,
+            text="Select the Flow Information fields to display:",
+            bg=self.BG_MAIN,
+            fg=self.TEXT_PRIMARY,
+            font=("Segoe UI", 9, "bold"),
+            anchor="w"
+        ).pack(fill="x", padx=12, pady=(12, 6))
+
+        list_frame = tk.Frame(window, bg=self.BG_MAIN)
+        list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 8))
+
+        canvas = tk.Canvas(
+            list_frame,
+            bg=self.BG_PANEL,
+            highlightthickness=1,
+            highlightbackground=self.BORDER
+        )
+        scrollbar = ttk.Scrollbar(
+            list_frame,
+            orient="vertical",
+            command=canvas.yview
+        )
+        fields_frame = tk.Frame(canvas, bg=self.BG_PANEL)
+        canvas_window = canvas.create_window(
+            (0, 0),
+            window=fields_frame,
+            anchor="nw"
+        )
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side=tk.LEFT, fill="both", expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill="y")
+
+        def resize_fields(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            canvas.itemconfigure(canvas_window, width=canvas.winfo_width())
+
+        fields_frame.bind("<Configure>", resize_fields)
+
+        check_vars = {}
+        for field_name, _value in self.current_flow_details:
+            variable = tk.BooleanVar(
+                value=field_name in self.flow_detail_filter
+                if self.flow_detail_filter is not None
+                else True
+            )
+            check_vars[field_name] = variable
+            tk.Checkbutton(
+                fields_frame,
+                text=field_name,
+                variable=variable,
+                onvalue=True,
+                offvalue=False,
+                anchor="w",
+                bg=self.BG_PANEL,
+                fg=self.TEXT_PRIMARY,
+                activebackground=self.BG_PANEL,
+                activeforeground=self.TEXT_PRIMARY,
+                selectcolor=self.BG_PANEL,
+                font=("Segoe UI", 8)
+            ).pack(fill="x", padx=8, pady=1)
+
+        button_frame = tk.Frame(window, bg=self.BG_MAIN)
+        button_frame.pack(fill="x", padx=12, pady=(0, 12))
+
+        def apply_filter():
+            self.flow_detail_filter = {
+                field_name for field_name, variable in check_vars.items()
+                if variable.get()
+            }
+            self._refresh_flow_details_table()
+            window.destroy()
+
+        def select_all():
+            for variable in check_vars.values():
+                variable.set(True)
+
+        def remove_all():
+            for variable in check_vars.values():
+                variable.set(False)
+
+        tk.Button(
+            button_frame,
+            text="Apply Filter",
+            command=apply_filter,
+            bg=self.BLUE,
+            fg="#FFFFFF",
+            activebackground="#2563EB",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            font=("Segoe UI", 8, "bold"),
+            padx=10,
+            pady=4
+        ).pack(side=tk.RIGHT, padx=(6, 0))
+        tk.Button(
+            button_frame,
+            text="Remove All",
+            command=remove_all,
+            bg="#475569",
+            fg="#FFFFFF",
+            activebackground="#64748B",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            font=("Segoe UI", 8, "bold"),
+            padx=10,
+            pady=4
+        ).pack(side=tk.RIGHT)
+        tk.Button(
+            button_frame,
+            text="Select All",
+            command=select_all,
+            bg="#475569",
+            fg="#FFFFFF",
+            activebackground="#64748B",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            font=("Segoe UI", 8, "bold"),
+            padx=10,
+            pady=4
+        ).pack(side=tk.RIGHT, padx=(0, 6))
+
+        window.protocol("WM_DELETE_WINDOW", window.destroy)
+        window.grab_set()
 
     def _refresh_flow_details_table(self):
         """Render pinned detail fields first, retaining all other order."""
@@ -2272,7 +2446,14 @@ class ForensicTab:
             if detail[0] not in self.pinned_detail_fields
         ]
 
-        for index, detail in enumerate(pinned + unpinned):
+        ordered_details = pinned + unpinned
+        if self.flow_detail_filter is not None:
+            ordered_details = [
+                detail for detail in ordered_details
+                if detail[0] in self.flow_detail_filter
+            ]
+
+        for index, detail in enumerate(ordered_details):
             self.flow_details_table.insert(
                 "",
                 tk.END,
