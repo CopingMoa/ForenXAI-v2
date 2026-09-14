@@ -4,6 +4,7 @@ import json
 import shutil
 import hashlib
 import subprocess
+import struct
 from datetime import datetime, timezone
 
 import numpy as np
@@ -27,6 +28,94 @@ SUPPORTED_PCAP_EXTENSIONS = (
     ".pcap",
     ".pcapng",
 )
+
+
+def _convert_pcapng_to_pcap(pcapng_path, output_dir, log_fn=None):
+    """Convert PCAPNG evidence to a temporary classic PCAP file.
+
+    CICFlowMeter v4 is most reliable with classic PCAP input. The original
+    PCAPNG remains the evidence file and is not modified; the converted copy
+    is used only for flow extraction inside the case directory.
+    """
+    try:
+        from scapy.utils import PcapNgReader
+    except Exception as exc:
+        raise RuntimeError(
+            "PCAPNG conversion requires Scapy. Install it with:\n"
+            "    pip install scapy"
+        ) from exc
+
+    base_name = os.path.splitext(os.path.basename(pcapng_path))[0]
+    converted_path = os.path.join(
+        output_dir,
+        base_name + "_converted.pcap"
+    )
+
+    if log_fn:
+        log_fn(
+            "[i] PCAPNG input detected; converting to classic PCAP...",
+            "info"
+        )
+
+    packet_count = 0
+    output_file = None
+    try:
+        # Write a classic PCAP header and records directly. This avoids
+        # Scapy writer differences across versions and produces a file that
+        # CICFlowMeter's jNetPcap reader can open reliably.
+        output_file = open(converted_path, "wb")
+        output_file.write(struct.pack(
+            "<IHHIIII",
+            0xA1B2C3D4,  # microsecond-resolution PCAP magic
+            2, 4, 0, 0, 65535, 1  # Ethernet link type
+        ))
+
+        with PcapNgReader(pcapng_path) as reader:
+            for packet in reader:
+                packet_bytes = bytes(packet)
+                packet_time = float(getattr(packet, "time", 0.0) or 0.0)
+                seconds = int(packet_time)
+                microseconds = int(
+                    round((packet_time - seconds) * 1_000_000)
+                )
+                if microseconds >= 1_000_000:
+                    seconds += 1
+                    microseconds = 0
+                packet_length = len(packet_bytes)
+                output_file.write(struct.pack(
+                    "<IIII",
+                    seconds,
+                    microseconds,
+                    packet_length,
+                    packet_length
+                ))
+                output_file.write(packet_bytes)
+                packet_count += 1
+    except Exception as exc:
+        try:
+            if os.path.isfile(converted_path):
+                os.remove(converted_path)
+        except OSError:
+            pass
+        raise RuntimeError(
+            "Could not convert the PCAPNG capture to PCAP:\n"
+            + str(exc)
+        ) from exc
+    finally:
+        if output_file is not None:
+            output_file.close()
+
+    if packet_count == 0 or not os.path.isfile(converted_path):
+        raise ValueError("The supplied PCAPNG file contains no packets.")
+
+    if log_fn:
+        log_fn(
+            f"[+] Converted {packet_count:,} packet(s) to "
+            + os.path.basename(converted_path),
+            "success"
+        )
+
+    return converted_path
 
 
 def validate_pcap_file(pcap_path):
@@ -935,19 +1024,27 @@ def extract_flows_from_pcap(
 
     os.makedirs(case_dir, exist_ok=True)
 
+    extraction_path = pcap_path
+    if os.path.splitext(pcap_path)[1].lower() == ".pcapng":
+        extraction_path = _convert_pcapng_to_pcap(
+            pcap_path,
+            case_dir,
+            log_fn=log_fn
+        )
+
     engine = select_engine(log_fn=log_fn)
 
     if engine == "java":
         csv_path = run_cicflowmeter(
-            pcap_path=pcap_path,
+            pcap_path=extraction_path,
             output_dir=case_dir,
             log_fn=log_fn,
         )
     else:
-        base = os.path.splitext(os.path.basename(pcap_path))[0]
+        base = os.path.splitext(os.path.basename(extraction_path))[0]
         csv_path = os.path.join(case_dir, base + "_Flow.csv")
         pyflow_extractor.extract(
-            pcap_path=pcap_path,
+            pcap_path=extraction_path,
             output_csv=csv_path,
             log_fn=log_fn,
         )
