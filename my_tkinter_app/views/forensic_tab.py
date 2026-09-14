@@ -120,12 +120,14 @@ class ForensicTab:
 
         # Current table rows
         self.findings_rows = []
+        self.pinned_finding_flows = set()
 
         # Current flow-detail data.
         # The selected threat row stores the corresponding
         # CICFlowMeter CSV flow index here.
         self.selected_flow_index = None
         self.current_flow_details = []
+        self.pinned_detail_fields = set()
 
         # Current dynamic threat data
         self.dynamic_threats = []
@@ -1128,6 +1130,8 @@ class ForensicTab:
         self
     ):
 
+        # Threat cards are result-only.  Keep the dashboard free of empty
+        # "Top Threat" placeholders until this PCAP has detections to show.
         for index, card_info in enumerate(
             self.dynamic_cards,
             start=1
@@ -1149,6 +1153,8 @@ class ForensicTab:
                 bg=self.BG_PANEL,
                 highlightbackground=self.BORDER
             )
+
+            card_info["card"].grid_remove()
 
 
     # ========================================================
@@ -1283,6 +1289,10 @@ class ForensicTab:
                         index
                     ]
                 )
+
+                # grid() restores the position saved by grid_remove() when
+                # the dashboard was reset before this analysis.
+                card_info["card"].grid()
 
                 card_info["title"].config(
                     text=(
@@ -1420,11 +1430,10 @@ class ForensicTab:
         # ----------------------------------------------------
 
         columns = (
-            "detected_threats",
+            "flow_number",
             "multiclass",
             "confidence",
-            "ai_comments",
-            "investigator_comment"
+            "actions"
         )
 
         self.findings_table = (
@@ -1438,8 +1447,8 @@ class ForensicTab:
         )
 
         self.findings_table.heading(
-            "detected_threats",
-            text="Detected Threats"
+            "flow_number",
+            text="Flow Number"
         )
 
         self.findings_table.heading(
@@ -1453,13 +1462,8 @@ class ForensicTab:
         )
 
         self.findings_table.heading(
-            "ai_comments",
-            text="AI Comments"
-        )
-
-        self.findings_table.heading(
-            "investigator_comment",
-            text="Investigator's Comment"
+            "actions",
+            text=""
         )
 
         # ----------------------------------------------------
@@ -1467,7 +1471,7 @@ class ForensicTab:
         # ----------------------------------------------------
 
         self.findings_table.column(
-            "detected_threats",
+            "flow_number",
             width=120,
             minwidth=100,
             anchor="center"
@@ -1488,17 +1492,11 @@ class ForensicTab:
         )
 
         self.findings_table.column(
-            "ai_comments",
-            width=270,
-            minwidth=200,
-            anchor="w"
-        )
-
-        self.findings_table.column(
-            "investigator_comment",
-            width=270,
-            minwidth=200,
-            anchor="w"
+            "actions",
+            width=120,
+            minwidth=120,
+            stretch=False,
+            anchor="center"
         )
 
         # ----------------------------------------------------
@@ -1508,7 +1506,7 @@ class ForensicTab:
         scrollbar = ttk.Scrollbar(
             table_frame,
             orient="vertical",
-            command=self.findings_table.yview
+            command=self._scroll_findings_table
         )
 
         self.findings_table.configure(
@@ -1529,6 +1527,38 @@ class ForensicTab:
             "<<TreeviewSelect>>",
             self._on_flow_selected
         )
+
+        # Treeview does not support embedded widgets. These buttons are
+        # overlaid on the selected row's Actions cell and hidden otherwise.
+        self._selected_finding_item = None
+        self._finding_copy_button = tk.Button(
+            self.findings_table,
+            text="Copy",
+            command=self._copy_selected_finding,
+            font=("Segoe UI", 7, "bold"),
+            bg=self.BLUE,
+            fg="#FFFFFF",
+            activebackground="#2563EB",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            cursor="hand2"
+        )
+        self._finding_pin_button = tk.Button(
+            self.findings_table,
+            text="Pin",
+            command=self._pin_selected_finding,
+            font=("Segoe UI", 7, "bold"),
+            bg="#475569",
+            fg="#FFFFFF",
+            activebackground="#64748B",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            cursor="hand2"
+        )
+        self._hide_finding_actions()
+        self.findings_table.bind("<MouseWheel>", self._hide_finding_actions, add="+")
+        self.findings_table.bind("<Button-4>", self._hide_finding_actions, add="+")
+        self.findings_table.bind("<Button-5>", self._hide_finding_actions, add="+")
 
         scrollbar.pack(
             side=tk.RIGHT,
@@ -1563,6 +1593,8 @@ class ForensicTab:
             )
 
         self.findings_rows = []
+        self.pinned_finding_flows = set()
+        self._hide_finding_actions()
 
         if hasattr(
             self,
@@ -1710,39 +1742,6 @@ class ForensicTab:
             ] = str(class_name)
 
         # ----------------------------------------------------
-        # SHAP lookup
-        # ----------------------------------------------------
-
-        shap_lookup = {}
-
-        if isinstance(
-            shap_results,
-            list
-        ):
-
-            for shap_record in (
-                shap_results
-            ):
-
-                if not isinstance(
-                    shap_record,
-                    dict
-                ):
-                    continue
-
-                flow_index = (
-                    shap_record.get(
-                        "flow_index"
-                    )
-                )
-
-                if flow_index is not None:
-
-                    shap_lookup[
-                        str(flow_index)
-                    ] = shap_record
-
-        # ----------------------------------------------------
         # Build rows
         # ----------------------------------------------------
 
@@ -1859,73 +1858,11 @@ class ForensicTab:
                         confidence
                     )
 
-            # ------------------------------------------------
-            # AI comment
-            # ------------------------------------------------
-
-            ai_comment = (
-                f"AI classified this flow as "
-                f"'{classification}'."
-            )
-
-            shap_record = (
-                shap_lookup.get(
-                    str(flow_index)
-                )
-            )
-
-            if shap_record:
-
-                top_features = (
-                    shap_record.get(
-                        "top_features",
-                        []
-                    )
-                )
-
-                feature_names = []
-
-                if isinstance(
-                    top_features,
-                    list
-                ):
-
-                    for feature in (
-                        top_features[:3]
-                    ):
-
-                        if not isinstance(
-                            feature,
-                            dict
-                        ):
-                            continue
-
-                        name = feature.get(
-                            "feature"
-                        )
-
-                        if name:
-
-                            feature_names.append(
-                                str(name)
-                            )
-
-                if feature_names:
-
-                    ai_comment += (
-                        " Key indicators: "
-                        + ", ".join(
-                            feature_names
-                        )
-                        + "."
-                    )
-
             rows.append(
                 (
                     detected_threat,
                     classification,
                     confidence_text,
-                    ai_comment,
                     ""
                 )
             )
@@ -1957,10 +1894,21 @@ class ForensicTab:
         # That method also resets self.findings_rows, which previously
         # erased the rows immediately before they were inserted.
         # We only clear the Treeview widgets, then insert the saved rows.
+        self._hide_finding_actions()
+
         for item in self.findings_table.get_children():
             self.findings_table.delete(item)
 
-        for row in self.findings_rows:
+        pinned_rows = [
+            row for row in self.findings_rows
+            if str(row[0]) in self.pinned_finding_flows
+        ]
+        unpinned_rows = [
+            row for row in self.findings_rows
+            if str(row[0]) not in self.pinned_finding_flows
+        ]
+
+        for row in pinned_rows + unpinned_rows:
             # Use the flow index as the Treeview item ID so
             # selecting a row can directly locate its source
             # CICFlowMeter flow.
@@ -1990,6 +1938,109 @@ class ForensicTab:
                     tk.END,
                     values=row
                 )
+
+
+    def _hide_finding_actions(self, event=None):
+        """Hide the selected-row Copy and Pin controls."""
+        self._selected_finding_item = None
+
+        if hasattr(self, "_finding_copy_button"):
+            self._finding_copy_button.place_forget()
+
+        if hasattr(self, "_finding_pin_button"):
+            self._finding_pin_button.place_forget()
+
+
+    def _scroll_findings_table(self, *args):
+        """Scroll findings and remove action controls from the old row."""
+        self._hide_finding_actions()
+        self.findings_table.yview(*args)
+
+
+    def _show_finding_actions(self, item_id):
+        """Show controls in the Actions cell of the selected threat flow."""
+        bbox = self.findings_table.bbox(item_id, "actions")
+
+        if not bbox:
+            self._hide_finding_actions()
+            return
+
+        cell_x, cell_y, cell_width, cell_height = bbox
+        button_width = max(42, (cell_width - 9) // 2)
+        button_height = max(1, cell_height - 4)
+
+        self._selected_finding_item = item_id
+        values = self.findings_table.item(item_id, "values")
+        is_pinned = bool(values) and str(values[0]) in self.pinned_finding_flows
+        self._finding_pin_button.config(text="Unpin" if is_pinned else "Pin")
+        self._finding_copy_button.place(
+            x=cell_x + 3,
+            y=cell_y + 2,
+            width=button_width,
+            height=button_height
+        )
+        self._finding_pin_button.place(
+            x=cell_x + 6 + button_width,
+            y=cell_y + 2,
+            width=button_width,
+            height=button_height
+        )
+
+
+    def _copy_selected_finding(self):
+        """Copy the complete selected threat-flow row to the clipboard."""
+        item_id = self._selected_finding_item
+
+        if not item_id:
+            return
+
+        values = self.findings_table.item(item_id, "values")
+        if not values:
+            return
+
+        # The final value belongs to the blank Actions column, so it is not
+        # part of the flow record copied to the investigator's clipboard.
+        line = " | ".join(str(value) for value in values[:-1])
+        self.root.clipboard_clear()
+        self.root.clipboard_append(line)
+        self.root.update_idletasks()
+        self.write_log(f"[+] Copied {values[0]} to clipboard.", "success")
+
+
+    def _pin_selected_finding(self):
+        """Move the selected threat-flow row to the top of the findings."""
+        item_id = self._selected_finding_item
+
+        if not item_id:
+            return
+
+        values = self.findings_table.item(item_id, "values")
+        if not values:
+            return
+
+        flow_number = str(values[0])
+        if flow_number in self.pinned_finding_flows:
+            self.pinned_finding_flows.remove(flow_number)
+            action = "Unpinned"
+        else:
+            self.pinned_finding_flows.add(flow_number)
+            action = "Pinned"
+
+        self._refresh_findings_table()
+
+        try:
+            flow_index = int(flow_number.split()[-1])
+            item_id = str(flow_index)
+            self.findings_table.selection_set(item_id)
+            self.findings_table.focus(item_id)
+            self.findings_table.see(item_id)
+            self.root.after_idle(
+                lambda selected=item_id: self._show_finding_actions(selected)
+            )
+        except (TypeError, ValueError, tk.TclError):
+            pass
+
+        self.write_log(f"[+] {action} {flow_number} in findings.", "success")
 
 
     # ========================================================
@@ -2060,13 +2111,11 @@ class ForensicTab:
             pady=(0, 3)
         )
 
-        # Four-column layout keeps the information compact:
-        # Feature | Value | Feature | Value
+        # One field/value pair per row keeps each flow attribute readable.
         columns = (
-            "field_1",
-            "value_1",
-            "field_2",
-            "value_2"
+            "flow_information",
+            "value",
+            "actions"
         )
 
         self.flow_details_table = ttk.Treeview(
@@ -2078,57 +2127,46 @@ class ForensicTab:
         )
 
         self.flow_details_table.heading(
-            "field_1",
+            "flow_information",
             text="Flow Information"
         )
 
         self.flow_details_table.heading(
-            "value_1",
+            "value",
             text="Value"
         )
 
         self.flow_details_table.heading(
-            "field_2",
-            text="Flow Information"
-        )
-
-        self.flow_details_table.heading(
-            "value_2",
-            text="Value"
+            "actions",
+            text=""
         )
 
         self.flow_details_table.column(
-            "field_1",
-            width=180,
-            minwidth=130,
+            "flow_information",
+            width=260,
+            minwidth=180,
             anchor="w"
         )
 
         self.flow_details_table.column(
-            "value_1",
-            width=300,
-            minwidth=160,
+            "value",
+            width=650,
+            minwidth=280,
             anchor="w"
         )
 
         self.flow_details_table.column(
-            "field_2",
-            width=180,
-            minwidth=130,
-            anchor="w"
-        )
-
-        self.flow_details_table.column(
-            "value_2",
-            width=300,
-            minwidth=160,
-            anchor="w"
+            "actions",
+            width=120,
+            minwidth=120,
+            stretch=False,
+            anchor="center"
         )
 
         detail_scrollbar = ttk.Scrollbar(
             self.flow_details_frame,
             orient="vertical",
-            command=self.flow_details_table.yview
+            command=self._scroll_flow_details_table
         )
 
         self.flow_details_table.configure(
@@ -2142,6 +2180,40 @@ class ForensicTab:
             padx=(5, 0),
             pady=(0, 5)
         )
+
+        self.flow_details_table.bind(
+            "<<TreeviewSelect>>",
+            self._on_flow_detail_selected
+        )
+        self._selected_detail_item = None
+        self._detail_copy_button = tk.Button(
+            self.flow_details_table,
+            text="Copy",
+            command=self._copy_selected_detail,
+            font=("Segoe UI", 7, "bold"),
+            bg=self.BLUE,
+            fg="#FFFFFF",
+            activebackground="#2563EB",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            cursor="hand2"
+        )
+        self._detail_pin_button = tk.Button(
+            self.flow_details_table,
+            text="Pin",
+            command=self._pin_selected_detail,
+            font=("Segoe UI", 7, "bold"),
+            bg="#475569",
+            fg="#FFFFFF",
+            activebackground="#64748B",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            cursor="hand2"
+        )
+        self._hide_detail_actions()
+        self.flow_details_table.bind("<MouseWheel>", self._hide_detail_actions, add="+")
+        self.flow_details_table.bind("<Button-4>", self._hide_detail_actions, add="+")
+        self.flow_details_table.bind("<Button-5>", self._hide_detail_actions, add="+")
 
         detail_scrollbar.pack(
             side=tk.RIGHT,
@@ -2170,6 +2242,8 @@ class ForensicTab:
 
         self.selected_flow_index = None
         self.current_flow_details = []
+        self.pinned_detail_fields = set()
+        self._hide_detail_actions()
 
         if hasattr(
             self,
@@ -2181,6 +2255,124 @@ class ForensicTab:
                     "its details."
                 )
             )
+
+    def _refresh_flow_details_table(self):
+        """Render pinned detail fields first, retaining all other order."""
+        self._hide_detail_actions()
+
+        for item in self.flow_details_table.get_children():
+            self.flow_details_table.delete(item)
+
+        pinned = [
+            detail for detail in self.current_flow_details
+            if detail[0] in self.pinned_detail_fields
+        ]
+        unpinned = [
+            detail for detail in self.current_flow_details
+            if detail[0] not in self.pinned_detail_fields
+        ]
+
+        for index, detail in enumerate(pinned + unpinned):
+            self.flow_details_table.insert(
+                "",
+                tk.END,
+                iid=f"detail-{index}",
+                values=(detail[0], detail[1], "")
+            )
+
+    def _hide_detail_actions(self, event=None):
+        """Hide Copy and Pin controls for the flow-detail list."""
+        self._selected_detail_item = None
+
+        if hasattr(self, "_detail_copy_button"):
+            self._detail_copy_button.place_forget()
+
+        if hasattr(self, "_detail_pin_button"):
+            self._detail_pin_button.place_forget()
+
+    def _scroll_flow_details_table(self, *args):
+        self._hide_detail_actions()
+        self.flow_details_table.yview(*args)
+
+    def _on_flow_detail_selected(self, event=None):
+        selection = self.flow_details_table.selection()
+        if not selection:
+            return
+
+        item_id = selection[0]
+        self.root.after_idle(
+            lambda selected=item_id: self._show_detail_actions(selected)
+        )
+
+    def _show_detail_actions(self, item_id):
+        bbox = self.flow_details_table.bbox(item_id, "actions")
+        if not bbox:
+            self._hide_detail_actions()
+            return
+
+        cell_x, cell_y, cell_width, cell_height = bbox
+        button_width = max(42, (cell_width - 9) // 2)
+        button_height = max(1, cell_height - 4)
+        values = self.flow_details_table.item(item_id, "values")
+        is_pinned = bool(values) and str(values[0]) in self.pinned_detail_fields
+
+        self._selected_detail_item = item_id
+        self._detail_pin_button.config(text="Unpin" if is_pinned else "Pin")
+        self._detail_copy_button.place(
+            x=cell_x + 3,
+            y=cell_y + 2,
+            width=button_width,
+            height=button_height
+        )
+        self._detail_pin_button.place(
+            x=cell_x + 6 + button_width,
+            y=cell_y + 2,
+            width=button_width,
+            height=button_height
+        )
+
+    def _copy_selected_detail(self):
+        item_id = self._selected_detail_item
+        if not item_id:
+            return
+
+        values = self.flow_details_table.item(item_id, "values")
+        if not values:
+            return
+
+        self.root.clipboard_clear()
+        self.root.clipboard_append(f"{values[0]} | {values[1]}")
+        self.root.update_idletasks()
+
+    def _pin_selected_detail(self):
+        item_id = self._selected_detail_item
+        if not item_id:
+            return
+
+        values = self.flow_details_table.item(item_id, "values")
+        if not values:
+            return
+
+        field_name = str(values[0])
+        if field_name in self.pinned_detail_fields:
+            self.pinned_detail_fields.remove(field_name)
+        else:
+            self.pinned_detail_fields.add(field_name)
+
+        self._refresh_flow_details_table()
+        self.root.after_idle(
+            lambda: self._select_detail_field(field_name)
+        )
+
+    def _select_detail_field(self, field_name):
+        for item_id in self.flow_details_table.get_children():
+            values = self.flow_details_table.item(item_id, "values")
+            if values and str(values[0]) == field_name:
+                self.flow_details_table.selection_set(item_id)
+                self.flow_details_table.focus(item_id)
+                self.flow_details_table.see(item_id)
+                self._show_detail_actions(item_id)
+                return
 
     def _on_flow_selected(
         self,
@@ -2238,6 +2430,11 @@ class ForensicTab:
 
         self._show_flow_details(
             flow_index
+        )
+
+        # Show row actions only after an investigator selects a flow.
+        self.root.after_idle(
+            lambda selected=item_id: self._show_finding_actions(selected)
         )
 
     def _show_flow_details(
@@ -2352,34 +2549,7 @@ class ForensicTab:
             )
         )
 
-        # Insert two field/value pairs per row.
-        details = self.current_flow_details
-
-        for i in range(
-            0,
-            len(details),
-            2
-        ):
-            left = details[i]
-
-            if i + 1 < len(details):
-                right = details[i + 1]
-            else:
-                right = (
-                    "",
-                    ""
-                )
-
-            self.flow_details_table.insert(
-                "",
-                tk.END,
-                values=(
-                    left[0],
-                    left[1],
-                    right[0],
-                    right[1]
-                )
-            )
+        self._refresh_flow_details_table()
 
         self.write_log(
             f"[+] Displaying detailed information for Flow {flow_index}.",

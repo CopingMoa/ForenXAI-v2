@@ -317,7 +317,10 @@ def _apply_corrections():
 # SESSION
 # ============================================================
 
-class _ForenXAISession(FlowSession):
+# Keep this module importable when the optional Python fallback dependencies
+# are unavailable.  ``extract()`` below reports ``IMPORT_ERROR`` before this
+# placeholder can ever be instantiated.
+class _ForenXAISession(FlowSession if AVAILABLE else object):
     """
     Flow accumulator, driven directly rather than through scapy.
 
